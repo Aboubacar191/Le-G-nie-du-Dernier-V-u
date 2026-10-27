@@ -1,0 +1,635 @@
+{
+  "id": "GDV-001",
+  "titre": "Le Génie du Dernier Vœu — moteur de jeu serveur et application PWA (v1 prototype)",
+  "version": "1.0.0",
+  "source_metier": "GDD transmis verbatim par le client le 2026-10-27. PDF de référence secondaire : D:\\Le Génie du Dernier Vœu\\Le Génie du Dernier Vœu — Game Design.pdf. En cas de divergence, CETTE SPEC prime.",
+
+  "objectif_metier": "Permettre à un groupe de 5 à 8 joueurs réunis dans la même pièce de jouer une partie de bluff et de déduction sociale de 25-30 minutes, où chacun déclare publiquement sa contribution mais paie en secret, et où l'application tient seule le rôle d'arbitre omniscient (le « génie ») : elle est la seule à connaître les paiements réels, les rôles, les missions et les clauses cachées, et elle produit des révélations toujours vraies mais jamais complètes. Le problème à résoudre n'est pas « afficher un jeu » mais « garantir qu'aucun joueur ne puisse obtenir par son téléphone une information que les règles lui refusent » — sans cette garantie, le jeu n'a aucun intérêt.",
+
+  "profils_concernes": ["hote de session", "marchand (joueur)"],
+  "interface_requise": true,
+  "choix_structurant": true,
+  "priorite": "must",
+
+  "contexte_contraignant": {
+    "presentiel": "Tous les joueurs sont dans la même pièce, en cercle, et parlent à voix haute. L'application ne porte PAS la négociation (pas de chat) : elle porte les actes secrets et l'arbitrage.",
+    "le_genie_est_le_serveur": "Le génie n'est pas un joueur. C'est le serveur. Il n'a pas de client dédié.",
+    "un_telephone_par_joueur": "Chaque joueur a son propre appareil, connecté à une session partagée via code ou QR.",
+    "secret_non_negociable": "Paiements réels, clauses cachées, rôles, missions, soldes et calculs de révélation sont calculés UNIQUEMENT côté serveur. Aucun message sortant ne peut contenir un secret dont le destinataire n'est pas propriétaire. Cette exigence est architecturale et prime sur toute autre considération.",
+    "equilibrage_fige": "Les valeurs numériques de la section 4 du GDD sont vérifiées et ne doivent pas être rééquilibrées. Elles doivent être des paramètres de configuration, jamais des constantes codées en dur."
+  },
+
+  "parametres_configuration": {
+    "_regle": "RG-60 : toutes ces valeurs sont lues depuis une configuration unique, surchargeable par session. Aucune de ces valeurs ne peut apparaître en littéral dans le code du moteur.",
+    "joueurs_min": 5,
+    "joueurs_max": 8,
+    "pieces_initiales": 12,
+    "nb_manches": 5,
+    "objectif_par_joueur": 3,
+    "multiplicateur_recompense": 2,
+    "multiplicateur_recompense_tresor_honnetes": 3,
+    "multiplicateur_amende": 2,
+    "cout_enquete": 2,
+    "cout_enquete_inspecteur_tresor": 1,
+    "cout_fausse_accusation": 2,
+    "accusations_max_par_joueur_par_manche": 1,
+    "bonus_mission_reussie": 10,
+    "bonus_marchand_epices_par_voeu_reussi": 2,
+    "taux_interet_pret": 0.5,
+    "fraction_retenue_genie": [1, 3],
+    "fraction_consolation": [1, 2],
+    "recompense_signature_dernier_voeu": 15,
+    "manche_min_revelation_passe": 3,
+    "parties_requises_pour_debloquer_dernier_voeu": 3,
+    "durees_phases_s": {
+      "VOEU": 20,
+      "NEGOCIATION": 120,
+      "DECLARATION_PAIEMENT": 30,
+      "REVELATION": 20,
+      "ENQUETES_ACCUSATIONS": 60,
+      "EXECUTION": 30,
+      "DV_PROPOSITION": 20,
+      "DV_DEBAT": 60,
+      "DV_SIGNATURE": 10
+    }
+  },
+
+  "modele_conceptuel": [
+    {
+      "entite": "Groupe",
+      "role": "Porte le déblocage du mode avancé. Persiste au-delà d'une partie.",
+      "attributs": ["id", "jeton_hote", "parties_terminees", "dernier_voeu_debloque", "cree_le"]
+    },
+    {
+      "entite": "Session",
+      "role": "Une partie en cours ou terminée.",
+      "attributs": ["id", "code_adhesion", "groupe_id", "etat_partie", "config", "mode_avance_actif", "manche_courante", "cree_le", "termine_le"]
+    },
+    {
+      "entite": "Joueur",
+      "role": "Un marchand dans une session.",
+      "attributs": ["id", "session_id", "pseudo", "jeton_session", "position_cercle", "connecte", "role_secret", "mission_secrete", "solde_pieces", "est_hote"],
+      "secrets": ["jeton_session", "role_secret", "mission_secrete", "solde_pieces"]
+    },
+    {
+      "entite": "Manche",
+      "role": "Une des 5 manches.",
+      "attributs": ["id", "session_id", "numero", "phase", "phase_fin_at", "objectif", "clause_id", "porteur_clause_joueur_id", "total_declare", "total_paye", "reussi", "cloture"],
+      "secrets": ["clause_id", "porteur_clause_joueur_id", "total_paye (jusqu'à la phase REVELATION)"]
+    },
+    {
+      "entite": "Contribution",
+      "role": "Le cœur du jeu : la double vérité.",
+      "attributs": ["id", "manche_id", "joueur_id", "montant_declare", "montant_paye", "declare_at", "paye_at"],
+      "secrets": ["montant_paye"],
+      "contraintes": ["0 <= montant_paye <= montant_declare", "montant_declare <= solde du joueur au moment de la déclaration", "un enregistrement unique par (manche_id, joueur_id)"]
+    },
+    {
+      "entite": "Clause",
+      "role": "Donnée de catalogue, pas d'état.",
+      "attributs": ["cle", "effet_type", "parametres"]
+    },
+    {
+      "entite": "Revelation",
+      "role": "Trace de ce que le génie a dit, pour vérifier l'invariant de véracité et alimenter le gabarit « Passé ».",
+      "attributs": ["id", "manche_id", "gabarit", "variante_formulation", "cibles", "valeurs", "emise_at", "suspects_restants_apres"]
+    },
+    {
+      "entite": "Enquete",
+      "role": "Achat d'information privée.",
+      "attributs": ["id", "manche_id", "enqueteur_joueur_id", "cible_joueur_id", "cout_paye", "resultat_montant_paye", "cree_at"],
+      "secrets": ["TOUT : ni la cible ni la table ne savent qu'une enquête a eu lieu"]
+    },
+    {
+      "entite": "Accusation",
+      "role": "Acte public et résolu publiquement.",
+      "attributs": ["id", "manche_id", "accusateur_joueur_id", "accuse_joueur_id", "verdict", "ampleur_mensonge", "montant_amende_du", "liquide_at"],
+      "contraintes": ["accusateur != accuse", "max 1 par (manche, accusateur)"]
+    },
+    {
+      "entite": "MouvementPieces",
+      "role": "Journal de toute variation de solde — base de l'auditabilité et des tests QA.",
+      "attributs": ["id", "session_id", "manche_numero", "joueur_id", "delta", "motif", "contrepartie_joueur_id", "cree_at"],
+      "motifs_attendus": ["dotation_initiale", "paiement_voeu", "part_recompense", "bonus_epices", "amende_recue", "amende_payee", "penalite_fausse_accusation_payee", "penalite_fausse_accusation_recue", "cout_enquete", "transfert_emis", "transfert_recu", "pret_emis", "pret_recu", "remboursement_pret", "consolation", "signature_dernier_voeu", "sanction_contrat_conteste"]
+    },
+    {
+      "entite": "Pret",
+      "role": "Monopole du rôle Prêteur.",
+      "attributs": ["id", "session_id", "preteur_joueur_id", "emprunteur_joueur_id", "principal", "du_total", "rembourse", "manche_emission", "statut"]
+    },
+    {
+      "entite": "SignatureDernierVoeu",
+      "attributs": ["id", "session_id", "joueur_id", "a_signe", "cree_at"],
+      "secrets": ["a_signe (jusqu'à l'écran de scores finaux)"]
+    }
+  ],
+
+  "machine_etats_partie": {
+    "etats": [
+      {"etat": "CREEE", "description": "Session créée, code d'adhésion émis, hôte seul présent."},
+      {"etat": "SALLE_ATTENTE", "description": "Les joueurs rejoignent. Démarrage impossible hors de [5,8]."},
+      {"etat": "PLACEMENT", "description": "L'hôte saisit l'ordre des places en cercle."},
+      {"etat": "DISTRIBUTION", "description": "Le serveur tire rôles, missions, et le cas échéant les rôles du mode avancé. Chaque joueur reçoit SES attributions, en privé."},
+      {"etat": "MANCHE_EN_COURS", "description": "Une des 5 manches, pilotée par la machine à états de manche.", "parametre": "manche_courante 1..5"},
+      {"etat": "DERNIER_VOEU", "description": "Uniquement si mode_avance_actif. Atteint après l'EXECUTION de la manche 5."},
+      {"etat": "SCORES", "description": "Calcul et publication des scores, missions révélées, vainqueur."},
+      {"etat": "TERMINEE", "description": "Terminal. parties_terminees du groupe incrémenté."},
+      {"etat": "ABANDONNEE", "description": "Terminal. Abandon par l'hôte ou expiration d'inactivité."}
+    ],
+    "transitions": [
+      {"de": "CREEE", "vers": "SALLE_ATTENTE", "declencheur": "premier joueur rejoint"},
+      {"de": "SALLE_ATTENTE", "vers": "PLACEMENT", "declencheur": "hote.demarrer", "garde": "5 <= nb_joueurs_connectes <= 8"},
+      {"de": "PLACEMENT", "vers": "DISTRIBUTION", "declencheur": "hote.valider_ordre", "garde": "ordre = permutation complète et unique de tous les joueurs"},
+      {"de": "DISTRIBUTION", "vers": "MANCHE_EN_COURS(1)", "declencheur": "automatique, distribution terminée"},
+      {"de": "MANCHE_EN_COURS(k)", "vers": "MANCHE_EN_COURS(k+1)", "declencheur": "manche k clôturée", "garde": "k < nb_manches"},
+      {"de": "MANCHE_EN_COURS(nb_manches)", "vers": "DERNIER_VOEU", "declencheur": "manche 5 clôturée", "garde": "mode_avance_actif == true"},
+      {"de": "MANCHE_EN_COURS(nb_manches)", "vers": "SCORES", "declencheur": "manche 5 clôturée", "garde": "mode_avance_actif == false"},
+      {"de": "DERNIER_VOEU", "vers": "SCORES", "declencheur": "résolution des signatures"},
+      {"de": "SCORES", "vers": "TERMINEE", "declencheur": "automatique"},
+      {"de": "* (hors TERMINEE)", "vers": "ABANDONNEE", "declencheur": "hote.abandonner | inactivite_depassee"}
+    ]
+  },
+
+  "machine_etats_manche": {
+    "_invariant": "RG-30 : les phases s'enchaînent dans cet ordre strict, sans saut ni retour. Aucune action de joueur n'est acceptée en dehors de la phase qui l'autorise ; une action hors phase est rejetée avec un code d'erreur, jamais mise en file d'attente.",
+    "phases": [
+      {
+        "phase": "VOEU",
+        "duree_s": 20,
+        "fait_par_le_serveur": [
+          "annonce publique du vœu et de son objectif (objectif_par_joueur × nb_joueurs)",
+          "tirage de la clause cachée (sans remise dans la partie)",
+          "tirage du porteur de la clause parmi les joueurs",
+          "envoi privé de la clause au porteur ET à tout joueur ayant le rôle Faiseur de contrats"
+        ],
+        "actions_joueur_autorisees": [],
+        "sortie": "expiration du minuteur"
+      },
+      {
+        "phase": "NEGOCIATION",
+        "duree_s": 120,
+        "fait_par_le_serveur": ["enregistrement des transferts et des prêts"],
+        "actions_joueur_autorisees": ["transferer_pieces", "proposer_pret", "repondre_pret"],
+        "sortie": "expiration du minuteur OU hote.avancer_phase"
+      },
+      {
+        "phase": "DECLARATION_PAIEMENT",
+        "duree_s": 30,
+        "simultaneite": "RG-31 : les deux actes sont simultanés pour toute la table. La déclaration est publiée à tous DÈS sa soumission (c'est une annonce). Le paiement n'est JAMAIS publié. Un joueur ne peut payer qu'après avoir déclaré.",
+        "actions_joueur_autorisees": ["declarer_contribution", "payer_secret"],
+        "sortie": "expiration du minuteur OU tous les joueurs ont déclaré ET payé",
+        "defaut_sur_non_soumission": "RG-32 : déclaration manquante => montant_declare = 0 ; paiement manquant => montant_paye = 0. Le joueur n'est ni éliminé ni pénalisé autrement."
+      },
+      {
+        "phase": "REVELATION",
+        "duree_s": 20,
+        "fait_par_le_serveur": [
+          "publication de l'écart total (total déclaré, total reçu) — systématique",
+          "sélection et publication d'AU PLUS une révélation du catalogue, selon les trois lois du génie"
+        ],
+        "actions_joueur_autorisees": [],
+        "sortie": "expiration du minuteur"
+      },
+      {
+        "phase": "ENQUETES_ACCUSATIONS",
+        "duree_s": 60,
+        "actions_joueur_autorisees": ["lancer_enquete", "accuser"],
+        "regles": [
+          "l'enquête est privée de bout en bout : résultat au seul enquêteur, invisible pour la cible et pour la table",
+          "l'accusation et son verdict sont publics immédiatement ; la liquidation monétaire est différée à EXECUTION"
+        ],
+        "sortie": "expiration du minuteur"
+      },
+      {
+        "phase": "EXECUTION",
+        "duree_s": 30,
+        "fait_par_le_serveur": ["pipeline d'exécution ordonné (voir pipeline_execution)", "révélation publique de la clause cachée et de son effet appliqué"],
+        "actions_joueur_autorisees": [],
+        "sortie": "manche clôturée"
+      }
+    ]
+  },
+
+  "pipeline_execution": {
+    "_regle": "RG-40 : l'exécution d'une manche est une suite d'étapes ordonnée et déterministe. L'ordre est normatif : le changer change les résultats. Tout arrondi est explicite.",
+    "etapes": [
+      {"n": 1, "operation": "total_paye = somme des montant_paye de la manche ; total_declare = somme des montant_declare."},
+      {"n": 2, "operation": "menteurs = { joueurs tels que montant_declare - montant_paye > 0 } ; ampleur_i = montant_declare_i - montant_paye_i."},
+      {"n": 3, "operation": "reussi = (total_paye >= objectif)."},
+      {"n": 4, "operation": "multiplicateur = multiplicateur_recompense ; si clause TRESOR_DES_HONNETES active ET |menteurs| == 0 alors multiplicateur = multiplicateur_recompense_tresor_honnetes.", "condition": "reussi"},
+      {"n": 5, "operation": "recompense = multiplicateur * total_paye.", "condition": "reussi"},
+      {"n": 6, "operation": "si clause GENIE_GARDE_UN_TIERS active alors recompense = plancher(recompense * 2 / 3).", "condition": "reussi"},
+      {"n": 7, "operation": "exclus_du_partage = { joueurs démasqués durant la manche, c.-à-d. accusés avec verdict MENTEUR }.", "condition": "reussi"},
+      {"n": 8, "operation": "poids_i = montant_declare_i pour tout joueur non exclu, 0 sinon ; si clause LE_PLUS_GENEREUX active, poids_i *= 2 pour tout joueur non exclu appartenant à argmax(montant_paye).", "condition": "reussi"},
+      {"n": 9, "operation": "part_i = plancher(recompense * poids_i / somme(poids)) ; si somme(poids) == 0 alors aucune part n'est versée. Le reliquat de l'arrondi n'est PAS distribué (le génie le garde).", "condition": "reussi"},
+      {"n": 10, "operation": "pour tout joueur de rôle MARCHAND_EPICES : +bonus_marchand_epices_par_voeu_reussi.", "condition": "reussi"},
+      {"n": 11, "operation": "si NON reussi ET clause CONSOLATION active : chaque joueur reçoit plancher(montant_paye_i / 2).", "condition": "echec"},
+      {"n": 12, "operation": "facteur_amende = 1 ; si clause PRIME_AU_DELATEUR active alors facteur_amende = 2."},
+      {"n": 13, "operation": "pour chaque accusation de verdict MENTEUR : amende = multiplicateur_amende * ampleur_mensonge * facteur_amende, transférée de l'accusé vers l'accusateur, PLAFONNÉE au solde de l'accusé (le reliquat est abandonné, pas reporté)."},
+      {"n": 14, "operation": "pour chaque accusation de verdict HONNETE : penalite = cout_fausse_accusation * facteur_amende, transférée de l'accusateur vers l'accusé, plafonnée au solde de l'accusateur."},
+      {"n": 15, "operation": "prélèvement des prêts échus (émis à la manche précédente) : du_total = plafond(principal * (1 + taux_interet_pret)) ; prélèvement plafonné au solde de l'emprunteur, le reliquat reste dû et sera prélevé aux manches suivantes."},
+      {"n": 16, "operation": "publication publique : reussi/echoue, total_declare, total_paye, objectif, recompense, multiplicateur appliqué, parts par joueur, reliquat non distribué, clause révélée et son effet, verdicts d'accusation et amendes liquidées. DEUX RESTRICTIONS (RG-74) : les montants de consolation INDIVIDUELS ne sont jamais publiés, et l'identité du porteur de la clause ne l'est jamais non plus."},
+      {"n": 17, "operation": "clôture de la manche ; écriture de tous les MouvementPieces correspondants."}
+    ],
+    "invariant_monetaire": "RG-41 : aucun solde ne peut devenir négatif à aucun instant. Toute action dont le coût excède le solde est soit refusée a priori (enquête, transfert, paiement, déclaration), soit plafonnée a posteriori (amende, pénalité, remboursement de prêt). RG-42 : pour tout joueur, solde = somme de ses MouvementPieces. Cette égalité est testable à tout instant."
+  },
+
+  "catalogue_clauses": {
+    "_regle": "RG-18 : une clause est tirée par manche, SANS REMISE au sein d'une partie. Elle est connue du serveur, du porteur tiré au sort et de tout Faiseur de contrats ; elle devient publique à l'étape 16 de l'exécution.",
+    "clauses": [
+      {"cle": "GENIE_GARDE_UN_TIERS", "libelle_reference": "Le génie garde un tiers", "effet": "recompense = plancher(recompense * 2/3)", "etape_pipeline": 6},
+      {"cle": "TRESOR_DES_HONNETES", "libelle_reference": "Trésor des honnêtes", "effet": "multiplicateur de récompense = 3 au lieu de 2, uniquement si aucun joueur n'a menti sur la manche ; sinon 2", "etape_pipeline": 4},
+      {"cle": "LE_PLUS_GENEREUX", "libelle_reference": "Le plus généreux", "effet": "le plus gros payeur réel voit son poids de partage doublé (part double)", "etape_pipeline": 8, "cas_egalite": "tous les ex aequo bénéficient du doublement (déduite)"},
+      {"cle": "CONSOLATION", "libelle_reference": "Consolation", "effet": "si le vœu échoue, chaque joueur récupère plancher(montant_paye / 2)", "etape_pipeline": 11},
+      {"cle": "PRIME_AU_DELATEUR", "libelle_reference": "Prime au délateur", "effet": "toute amende ou pénalité d'accusation de la manche est doublée", "etape_pipeline": "12-14"}
+    ]
+  },
+
+  "catalogue_revelations": {
+    "_lois": {
+      "loi_1_toujours_vrai": "RG-20 : une révélation n'est émise que si son énoncé est vérifié vrai contre les paiements réels enregistrés. Le serveur ne peut structurellement pas émettre d'énoncé non vérifié.",
+      "loi_2_jamais_complet": "RG-21 : une révélation n'est émise que si, APRÈS son émission, l'ensemble des suspects publics compte au moins 2 joueurs. Si aucun gabarit n'est éligible, le génie n'émet QUE l'écart total — il n'invente jamais un énoncé de remplacement.",
+      "loi_3_provocateur": "RG-22 : à éligibilité égale, le gabarit et la cible sont choisis pour maximiser la tension, mesurée par le score d'activité du joueur ciblé."
+    },
+    "definition_suspects_publics": "RG-23 : ensemble_suspects_publics = joueurs de la session dont le statut d'honnêteté sur la manche courante n'est pas déterminé par la seule information publique. Un joueur en sort lorsqu'il est (a) exonéré par une révélation d'exonération, (b) démasqué par une accusation de verdict MENTEUR, ou (c) déclaré honnête par une accusation de verdict HONNETE. Cet ensemble est recalculé et journalisé à chaque émission (champ suspects_restants_apres de l'entité Revelation).",
+    "score_activite": "RG-24 : « le joueur qui a le plus parlé » n'est pas mesurable par l'application (la négociation est orale). Proxy mesurable retenu (déduite) : score_activite = 3 × nb_accusations_emises + 2 × nb_enquetes_lancees + 1 × nb_transferts_inities, cumulé sur la partie.",
+    "gabarits": [
+      {
+        "cle": "ECART_TOTAL",
+        "enonce_type": "Vous avez promis {total_declare} pièces. J'en ai reçu {total_paye}.",
+        "eligibilite": "TOUJOURS — émis systématiquement, hors catalogue de sélection.",
+        "valeurs": ["total_declare", "total_paye"]
+      },
+      {
+        "cle": "COMPTAGE",
+        "enonce_type": "{k} d'entre vous {ont|a} menti.",
+        "eligibilite": "1 <= k <= nb_joueurs - 1, où k = |menteurs|. Interdit si k == 0 (révélerait l'honnêteté de tous) ou k == nb_joueurs (révélerait la culpabilité de tous).",
+        "usage_prefere": "quand l'écart total laisse plusieurs répartitions possibles"
+      },
+      {
+        "cle": "VOISINAGE",
+        "enonce_type": "Un menteur est assis à côté de {cible}.",
+        "eligibilite": "au moins un des deux voisins de {cible} dans l'ordre du cercle appartient à menteurs, ET |ensemble_suspects_publics après émission| >= 2. La cible elle-même n'est ni accusée ni exonérée par l'énoncé.",
+        "dependance": "exige l'ordre des places saisi en phase PLACEMENT ; le cercle est cyclique (le dernier est voisin du premier)."
+      },
+      {
+        "cle": "EXONERATION",
+        "enonce_type": "{cible} a payé ce qu'{il|elle} a promis.",
+        "eligibilite": "{cible} n'appartient pas à menteurs, ET |ensemble_suspects_publics après retrait de {cible}| >= 2.",
+        "usage_prefere": "quand {cible} est honnête et a reçu au moins une accusation, ou est le joueur honnête au plus haut score d'activité"
+      },
+      {
+        "cle": "COMPARAISON",
+        "enonce_type": "{a} a payé plus que {b}.",
+        "eligibilite": "montant_paye(a) > montant_paye(b) strictement, a != b, ET |ensemble_suspects_publics après émission| >= 2. Interdit si l'énoncé combiné aux déclarations publiques suffit à désigner un menteur unique.",
+        "usage_prefere": "pour départager deux joueurs déjà soupçonnés sans trancher"
+      },
+      {
+        "cle": "PASSE",
+        "enonce_type": "L'un de vous ment depuis la première manche.",
+        "eligibilite": "numero_manche >= manche_min_revelation_passe, ET |{ joueurs ayant menti à chacune des manches 1..numero_manche }| >= 1, ET |ensemble_suspects_publics| >= 2."
+      }
+    ],
+    "variantes_formulation": "RG-25 : chaque gabarit porte au moins 2 formulations alternatives, tirées au hasard, pour la personnalité du génie (ton malicieux et ambigu). Les variantes sont du contenu éditorial, stockées hors du moteur, et ne modifient JAMAIS les valeurs calculées."
+  },
+
+  "catalogue_roles": {
+    "_regle": "RG-04 : chaque joueur reçoit exactement un rôle secret. Les 4 rôles sont d'abord attribués en un exemplaire chacun ; les joueurs surnuméraires (nb_joueurs - 4, soit 1 à 4) reçoivent un doublon tiré au sort, aucun rôle ne dépassant 2 exemplaires.",
+    "roles": [
+      {"cle": "INSPECTEUR_TRESOR", "pouvoir": "coût d'enquête = cout_enquete_inspecteur_tresor au lieu de cout_enquete", "point_application": "lancer_enquete"},
+      {"cle": "FAISEUR_CONTRATS", "pouvoir": "reçoit en privé chaque clause cachée de la partie, en plus du porteur tiré au sort", "point_application": "phase VOEU"},
+      {"cle": "PRETEUR", "pouvoir": "seul rôle autorisé à émettre un prêt à intérêts ; remboursement de plafond(principal * 1,5) prélevé automatiquement à l'exécution de la manche suivante", "point_application": "proposer_pret, pipeline étape 15"},
+      {"cle": "MARCHAND_EPICES", "pouvoir": "+bonus_marchand_epices_par_voeu_reussi pièces à chaque vœu réussi", "point_application": "pipeline étape 10"}
+    ]
+  },
+
+  "catalogue_missions": {
+    "_regle": "RG-05 : chaque joueur reçoit exactement une mission secrète, vérifiée automatiquement en fin de partie, valant bonus_mission_reussie points. Les 5 missions sont attribuées distinctes tant que possible ; au-delà de 5 joueurs, les missions surnuméraires sont des doublons tirés au sort (déduite).",
+    "missions": [
+      {"cle": "LE_MAGNAT", "condition_testable": "à la fin de la partie, montant de pièces du joueur == max des pièces de tous les joueurs (ex aequo : réussie pour chacun). Évaluée sur les pièces restantes, après résolution du Dernier Vœu, avant ajout des bonus de mission."},
+      {"cle": "LE_FAUSSAIRE", "condition_testable": "nb de manches où ampleur_mensonge > 0 est >= 2, ET le joueur n'a jamais été l'accusé d'une accusation de verdict MENTEUR sur toute la partie."},
+      {"cle": "LE_JUSTICIER", "condition_testable": "nb de joueurs DISTINCTS contre lesquels le joueur a porté une accusation de verdict MENTEUR est >= 2."},
+      {"cle": "LE_BATISSEUR", "condition_testable": "nb de manches avec reussi == true est >= 4."},
+      {"cle": "LE_SABOTEUR", "condition_testable": "nb de manches avec reussi == false est >= 2."}
+    ],
+    "garde_fou_design_non_code": "Le GDD impose qu'une mission ne soit réussie ni dans moins de 20 % ni dans plus de 50 % des parties. C'est un objectif de réglage futur, PAS une règle à implémenter : le moteur ne doit en aucun cas forcer ou filtrer un résultat de mission."
+  },
+
+  "dernier_voeu": {
+    "_regle": "RG-50 : mode avancé. Actif si groupe.parties_terminees >= parties_requises_pour_debloquer_dernier_voeu, OU si l'hôte l'active explicitement (interrupteur de test). Intervient APRÈS l'exécution de la manche 5.",
+    "mise_en_place": [
+      "RG-51 : un joueur tiré au sort reçoit le rôle secret MARCHAND_DEJA_LIE À LA PLACE de sa mission secrète. Il gagne seul la partie si le génie est libéré.",
+      "RG-52 : un autre joueur, distinct, reçoit la mission GARDIEN_DE_LA_LAMPE à la place de sa mission tirée : +bonus_mission_reussie si le génie n'est pas libéré."
+    ],
+    "phases": [
+      {"phase": "DV_PROPOSITION", "duree_s": 20, "serveur": "propose en privé à chaque marchand : signer et recevoir recompense_signature_dernier_voeu pièces", "actions": []},
+      {"phase": "DV_DEBAT", "duree_s": 60, "serveur": "aucun calcul", "actions": []},
+      {"phase": "DV_SIGNATURE", "duree_s": 10, "serveur": "collecte les signatures en secret", "actions": ["signer_dernier_voeu(booleen)"], "defaut_sur_non_soumission": "refus"},
+      {"phase": "DV_RESOLUTION", "duree_s": 0, "serveur": "applique la table de résolution", "actions": []}
+    ],
+    "table_resolution": [
+      {"nb_signataires": 0, "effets": ["aucun transfert", "genie_libere = false", "GARDIEN_DE_LA_LAMPE réussit sa mission"]},
+      {"nb_signataires": 1, "effets": ["le signataire reçoit recompense_signature_dernier_voeu pièces", "genie_libere = true", "le MARCHAND_DEJA_LIE gagne seul la partie, quel que soit le classement par points", "GARDIEN_DE_LA_LAMPE échoue"]},
+      {"nb_signataires": ">= 2", "effets": ["contrat contesté : aucun signataire ne reçoit les pièces", "chaque signataire perd plancher(solde / 2)", "genie_libere = false", "GARDIEN_DE_LA_LAMPE réussit sa mission"]}
+    ],
+    "publicite": "RG-53 : sont publics le nombre de signataires et la conséquence appliquée. L'identité des signataires n'est révélée qu'à l'écran de scores finaux (déduite)."
+  },
+
+  "score_final": {
+    "formule": "RG-55 : score = pieces_restantes + (bonus_mission_reussie si mission réussie, sinon 0). Le plus haut score gagne. Personne n'est éliminé en cours de partie.",
+    "surcharge_mode_avance": "RG-56 : si genie_libere == true, le MARCHAND_DEJA_LIE est déclaré vainqueur unique, le classement par points restant affiché à titre informatif.",
+    "egalite": "RG-57 : en cas d'égalité de score, départage par pieces_restantes, puis ex aequo déclaré (déduite).",
+    "revelation_finale": "RG-58 : à l'écran de scores sort une liste EXHAUSTIVE et FERMÉE de secrets, et rien d'autre : rôles, missions et leur réussite, paiements réels de chaque manche, signataires du Dernier Vœu. DEUX SECRETS NE SORTENT JAMAIS, même là : l'identité du porteur de chaque clause, et l'existence des enquêtes (qui a enquêté sur qui). La formulation initiale « tout devient public » était trompeuse : en cas de doute, matrice_visibilite fait foi, jamais cette phrase. Révéler les enquêtes a posteriori rétroagirait sur la valeur du chantage, qui est un ressort de jeu voulu par le GDD."
+  },
+
+  "matrice_visibilite": {
+    "_regle": "RG-01 (règle maîtresse) : aucun message sortant du serveur ne contient une donnée dont le destinataire n'est pas visibilité-autorisé par cette table. Les messages sont construits par PROJECTION PAR DESTINATAIRE : il n'existe aucun message d'état global diffusé à tous. Toute violation est un défaut bloquant, pas un défaut majeur.",
+    "entrees": [
+      {"donnee": "montant_declare", "visible_par": ["tous"], "a_partir_de": "soumission"},
+      {"donnee": "montant_paye", "visible_par": ["serveur", "proprietaire", "enqueteur ayant payé une enquête sur ce joueur pour cette manche"], "a_partir_de": "soumission", "devient_public": "ecran de scores finaux"},
+      {"donnee": "solde_pieces", "visible_par": ["serveur", "proprietaire"], "justification": "ADR-CP-05 : un solde public permettrait de déduire le paiement secret par différence.", "devient_public": "ecran de scores finaux"},
+      {"donnee": "role_secret", "visible_par": ["serveur", "proprietaire"], "devient_public": "ecran de scores finaux"},
+      {"donnee": "mission_secrete", "visible_par": ["serveur", "proprietaire"], "devient_public": "ecran de scores finaux"},
+      {"donnee": "clause de la manche", "visible_par": ["serveur", "porteur tiré au sort", "tout FAISEUR_CONTRATS"], "devient_public": "etape 16 de l'exécution"},
+      {"donnee": "identite du porteur de la clause", "visible_par": ["serveur"], "devient_public": "jamais en v1"},
+      {"donnee": "existence d'une enquête (enquêteur, cible)", "visible_par": ["serveur", "enqueteur"], "note": "la cible ne sait PAS qu'elle a été enquêtée — c'est ce qui rend le chantage possible", "devient_public": "jamais en v1"},
+      {"donnee": "resultat d'enquête", "visible_par": ["serveur", "enqueteur"], "devient_public": "jamais en v1"},
+      {"donnee": "accusation et son verdict", "visible_par": ["tous"], "a_partir_de": "soumission (verdict immédiat)"},
+      {"donnee": "montant d'amende liquidé", "visible_par": ["tous"], "a_partir_de": "phase EXECUTION", "justification": "ADR-CP-06 : liquider avant la révélation de la clause PRIME_AU_DELATEUR divulguerait la clause.", "inference_sanctionnee": "Le montant permet de recalculer l'ampleur du mensonge, donc le paiement exact de l'accusé. C'est une conséquence directe de la règle du GDD elle-même (« une amende égale au double de son mensonge »), et elle ne porte que sur un joueur DÉJÀ publiquement démasqué, pour une manche DÉJÀ close. Arbitrage CONF-02 : assumée et documentée, pas corrigée. Le QA doit vérifier qu'aucune AUTRE inférence de ce type n'existe."},
+      {"donnee": "montant de consolation individuel", "visible_par": ["serveur", "proprietaire"], "justification": "RG-74 : plancher(montant_paye / 2) est une fonction directe du paiement secret. Seuls l'activation de la clause et le total consolé sont publics."},
+      {"donnee": "ampleur du mensonge", "visible_par": ["serveur", "proprietaire"], "justification": "RG-75 : exclue du verdict public d'accusation. Devient inférable à l'exécution via le montant d'amende (voir ci-dessus), et publique à l'écran de scores."},
+      {"donnee": "transfert de pièces (émetteur, destinataire, montant)", "visible_par": ["serveur", "emetteur", "destinataire"], "justification": "publier les transferts permettrait de recouper les soldes et de remonter aux paiements (déduite)."},
+      {"donnee": "pret (preteur, emprunteur, montant)", "visible_par": ["serveur", "preteur", "emprunteur"]},
+      {"donnee": "total_paye de la manche", "visible_par": ["serveur"], "devient_public": "phase REVELATION (écart total)"},
+      {"donnee": "liste des menteurs de la manche", "visible_par": ["serveur"], "devient_public": "jamais directement ; seulement via les révélations et les accusations"},
+      {"donnee": "signature du Dernier Vœu", "visible_par": ["serveur", "signataire"], "devient_public": "ecran de scores finaux (identités) ; le nombre est public à la résolution"},
+      {"donnee": "ordre des places dans le cercle", "visible_par": ["tous"], "note": "physiquement visible dans la pièce de toute façon"},
+      {"donnee": "pseudo, position, etat de connexion", "visible_par": ["tous"]},
+      {"donnee": "jeton_session d'un joueur", "visible_par": ["serveur", "proprietaire"], "note": "un jeton fuité permettrait l'usurpation et donc l'accès aux secrets d'autrui"}
+    ]
+  },
+
+  "besoins_protocole": {
+    "_note": "Liste des besoins fonctionnels d'échange, à formaliser par le tech-lead dans API-GDV-001.json. Ce n'est pas le contrat : c'est la liste de contrôle d'exhaustivité du contrat.",
+    "commandes_client_vers_serveur": [
+      "creer_session(pseudo, config_surchargee?, activer_mode_avance?)",
+      "rejoindre_session(code_adhesion, pseudo)",
+      "se_reconnecter(jeton_session)",
+      "definir_ordre_places(liste_ordonnee_joueur_id) [hote]",
+      "demarrer_partie() [hote]",
+      "avancer_phase() [hote, uniquement NEGOCIATION]",
+      "transferer_pieces(cible_joueur_id, montant)",
+      "proposer_pret(emprunteur_joueur_id, principal) [PRETEUR]",
+      "repondre_pret(pret_id, accepte)",
+      "declarer_contribution(montant)",
+      "payer_secret(montant)",
+      "lancer_enquete(cible_joueur_id)",
+      "accuser(accuse_joueur_id)",
+      "signer_dernier_voeu(a_signe)",
+      "abandonner_partie() [hote]"
+    ],
+    "evenements_serveur_vers_client": [
+      "etat_complet_prive(vue projetée pour CE destinataire) — émis à la connexion et à la reconnexion",
+      "joueur_rejoint / joueur_quitte / joueur_reconnecte",
+      "partie_demarree(ordre_cercle)",
+      "attribution_privee(role, mission) — privé",
+      "voeu_annonce(numero_manche, objectif)",
+      "clause_recue(clause) — privé, porteur et Faiseur de contrats uniquement",
+      "phase_changee(phase, phase_fin_at)",
+      "declaration_publiee(joueur_id, montant_declare)",
+      "paiement_enregistre() — privé, accusé de réception sans montant pour les autres",
+      "revelation_ecart_total(total_declare, total_paye)",
+      "revelation(gabarit, texte, cibles)",
+      "resultat_enquete(cible_joueur_id, montant_paye) — privé enquêteur",
+      "accusation_declaree(accusateur, accuse) + accusation_resolue(verdict)",
+      "execution_resultat(reussi, total_paye, recompense, parts, clause_revelee, amendes_liquidees)",
+      "solde_mis_a_jour(solde, derniers_mouvements) — privé",
+      "dernier_voeu_propose(montant) — privé",
+      "dernier_voeu_resolu(nb_signataires, consequence, genie_libere)",
+      "scores_finaux(classement, roles, missions, paiements_historiques, vainqueur)",
+      "erreur(code, message)"
+    ],
+    "exigences_transversales": [
+      "RG-70 : chaque commande est idempotente par (joueur, manche, type) quand le domaine l'exige : une seconde declarer_contribution dans la même phase remplace la première tant que le paiement n'est pas soumis, puis est refusée.",
+      "RG-71 : chaque commande est autorisée côté serveur contre (phase courante, rôle, solde, quotas). Le client n'est jamais la source de l'autorisation ; un client modifié ne doit pouvoir obtenir aucun effet interdit.",
+      "RG-72 : le serveur est l'unique horloge. Les minuteurs client sont décoratifs et dérivés de phase_fin_at ; une phase ne peut être prolongée ni raccourcie par un client.",
+      "RG-73 : à la reconnexion, le serveur renvoie l'état projeté complet pour ce joueur seul ; aucun secret d'autrui ne transite, y compris dans les historiques."
+    ]
+  },
+
+  "user_stories": [
+    {"id": "US-01", "role": "hôte", "action": "créer une session et obtenir un code d'adhésion court et un QR code", "benefice": "rassembler la table autour de la partie en quelques secondes, sans compte ni saisie d'URL"},
+    {"id": "US-02", "role": "marchand", "action": "rejoindre une session en saisissant le code et mon pseudo", "benefice": "entrer dans la partie depuis mon propre téléphone"},
+    {"id": "US-03", "role": "hôte", "action": "saisir l'ordre des places autour de la table puis lancer la partie", "benefice": "permettre au génie d'utiliser les révélations de voisinage, qui n'ont de sens que si l'ordre réel est connu"},
+    {"id": "US-04", "role": "marchand", "action": "recevoir en privé mon rôle et ma mission secrète", "benefice": "jouer un objectif caché que personne d'autre ne connaît"},
+    {"id": "US-05", "role": "marchand", "action": "annoncer publiquement ma contribution", "benefice": "peser dans la négociation et fixer ma part de la récompense"},
+    {"id": "US-06", "role": "marchand", "action": "payer en secret un montant inférieur ou égal à ce que j'ai annoncé", "benefice": "tenter de gagner plus que ma part sans que personne ne le voie"},
+    {"id": "US-07", "role": "marchand", "action": "recevoir en privé la clause cachée quand elle m'est confiée", "benefice": "disposer d'une information monnayable : la dire, la vendre, la taire ou mentir"},
+    {"id": "US-08", "role": "marchand", "action": "voir l'écart total puis la révélation du génie", "benefice": "disposer d'un indice vrai mais incomplet pour alimenter mes soupçons"},
+    {"id": "US-09", "role": "marchand", "action": "payer pour voir en privé le paiement réel d'un autre marchand", "benefice": "acheter une certitude, puis accuser, me taire ou faire chanter"},
+    {"id": "US-10", "role": "marchand", "action": "accuser publiquement un marchand, une fois par manche", "benefice": "encaisser une amende si j'ai raison, au risque de payer si j'ai tort"},
+    {"id": "US-11", "role": "marchand", "action": "voir le résultat de l'exécution et la clause enfin révélée", "benefice": "comprendre ce qui s'est joué et constater que le génie ne pouvait pas tricher"},
+    {"id": "US-12", "role": "marchand", "action": "transférer des pièces, ou emprunter au Prêteur quand je suis ruiné", "benefice": "continuer à jouer même sans pièces, honorer un accord conclu à voix haute"},
+    {"id": "US-13", "role": "marchand", "action": "consulter mon solde et l'historique de mes mouvements de pièces", "benefice": "décider de mes mises en connaissance de cause"},
+    {"id": "US-14", "role": "marchand", "action": "signer ou refuser en secret le Vœu de liberté", "benefice": "tenter le gain de 15 pièces en pariant que je serai le seul à signer"},
+    {"id": "US-15", "role": "marchand", "action": "voir les scores finaux, tous les secrets révélés et le vainqueur", "benefice": "vérifier a posteriori qui a menti et conclure la partie"},
+    {"id": "US-16", "role": "marchand", "action": "me reconnecter après une coupure réseau et retrouver exactement mon état", "benefice": "ne pas être exclu d'une partie de 30 minutes par un passage d'ascenseur"},
+    {"id": "US-17", "role": "hôte", "action": "ajuster les paramètres d'équilibrage avant le lancement", "benefice": "régler le jeu en playtest sans attendre une nouvelle version"},
+    {"id": "US-18", "role": "hôte", "action": "voir le mode Dernier Vœu se débloquer après 3 parties jouées par mon groupe", "benefice": "accéder à une fin plus retorse une fois le groupe rodé"}
+  ],
+
+  "regles_gestion": [
+    {"id": "RG-01", "enonce": "Aucun message sortant du serveur ne contient une donnée secrète dont le destinataire n'est pas propriétaire au sens de matrice_visibilite. Les messages sont projetés par destinataire ; aucun état global n'est diffusé.", "source": "métier"},
+    {"id": "RG-02", "enonce": "Une session démarre uniquement avec un nombre de joueurs connectés compris entre 5 et 8 inclus.", "source": "métier"},
+    {"id": "RG-03", "enonce": "Chaque joueur reçoit pieces_initiales (12) pièces à la distribution, via un mouvement de motif dotation_initiale.", "source": "métier"},
+    {"id": "RG-04", "enonce": "Les 4 rôles sont attribués en un exemplaire chacun, puis les joueurs surnuméraires reçoivent un doublon tiré au sort, sans qu'un rôle dépasse 2 exemplaires.", "source": "déduite"},
+    {"id": "RG-05", "enonce": "Les 5 missions sont attribuées distinctes tant que l'effectif le permet, puis par doublons tirés au sort.", "source": "déduite"},
+    {"id": "RG-06", "enonce": "L'ordre des places est une permutation complète et unique des joueurs, saisie avant la distribution et immuable ensuite ; le cercle est cyclique.", "source": "métier"},
+    {"id": "RG-07", "enonce": "L'objectif d'un vœu vaut objectif_par_joueur × nb_joueurs et est annoncé publiquement en phase VOEU.", "source": "métier"},
+    {"id": "RG-08", "enonce": "Le montant déclaré est un entier compris entre 0 et le solde du joueur au moment de la déclaration.", "source": "déduite", "justification": "Le GDD ne borne pas la déclaration. Or le partage se fait au prorata du déclaré : une déclaration non bornée serait un exploit trivial (déclarer 999, payer 0, capter toute la récompense).", "axe_prioritaire": "fiabilite"},
+    {"id": "RG-09", "enonce": "Le montant payé est un entier compris entre 0 et le montant déclaré par ce même joueur pour cette manche.", "source": "métier"},
+    {"id": "RG-10", "enonce": "Un joueur ne peut payer qu'après avoir déclaré ; une tentative de paiement sans déclaration est refusée.", "source": "déduite"},
+    {"id": "RG-11", "enonce": "Un joueur a menti sur une manche si montant_declare − montant_paye > 0 ; l'ampleur du mensonge est cette différence.", "source": "métier"},
+    {"id": "RG-12", "enonce": "Le vœu est réussi si la somme des montants payés atteint ou dépasse l'objectif. L'égalité stricte est un succès.", "source": "métier"},
+    {"id": "RG-13", "enonce": "La récompense d'un vœu réussi vaut multiplicateur_recompense × total réellement payé, avant application des clauses.", "source": "métier"},
+    {"id": "RG-14", "enonce": "La récompense est partagée au prorata des montants DÉCLARÉS, pas payés, avec arrondi à l'unité inférieure. Le reliquat d'arrondi n'est pas distribué.", "source": "métier"},
+    {"id": "RG-15", "enonce": "Un joueur démasqué par une accusation durant la manche perd sa part de récompense de cette manche (poids de partage nul).", "source": "métier"},
+    {"id": "RG-16", "enonce": "Une accusation juste fait payer à l'accusé une amende de multiplicateur_amende × ampleur_mensonge à l'accusateur.", "source": "métier"},
+    {"id": "RG-17", "enonce": "Une accusation fausse fait payer à l'accusateur cout_fausse_accusation pièces à l'accusé.", "source": "métier"},
+    {"id": "RG-18", "enonce": "Une clause cachée est tirée par manche, sans remise au sein d'une partie, envoyée en privé au porteur tiré au sort et à tout Faiseur de contrats, appliquée puis révélée publiquement à l'exécution.", "source": "métier"},
+    {"id": "RG-19", "enonce": "Chaque joueur ne peut porter qu'une accusation par manche, contre un joueur différent de lui-même. Il ne peut pas non plus enquêter sur lui-même.", "source": "métier"},
+    {"id": "RG-20", "enonce": "Toute révélation émise est vérifiée vraie contre les paiements réels enregistrés avant émission.", "source": "métier"},
+    {"id": "RG-21", "enonce": "Une révélation du catalogue n'est émise que si l'ensemble des suspects publics compte au moins 2 joueurs après son émission. À défaut, seul l'écart total est publié.", "source": "métier"},
+    {"id": "RG-22", "enonce": "À éligibilité égale, le génie cible le joueur au plus haut score d'activité.", "source": "métier"},
+    {"id": "RG-23", "enonce": "L'ensemble des suspects publics est défini et journalisé selon catalogue_revelations.definition_suspects_publics.", "source": "déduite"},
+    {"id": "RG-24", "enonce": "« Avoir le plus parlé » est approximé par score_activite = 3×accusations + 2×enquêtes + 1×transferts, cumulé sur la partie.", "source": "déduite", "justification": "La parole est orale et non captée par l'application. Aucune autre mesure n'est disponible."},
+    {"id": "RG-25", "enonce": "Chaque gabarit de révélation dispose d'au moins 2 formulations alternatives ; la variante choisie ne modifie aucune valeur calculée.", "source": "métier"},
+    {"id": "RG-26", "enonce": "Le coût d'une enquête est cout_enquete, ramené à cout_enquete_inspecteur_tresor pour un Inspecteur du Trésor. Une enquête est refusée si le solde est insuffisant.", "source": "métier"},
+    {"id": "RG-27", "enonce": "Le résultat d'une enquête n'est transmis qu'à l'enquêteur. Ni la cible ni la table n'apprennent qu'une enquête a eu lieu.", "source": "métier"},
+    {"id": "RG-28", "enonce": "Le nombre d'enquêtes par manche n'est pas plafonné : il est limité de fait par le solde et par la durée de la phase. Une seconde enquête sur la même cible dans la même manche est refusée (sans effet utile, coût inutile).", "source": "déduite"},
+    {"id": "RG-29", "enonce": "Seul le rôle Prêteur peut émettre un prêt. Le remboursement vaut plafond(principal × (1 + taux_interet_pret)) et est prélevé automatiquement à l'exécution de la manche suivante, plafonné au solde ; le reliquat reste dû et est prélevé aux exécutions suivantes.", "source": "déduite", "justification": "Le GDD fixe le taux (50 %) et le moment (manche suivante) mais ni l'arrondi, ni le comportement en cas de solde insuffisant."},
+    {"id": "RG-30", "enonce": "Les six phases d'une manche s'enchaînent dans l'ordre VOEU, NEGOCIATION, DECLARATION_PAIEMENT, REVELATION, ENQUETES_ACCUSATIONS, EXECUTION, sans saut ni retour. Toute action reçue hors de la phase qui l'autorise est rejetée, jamais mise en file.", "source": "métier"},
+    {"id": "RG-31", "enonce": "Déclaration et paiement sont simultanés pour toute la table. La déclaration est publiée dès sa soumission ; le paiement ne l'est jamais.", "source": "métier"},
+    {"id": "RG-32", "enonce": "Une déclaration non soumise à l'expiration de la phase vaut 0 ; un paiement non soumis vaut 0. Aucune autre sanction.", "source": "déduite"},
+    {"id": "RG-33", "enonce": "La phase DECLARATION_PAIEMENT se termine par anticipation si tous les joueurs ont déclaré et payé.", "source": "déduite"},
+    {"id": "RG-40", "enonce": "L'exécution suit les 17 étapes ordonnées de pipeline_execution, dans cet ordre exact.", "source": "déduite", "justification": "Le GDD énumère les effets sans fixer leur ordre d'application ; or l'ordre change les résultats (ex. clause de tiers avant ou après le partage)."},
+    {"id": "RG-41", "enonce": "Aucun solde ne peut devenir négatif. Les actions volontaires sont refusées si le solde est insuffisant ; les prélèvements involontaires (amende, pénalité, remboursement) sont plafonnés au solde.", "source": "déduite"},
+    {"id": "RG-42", "enonce": "Pour tout joueur et à tout instant, solde_pieces est égal à la somme de ses MouvementPieces. Chaque variation de solde produit un mouvement motivé.", "source": "déduite"},
+    {"id": "RG-43", "enonce": "Le verdict d'une accusation est public dès la phase ENQUETES_ACCUSATIONS ; le transfert monétaire correspondant est liquidé en phase EXECUTION, après application de la clause.", "source": "déduite", "justification": "ADR-CP-06 : la clause Prime au délateur double les amendes ; liquider avant sa révélation divulguerait la clause."},
+    {"id": "RG-44", "enonce": "La clause Prime au délateur double aussi la pénalité de fausse accusation, considérée comme une amende de la manche.", "source": "déduite"},
+    {"id": "RG-45", "enonce": "Le gabarit Passé n'est disponible qu'à partir de la manche manche_min_revelation_passe (3).", "source": "métier"},
+    {"id": "RG-46", "enonce": "Aucun joueur n'est jamais éliminé. Un joueur à 0 pièce conserve le droit de négocier, d'accuser, d'emprunter et de recevoir des transferts.", "source": "métier"},
+    {"id": "RG-50", "enonce": "Le mode Dernier Vœu est actif si le groupe a terminé au moins parties_requises_pour_debloquer_dernier_voeu (3) parties, ou si l'hôte l'active explicitement.", "source": "métier"},
+    {"id": "RG-51", "enonce": "En mode avancé, un joueur tiré au sort reçoit le rôle Marchand déjà lié à la place de sa mission, et un autre joueur distinct reçoit la mission Gardien de la lampe.", "source": "métier"},
+    {"id": "RG-52", "enonce": "Le Vœu de liberté est proposé en privé à chaque marchand, pour recompense_signature_dernier_voeu (15) pièces.", "source": "métier"},
+    {"id": "RG-53", "enonce": "La résolution du Dernier Vœu suit la table : 0 signataire = rien ; 1 = il reçoit 15 pièces et le génie est libéré ; 2 ou plus = contrat contesté, chaque signataire perd la moitié de ses pièces (arrondi inférieur) et le génie n'est pas libéré.", "source": "métier"},
+    {"id": "RG-54", "enonce": "Le nombre de signataires et la conséquence sont publics à la résolution ; les identités ne sont révélées qu'à l'écran de scores.", "source": "déduite"},
+    {"id": "RG-55", "enonce": "Le score final vaut pieces_restantes + bonus_mission_reussie si la mission est réussie. Le plus haut score gagne.", "source": "métier"},
+    {"id": "RG-56", "enonce": "Si le génie est libéré, le Marchand déjà lié est vainqueur unique, indépendamment du classement par points.", "source": "métier"},
+    {"id": "RG-57", "enonce": "En cas d'égalité de score, départage par pièces restantes, puis ex aequo déclaré.", "source": "déduite"},
+    {"id": "RG-58", "enonce": "L'écran de scores finaux est le seul moment où tous les secrets deviennent publics : rôles, missions, paiements réels de chaque manche, signataires.", "source": "déduite"},
+    {"id": "RG-59", "enonce": "Le compteur de parties du groupe n'est incrémenté qu'au passage en état TERMINEE, jamais sur un abandon.", "source": "déduite"},
+    {"id": "RG-60", "enonce": "Toutes les valeurs de parametres_configuration sont lues depuis une configuration unique surchargeable par session ; aucune n'apparaît en littéral dans le code du moteur.", "source": "métier"},
+    {"id": "RG-61", "enonce": "Les libellés affichés (nom du génie, noms de rôles, de clauses, formulations de révélations) vivent dans un fichier de contenu séparé du moteur, indexé par clés techniques neutres, afin que le choix d'univers visuel reste possible sans toucher au moteur.", "source": "métier"},
+    {"id": "RG-70", "enonce": "Les commandes sont idempotentes là où le domaine l'exige : une seconde déclaration remplace la première tant que le paiement n'est pas soumis, puis est refusée ; une seconde soumission de paiement est refusée.", "source": "déduite"},
+    {"id": "RG-71", "enonce": "Toute commande est autorisée côté serveur contre la phase courante, le rôle, le solde et les quotas. Un client modifié ne doit pouvoir obtenir aucun effet interdit par les règles.", "source": "métier"},
+    {"id": "RG-72", "enonce": "Le serveur est l'unique horloge. Les minuteurs affichés sont dérivés de phase_fin_at et sont décoratifs ; aucun client ne peut prolonger ni raccourcir une phase.", "source": "métier"},
+    {"id": "RG-73", "enonce": "À la reconnexion, le serveur renvoie l'état projeté complet pour ce joueur seul, historiques compris, sans aucun secret d'autrui.", "source": "métier"},
+    {"id": "RG-74", "enonce": "Les montants de consolation individuels (étape 11) ne sont jamais publiés : plancher(montant_paye_i / 2) révélerait le paiement secret de chaque joueur. Seuls l'activation de la clause CONSOLATION et le total consolé sont publics ; chaque joueur apprend sa part par son canal privé de solde.", "source": "déduite", "justification": "Trou de ma spécification initiale, relevé par le tech-lead au nœud S3 et corrigé à la source. L'étape 16 publiait « les parts par joueur » sans distinguer le cas d'échec, où la part EST une fonction directe du paiement secret.", "axe_prioritaire": "securite (rang 1)"},
+    {"id": "RG-75", "enonce": "Le verdict d'accusation publié ne contient ni l'ampleur du mensonge ni le montant de l'amende : l'ampleur révélerait le paiement de l'accusé, et le montant révélerait la clause PRIME_AU_DELATEUR avant l'étape 16. Seuls l'identité de l'accusé, celle de l'accusateur et le verdict sont publics en phase ENQUETES_ACCUSATIONS.", "source": "déduite", "axe_prioritaire": "securite (rang 1)"},
+    {"id": "RG-76", "enonce": "Un abandon de partie ne révèle AUCUN secret. L'état passe en ABANDONNEE sans écran de scores, sans divulgation de rôle, de mission, de paiement ni de clause.", "source": "déduite", "justification": "Faille de conception relevée au nœud S2 : si l'abandon déclenchait une révélation, l'hôte disposerait d'un moyen unilatéral de forcer la divulgation des secrets de toute la table en abandonnant au moment opportun. L'abandon doit rester sans récompense informationnelle.", "axe_prioritaire": "securite (rang 1)"},
+    {"id": "RG-77", "enonce": "L'interface doit rendre les états SECRETS MASQUÉS indiscernables entre joueurs : tous les joueurs voient une carte de clause à la même place et au même instant, qu'ils aient reçu une clause ou non, et la position des options « signer » et « refuser » du Dernier Vœu est tirée au hasard indépendamment pour chaque joueur.", "source": "déduite", "justification": "Le serveur peut être parfaitement étanche et le secret fuir quand même : en présentiel, un écran dont la DISPOSITION diffère selon l'information détenue trahit son porteur au voisin qui le regarde de biais, et un choix binaire dont les options sont toujours au même endroit se déduit du côté de l'écran touché. La protection serveur ne couvre pas le canal visuel physique.", "axe_prioritaire": "securite (rang 1)", "responsable": "dev-frontend (S5)"},
+    {"id": "RG-78", "enonce": "Aucune saisie de montant ne passe par un clavier numérique. Les montants se saisissent par incrémenteurs à grandes cibles tactiles, utilisables à une main.", "source": "déduite", "justification": "Les phases durent 30 s pour deux saisies simultanées pour toute la table. Un clavier numérique dépasse la fenêtre et affiche la valeur en grand au centre de l'écran, donc au voisin.", "axe_prioritaire": "performance (rang 3) et securite (rang 1)", "responsable": "dev-frontend (S5)"},
+    {"id": "RG-79", "enonce": "Le décompte de phase affiché par le client est dérivé de phase_fin_at corrigé d'un décalage d'horloge calculé en moyenne glissante sur le champ emis_a de chaque trame reçue, pour que les décomptes de huit téléphones restent alignés à moins de 500 ms.", "source": "déduite", "justification": "Sur une phase de 10 s (signature du Dernier Vœu), une dérive d'horloge non corrigée désynchronise visiblement la table. Déjà prescrit par x-temps-reel.horloge du contrat API ; inscrit ici pour être testable.", "responsable": "dev-frontend (S5)"}
+  ],
+
+  "criteres_acceptation": [
+    {"id": "CA-01", "us": "US-01", "etant_donne": "aucune session existante", "quand": "un hôte crée une session", "alors": "un code d'adhésion est émis, affichable aussi en QR, et la session est en état CREEE puis SALLE_ATTENTE dès le premier joueur rejoint"},
+    {"id": "CA-02", "us": "US-02", "etant_donne": "une session en SALLE_ATTENTE avec 4 joueurs", "quand": "l'hôte tente de démarrer la partie", "alors": "le démarrage est refusé et la session reste en SALLE_ATTENTE"},
+    {"id": "CA-03", "us": "US-02", "etant_donne": "une session en SALLE_ATTENTE avec 8 joueurs", "quand": "un 9e joueur tente de rejoindre", "alors": "l'adhésion est refusée avec un code d'erreur explicite"},
+    {"id": "CA-04", "us": "US-03", "etant_donne": "une session de 6 joueurs en PLACEMENT", "quand": "l'hôte soumet un ordre qui omet un joueur ou en duplique un", "alors": "l'ordre est refusé et la session reste en PLACEMENT"},
+    {"id": "CA-05", "us": "US-04", "etant_donne": "une session de 6 joueurs qui vient d'être distribuée", "quand": "on inspecte l'intégralité des messages reçus par le joueur A", "alors": "A connaît son rôle et sa mission, et aucun message reçu par A ne contient le rôle ou la mission d'un autre joueur"},
+    {"id": "CA-06", "us": "US-04", "etant_donne": "une session de 5 à 8 joueurs distribuée", "quand": "on inspecte la distribution côté serveur", "alors": "chaque joueur a exactement 1 rôle et 1 mission, les 4 rôles sont tous présents, aucun rôle n'est présent plus de 2 fois"},
+    {"id": "CA-07", "us": "US-05", "etant_donne": "un joueur disposant de 12 pièces en phase DECLARATION_PAIEMENT", "quand": "il déclare 13", "alors": "la déclaration est refusée (RG-08) et aucun montant n'est publié"},
+    {"id": "CA-08", "us": "US-05", "etant_donne": "un joueur en phase DECLARATION_PAIEMENT", "quand": "il déclare 4", "alors": "les autres joueurs reçoivent une déclaration_publiee de 4 pour ce joueur"},
+    {"id": "CA-09", "us": "US-06", "etant_donne": "un joueur ayant déclaré 4", "quand": "il tente de payer 5", "alors": "le paiement est refusé"},
+    {"id": "CA-10", "us": "US-06", "etant_donne": "un joueur ayant déclaré 4 et payé 1", "quand": "on inspecte tous les messages reçus par les 5 autres joueurs jusqu'à la fin de la manche", "alors": "la valeur 1 n'apparaît dans aucun d'eux, sous aucune forme ni aucun nom de champ"},
+    {"id": "CA-11", "us": "US-06", "etant_donne": "une phase DECLARATION_PAIEMENT", "quand": "un joueur ne soumet rien avant l'expiration", "alors": "sa contribution est enregistrée à déclaré 0 / payé 0 et la manche continue"},
+    {"id": "CA-12", "us": "US-07", "etant_donne": "une manche dont la clause est tirée et un joueur de rôle Faiseur de contrats", "quand": "la phase VOEU s'ouvre", "alors": "la clause est reçue par le porteur et par le Faiseur de contrats, et par personne d'autre"},
+    {"id": "CA-13", "us": "US-07", "etant_donne": "une partie de 5 manches", "quand": "on relève les clauses des 5 manches", "alors": "les 5 clés de clause sont toutes distinctes (tirage sans remise)"},
+    {"id": "CA-14", "us": "US-08", "etant_donne": "une manche où le total déclaré est 26 et le total payé 19", "quand": "la phase REVELATION s'ouvre", "alors": "tous les joueurs reçoivent l'écart total avec exactement ces deux valeurs"},
+    {"id": "CA-15", "us": "US-08", "etant_donne": "une manche où personne n'a menti", "quand": "le génie sélectionne une révélation", "alors": "le gabarit COMPTAGE n'est pas retenu (k == 0 interdit) et, si aucun gabarit n'est éligible, aucune révélation autre que l'écart total n'est émise"},
+    {"id": "CA-16", "us": "US-08", "etant_donne": "n'importe quelle manche de n'importe quelle partie", "quand": "une révélation est émise", "alors": "son énoncé est vérifié vrai contre les paiements réels enregistrés, et le nombre de suspects publics restants journalisé est supérieur ou égal à 2"},
+    {"id": "CA-17", "us": "US-08", "etant_donne": "une partie en manche 2", "quand": "le génie sélectionne une révélation", "alors": "le gabarit PASSE n'est pas disponible"},
+    {"id": "CA-18", "us": "US-08", "etant_donne": "un cercle d'ordre [A,B,C,D,E,F] où seul F a menti", "quand": "le gabarit VOISINAGE est évalué pour la cible A", "alors": "il est éligible (F est voisin cyclique de A) et l'énoncé désigne A sans l'accuser"},
+    {"id": "CA-19", "us": "US-09", "etant_donne": "un joueur sans rôle Inspecteur disposant de 2 pièces", "quand": "il enquête sur une cible", "alors": "son solde passe à 0, il reçoit le montant réellement payé par la cible, et la cible ne reçoit aucun message"},
+    {"id": "CA-20", "us": "US-09", "etant_donne": "un Inspecteur du Trésor disposant de 1 pièce", "quand": "il enquête", "alors": "l'enquête aboutit et coûte 1 pièce"},
+    {"id": "CA-21", "us": "US-09", "etant_donne": "un joueur disposant de 1 pièce et sans rôle Inspecteur", "quand": "il tente d'enquêter", "alors": "l'enquête est refusée et son solde est inchangé"},
+    {"id": "CA-22", "us": "US-10", "etant_donne": "un accusé ayant déclaré 5 et payé 2 (ampleur 3), sans clause d'amende active", "quand": "il est accusé à juste titre", "alors": "le verdict MENTEUR est public immédiatement, et à l'exécution 6 pièces (2 × 3) passent de l'accusé à l'accusateur et la part de récompense de l'accusé est nulle"},
+    {"id": "CA-23", "us": "US-10", "etant_donne": "un accusé ayant déclaré 3 et payé 3", "quand": "il est accusé", "alors": "le verdict HONNETE est public et à l'exécution 2 pièces passent de l'accusateur à l'accusé"},
+    {"id": "CA-24", "us": "US-10", "etant_donne": "un joueur ayant déjà accusé dans la manche courante", "quand": "il tente une seconde accusation", "alors": "elle est refusée"},
+    {"id": "CA-25", "us": "US-10", "etant_donne": "un accusé menteur d'ampleur 5 ne disposant que de 3 pièces", "quand": "l'amende de 10 est liquidée", "alors": "l'accusé tombe à 0, l'accusateur reçoit 3, et aucun solde n'est négatif"},
+    {"id": "CA-26", "us": "US-11", "etant_donne": "6 joueurs, objectif 18, total payé 20, aucune clause modifiant la récompense, déclarations [4,4,4,4,4,6] sans joueur démasqué", "quand": "l'exécution se déroule", "alors": "la récompense vaut 40 et les parts valent respectivement [6,6,6,6,6,9] (arrondi inférieur, reliquat de 1 non distribué)"},
+    {"id": "CA-27", "us": "US-11", "etant_donne": "un total payé de 17 pour un objectif de 18", "quand": "l'exécution se déroule", "alors": "le vœu échoue, aucune part n'est versée, et si la clause CONSOLATION est active chaque joueur récupère plancher(son paiement / 2)"},
+    {"id": "CA-28", "us": "US-11", "etant_donne": "un vœu réussi avec total payé 20 et clause GENIE_GARDE_UN_TIERS", "quand": "l'exécution se déroule", "alors": "la récompense partagée vaut plancher(40 × 2/3) = 26"},
+    {"id": "CA-29", "us": "US-11", "etant_donne": "un vœu réussi avec total payé 20, clause TRESOR_DES_HONNETES et aucun menteur", "quand": "l'exécution se déroule", "alors": "la récompense vaut 60 ; avec au moins un menteur elle vaut 40"},
+    {"id": "CA-30", "us": "US-11", "etant_donne": "un vœu réussi avec clause LE_PLUS_GENEREUX", "quand": "l'exécution se déroule", "alors": "le poids de partage du plus gros payeur réel est doublé et la somme des parts versées ne dépasse jamais la récompense"},
+    {"id": "CA-31", "us": "US-11", "etant_donne": "une manche avec clause PRIME_AU_DELATEUR et une accusation juste d'ampleur 3", "quand": "l'exécution se déroule", "alors": "l'amende liquidée vaut 12 (2 × 3 × 2) et la clause n'était connue d'aucun joueur non autorisé avant l'étape 16"},
+    {"id": "CA-32", "us": "US-11", "etant_donne": "n'importe quelle exécution", "quand": "la phase se termine", "alors": "pour chaque joueur, le solde est égal à la somme de ses mouvements de pièces, et aucun solde n'est négatif"},
+    {"id": "CA-33", "us": "US-12", "etant_donne": "un joueur sans le rôle Prêteur", "quand": "il tente d'émettre un prêt à intérêts", "alors": "l'action est refusée"},
+    {"id": "CA-34", "us": "US-12", "etant_donne": "un Prêteur ayant prêté 4 pièces à la manche 2", "quand": "l'exécution de la manche 3 se déroule", "alors": "6 pièces (plafond de 4 × 1,5) sont prélevées sur l'emprunteur au profit du Prêteur, plafonnées à son solde, le reliquat restant dû"},
+    {"id": "CA-35", "us": "US-12", "etant_donne": "un joueur à 0 pièce", "quand": "la manche suivante s'ouvre", "alors": "il n'est pas éliminé, peut recevoir un transfert ou un prêt, et peut accuser"},
+    {"id": "CA-36", "us": "US-13", "etant_donne": "un joueur consultant son écran", "quand": "on inspecte le message qui porte son solde", "alors": "il ne contient que son propre solde et ses propres mouvements"},
+    {"id": "CA-37", "us": "US-14", "etant_donne": "une partie en mode avancé après l'exécution de la manche 5, où exactement 1 joueur signe", "quand": "la résolution s'applique", "alors": "le signataire reçoit 15 pièces, le génie est libéré, le Marchand déjà lié est déclaré vainqueur unique, et le Gardien de la lampe échoue sa mission"},
+    {"id": "CA-38", "us": "US-14", "etant_donne": "une partie en mode avancé où 3 joueurs signent", "quand": "la résolution s'applique", "alors": "aucun ne reçoit de pièces, chacun perd plancher(solde / 2), le génie n'est pas libéré et le Gardien de la lampe réussit"},
+    {"id": "CA-39", "us": "US-14", "etant_donne": "une phase DV_SIGNATURE en cours", "quand": "on inspecte les messages reçus par un joueur non signataire", "alors": "aucun ne révèle la signature d'un autre joueur ; seul le décompte final est publié à la résolution"},
+    {"id": "CA-40", "us": "US-15", "etant_donne": "une partie de 5 manches terminée hors mode avancé", "quand": "l'écran de scores s'affiche", "alors": "chaque score vaut pièces restantes + 10 si la mission est réussie, les conditions de mission sont évaluées selon catalogue_missions, et tous les secrets de la partie sont publiés"},
+    {"id": "CA-41", "us": "US-15", "etant_donne": "un joueur ayant menti aux manches 1 et 4 et n'ayant jamais été démasqué", "quand": "les missions sont évaluées", "alors": "LE_FAUSSAIRE est réussie ; s'il avait été démasqué une seule fois, elle serait échouée"},
+    {"id": "CA-42", "us": "US-16", "etant_donne": "un joueur déconnecté en phase ENQUETES_ACCUSATIONS puis reconnecté avec son jeton", "quand": "il reçoit l'état complet projeté", "alors": "il retrouve son rôle, sa mission, son solde, ses résultats d'enquête et la phase en cours avec son échéance, et l'état reçu ne contient aucun secret d'autrui"},
+    {"id": "CA-43", "us": "US-16", "etant_donne": "un client modifié", "quand": "il envoie une commande valide pour une autre phase que la phase courante", "alors": "le serveur la rejette avec un code d'erreur sans modifier l'état"},
+    {"id": "CA-44", "us": "US-16", "etant_donne": "un client modifié", "quand": "il envoie une commande en se réclamant d'un autre joueur_id que celui de son jeton", "alors": "la commande est rejetée"},
+    {"id": "CA-45", "us": "US-17", "etant_donne": "un hôte créant une session avec objectif_par_joueur à 4", "quand": "la manche 1 s'ouvre à 6 joueurs", "alors": "l'objectif annoncé vaut 24, sans aucune modification de code"},
+    {"id": "CA-46", "us": "US-17", "etant_donne": "le code source du moteur", "quand": "on y recherche les littéraux 12, 3, 2, 15, 10 utilisés comme règles de jeu", "alors": "aucun n'apparaît en dur dans la logique : tous proviennent de la configuration"},
+    {"id": "CA-47", "us": "US-18", "etant_donne": "un groupe ayant terminé 2 parties", "quand": "une 3e session est créée", "alors": "le mode avancé n'est pas actif ; après la 3e partie terminée, la 4e session l'active automatiquement"},
+    {"id": "CA-48", "us": "US-18", "etant_donne": "une partie abandonnée", "quand": "on relit le compteur du groupe", "alors": "il n'a pas été incrémenté"},
+    {"id": "CA-49", "us": "US-05", "etant_donne": "une manche en phase DECLARATION_PAIEMENT où les 6 joueurs ont déclaré et payé avant l'expiration", "quand": "le dernier paiement est enregistré", "alors": "la phase passe immédiatement à REVELATION sans attendre la fin du minuteur"},
+    {"id": "CA-50", "us": "US-11", "etant_donne": "une manche quelconque", "quand": "on tente d'injecter une action d'exécution, de révélation ou de distribution depuis un client", "alors": "aucune de ces opérations n'est exposée comme commande client : elles n'existent que côté serveur"}
+  ],
+
+  "cas_limites": [
+    "total payé égal exactement à l'objectif (succès)",
+    "total payé nul et objectif non atteint",
+    "tous les joueurs mentent",
+    "aucun joueur ne mente (interaction avec TRESOR_DES_HONNETES et interdiction de COMPTAGE)",
+    "somme des poids de partage nulle parce que tous les contributeurs ont été démasqués",
+    "amende supérieure au solde de l'accusé",
+    "pénalité de fausse accusation supérieure au solde de l'accusateur",
+    "remboursement de prêt supérieur au solde de l'emprunteur",
+    "deux joueurs portant simultanément le rôle Faiseur de contrats",
+    "le porteur de la clause est lui-même Faiseur de contrats",
+    "deux joueurs portant le rôle Inspecteur du Trésor",
+    "égalité stricte sur le plus gros paiement réel avec clause LE_PLUS_GENEREUX",
+    "égalité de score final entre plusieurs joueurs",
+    "mission LE_MAGNAT attribuée en doublon à deux joueurs",
+    "aucun gabarit de révélation éligible sur une manche",
+    "déconnexion pendant la phase de paiement puis reconnexion après l'expiration",
+    "déconnexion définitive d'un joueur en cours de partie (la partie continue, actions par défaut)",
+    "double soumission d'une déclaration, puis d'un paiement",
+    "accusation ou enquête sur soi-même",
+    "enquête répétée sur la même cible dans la même manche",
+    "ordre des places avec cercle de 5 (voisinage minimal) et de 8",
+    "mode avancé activé alors que le Marchand déjà lié se déconnecte",
+    "aucun signataire au Dernier Vœu",
+    "session abandonnée en pleine manche 3",
+    "deux sessions actives avec le même pseudo de joueur",
+    "code d'adhésion collisionnant avec une session encore active"
+  ],
+
+  "hors_perimetre": [
+    "Thème visuel et univers définitifs (nuit de Zafyr ou ancrage ouest-africain) : décision utilisateur ouverte, volontairement reportée. Styles placeholder et libellés neutres en v1.",
+    "Jeu en ligne à distance et mise en relation d'inconnus : la v1 est strictement présentielle, adhésion par code ou QR.",
+    "Plusieurs monnaies (bronze/argent/or) : une seule monnaie en v1.",
+    "Système de fragments du nom du génie : explicitement écarté de la v1.",
+    "Comptes utilisateurs, mots de passe, authentification persistante : identité par jeton de session éphémère.",
+    "Chat textuel ou vocal dans l'application : la négociation est orale, dans la pièce.",
+    "Mode spectateur et remplacement d'un joueur en cours de partie.",
+    "Internationalisation : français uniquement en v1.",
+    "Statistiques long terme, télémétrie d'équilibrage et réglage automatique des missions.",
+    "Déploiement, hébergement de production, nom de domaine, chaîne d'intégration continue (nœud S7 non retenu dans ce cycle).",
+    "Monétisation, achats intégrés, publicité.",
+    "Audio, animations élaborées, retour haptique.",
+    "Accessibilité au-delà des bases (contraste et tailles de cible seront vérifiés, mais pas de certification WCAG complète en v1).",
+    "Reprise d'une partie abandonnée.",
+    "Mode solo ou adversaires artificiels."
+  ],
+
+  "points_deduits": {
+    "_note": "Points que le GDD ne tranche pas et que j'ai comblés par déduction tracée plutôt que par invention silencieuse. Aucun n'est bloquant pour l'architecture ni pour le moteur. À soumettre à l'utilisateur au premier playtest, pas avant.",
+    "liste": [
+      {"ref": "ADR-CP-05 / RG-01", "point": "Le solde de pièces est privé, pas public.", "impact_si_change": "FORT — rendre les soldes publics détruirait le secret des paiements. Je considère ce point comme fermé par la contrainte non négociable."},
+      {"ref": "RG-08", "point": "La déclaration est bornée par le solde du joueur.", "impact_si_change": "FORT — sans borne, déclarer un montant énorme et payer 0 capte toute la récompense."},
+      {"ref": "RG-04 / RG-05", "point": "Règle de doublon des rôles (4 rôles pour 5 à 8 joueurs) et des missions (5 missions pour 6 à 8 joueurs).", "impact_si_change": "MOYEN — le GDD ne mentionne les doublons qu'à 7-8 joueurs, mais 5 joueurs pour 4 rôles en impose déjà un."},
+      {"ref": "RG-24", "point": "« Le joueur qui a le plus parlé » remplacé par un score d'activité mesurable.", "impact_si_change": "MOYEN — c'est la seule mesure disponible, la parole n'étant pas captée."},
+      {"ref": "RG-40", "point": "Ordre exact des 17 étapes d'exécution.", "impact_si_change": "FORT sur les montants, nul sur l'architecture."},
+      {"ref": "ADR-CP-06 / RG-43", "point": "Liquidation des amendes différée à l'exécution.", "impact_si_change": "MOYEN — nécessaire pour ne pas divulguer PRIME_AU_DELATEUR."},
+      {"ref": "RG-29", "point": "Arrondi supérieur du remboursement de prêt et report du reliquat impayé.", "impact_si_change": "FAIBLE."},
+      {"ref": "RG-14", "point": "Le reliquat d'arrondi du partage n'est pas distribué.", "impact_si_change": "FAIBLE."},
+      {"ref": "RG-18", "point": "Tirage des clauses sans remise : les 5 clauses du catalogue sont donc toutes jouées sur une partie de 5 manches.", "impact_si_change": "MOYEN sur la rejouabilité — à rediscuter si le catalogue s'élargit."},
+      {"ref": "RG-28", "point": "Nombre d'enquêtes par manche non plafonné, mais une seule par cible.", "impact_si_change": "MOYEN sur l'équilibrage."},
+      {"ref": "RG-32", "point": "Non-soumission = 0 déclaré / 0 payé, sans sanction.", "impact_si_change": "FAIBLE."},
+      {"ref": "RG-54 / RG-58", "point": "Les identités des signataires du Dernier Vœu et les paiements réels ne sont révélés qu'à l'écran de scores.", "impact_si_change": "FAIBLE."},
+      {"ref": "RG-57", "point": "Départage des égalités de score.", "impact_si_change": "FAIBLE."},
+      {"ref": "clause LE_PLUS_GENEREUX", "point": "En cas d'ex aequo sur le plus gros paiement, tous bénéficient du doublement.", "impact_si_change": "FAIBLE."},
+      {"ref": "RG-50", "point": "Le groupe est identifié par un jeton persisté chez l'hôte ; l'hôte peut aussi forcer le mode avancé (utile pour les tests).", "impact_si_change": "MOYEN — le GDD dit « par groupe/device » sans préciser l'identification."}
+    ]
+  },
+
+  "verification_matrice_gains": {
+    "_note": "Section 4 du GDD, à recalculer par le QA comme invariant du moteur, pas comme règle à coder.",
+    "esperance_mensonge": "E[Mensonge] = 6(1-p) - 7p = 6 - 13p",
+    "esperance_verite": "E[Verite] = 3",
+    "seuil_indifference": "p = 3/13 ≈ 23,08 %",
+    "derivation_attendue": "Avec objectif_par_joueur = 3, multiplicateur_recompense = 2, multiplicateur_amende = 2 : déclarer 3 et payer 0 économise 3 et conserve une part équivalente (+6 par rapport au joueur honnête de référence) ; être démasqué coûte l'amende 2×3 = 6 plus la part perdue, soit -7. Le QA doit retrouver ces deux espérances à partir du moteur réel, et vérifier qu'une accusation juste rapporte +6 et une fausse coûte 2.",
+    "critere": "Si le moteur ne reproduit pas ces valeurs, c'est le moteur qui est faux, jamais les chiffres du GDD."
+  }
+}

@@ -1,0 +1,1187 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Le Génie du Dernier Vœu — protocole client/serveur",
+    "version": "1.0.0",
+    "summary": "Contrat unique entre backend, frontend et QA. Le code n'est jamais la source de vérité ; ce fichier l'est.",
+    "description": "Deux canaux. (1) REST, strictement minimal : tout ce qui doit fonctionner AVANT qu'un jeton de session existe (création, aperçu, adhésion, configuration) plus la sonde de santé. (2) Temps réel sur WebSocket : la totalité du jeu, décrite dans components.schemas et l'extension x-temps-reel.\n\nRÈGLE MAÎTRESSE (RG-01, priorité 1 du registre). Il n'existe AUCUN message d'état global diffusé à tous. Chaque message sortant est une projection calculée pour un destinataire unique par une fonction pure du moteur (ADR-TL-09). L'annotation x-visibilite de chaque schéma EvtXxx déclare la classe de destinataire autorisée ; elle est vérifiée mécaniquement contre matrice_visibilite de SPEC-GDV-001.json par outils/verifier-visibilite.mjs, qui fait échouer l'intégration en cas de divergence.\n\nAucune commande client ne peut déclencher une exécution, une révélation ou une distribution : ces opérations n'existent que côté serveur (CA-50).",
+    "contact": {"name": "tech-lead", "url": "ARCHI-GDV-001.json"},
+    "license": {"name": "Propriétaire", "identifier": "LicenseRef-proprietaire"}
+  },
+
+  "servers": [
+    {"url": "https://{hote}/api", "description": "Origine sécurisée obligatoire (ADR-TL-16). Le canal temps réel partage la même origine : wss://{hote}/tr", "variables": {"hote": {"default": "localhost:8443"}}}
+  ],
+
+  "security": [{"jetonSession": []}],
+
+  "tags": [
+    {"name": "amorcage", "description": "Routes REST utilisables sans jeton de session"},
+    {"name": "groupe", "description": "État persistant du groupe (déblocage du mode avancé)"},
+    {"name": "exploitation", "description": "Sonde de santé"}
+  ],
+
+  "paths": {
+    "/sante": {
+      "get": {
+        "tags": ["exploitation"],
+        "operationId": "sonderSante",
+        "summary": "Sonde de santé du serveur",
+        "description": "Publique et sans effet de bord. N'expose aucun compteur de sessions ni d'identifiant : ce serait divulguer l'activité du serveur sans besoin.",
+        "security": [],
+        "responses": {
+          "200": {"description": "Serveur opérationnel", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EtatSante"}}}},
+          "500": {"description": "Serveur dégradé", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}}
+        }
+      }
+    },
+
+    "/configuration/defauts": {
+      "get": {
+        "tags": ["amorcage"],
+        "operationId": "lireConfigurationParDefaut",
+        "summary": "Valeurs d'équilibrage par défaut et bornes de surcharge",
+        "description": "Alimente l'écran de réglage de l'hôte avant le lancement (US-17, CA-45). RG-60 : ces valeurs viennent d'une configuration unique ; aucune n'est codée en dur dans le moteur. Les bornes permettent au client de refuser une saisie absurde sans attendre le serveur — le serveur revalide de toute façon (RG-71).",
+        "security": [],
+        "responses": {
+          "200": {"description": "Configuration par défaut et bornes", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ReponseConfigurationDefauts"}}}},
+          "500": {"description": "Erreur interne", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}}
+        }
+      }
+    },
+
+    "/sessions": {
+      "post": {
+        "tags": ["amorcage"],
+        "operationId": "creerSession",
+        "summary": "Crée une session et inscrit l'hôte comme premier joueur",
+        "description": "US-01. Sans jeton de session : il n'en existe pas encore (ADR-TL-13). Si jeton_groupe est fourni, la session est rattachée au groupe existant et mode_avance_actif est calculé depuis parties_terminees (RG-50, CA-47) ; sinon un groupe est créé et son jeton est retourné UNE SEULE FOIS. La session naît en état CREEE et passe en SALLE_ATTENTE au premier joueur qui rejoint.",
+        "security": [],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CorpsCreerSession"}}}},
+        "responses": {
+          "201": {"description": "Session créée. jeton_session et jeton_groupe ne sont émis qu'ici et ne sont jamais réémis.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ReponseSessionCreee"}}}},
+          "401": {"description": "jeton_groupe fourni mais invalide", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}},
+          "422": {"description": "Pseudo ou surcharge de configuration invalide (hors bornes)", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErreurValidation"}}}},
+          "429": {"description": "TROP_DE_REQUETES — 5 créations par minute et par adresse IP", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}},
+          "500": {"description": "Erreur interne", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}}
+        }
+      }
+    },
+
+    "/sessions/{code_adhesion}/apercu": {
+      "get": {
+        "tags": ["amorcage"],
+        "operationId": "apercevoirSession",
+        "summary": "Aperçu public d'une session avant adhésion",
+        "description": "Cible du QR code. Permet d'afficher « session pleine » ou « partie déjà commencée » AVANT de demander un pseudo (CA-03). N'expose que des données classées publiques par matrice_visibilite : pseudos, positions, états de connexion. Aucun identifiant de joueur, aucun solde, aucun rôle.",
+        "security": [],
+        "parameters": [{"$ref": "#/components/parameters/CodeAdhesion"}],
+        "responses": {
+          "200": {"description": "Aperçu public", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApercuSession"}}}},
+          "404": {"description": "SESSION_INTROUVABLE ou CODE_ADHESION_INVALIDE. Réponse identique dans les deux cas : distinguer permettrait d'énumérer les codes actifs.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}},
+          "429": {"description": "TROP_DE_REQUETES — 10 par minute et par adresse IP, contre le balayage de codes", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}},
+          "500": {"description": "Erreur interne", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}}
+        }
+      }
+    },
+
+    "/sessions/{code_adhesion}/joueurs": {
+      "post": {
+        "tags": ["amorcage"],
+        "operationId": "rejoindreSession",
+        "summary": "Rejoint une session par son code d'adhésion",
+        "description": "US-02. Émet le jeton de session UNE SEULE FOIS : il n'est jamais réémis ni récupérable (ADR-TL-15). Refusé si la session a atteint joueurs_max (CA-03) ou si elle n'est plus en CREEE/SALLE_ATTENTE : il n'existe pas de remplacement de joueur en cours de partie (hors périmètre SPEC).",
+        "security": [],
+        "parameters": [{"$ref": "#/components/parameters/CodeAdhesion"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CorpsRejoindreSession"}}}},
+        "responses": {
+          "201": {"description": "Adhésion acceptée", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ReponseAdhesionAcceptee"}}}},
+          "403": {"description": "ETAT_PARTIE_INCOMPATIBLE — la partie a déjà démarré", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}},
+          "404": {"description": "SESSION_INTROUVABLE ou CODE_ADHESION_INVALIDE", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}},
+          "409": {"description": "SESSION_PLEINE (joueurs_max atteint) ou PSEUDO_INDISPONIBLE (déjà pris dans cette session)", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}},
+          "422": {"description": "Pseudo invalide", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErreurValidation"}}}},
+          "429": {"description": "TROP_DE_REQUETES", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}}
+        }
+      }
+    },
+
+    "/groupes/moi": {
+      "get": {
+        "tags": ["groupe"],
+        "operationId": "lireGroupeCourant",
+        "summary": "État du groupe porteur du jeton fourni",
+        "description": "US-18 / CA-47 / CA-48. Authentifié par le jeton de groupe persisté sur l'appareil de l'hôte, transmis en en-tête. Donnée réservée à l'hôte : c'est la seule information du produit dont la classe de destinataire est hote.",
+        "security": [{"jetonGroupe": []}],
+        "responses": {
+          "200": {"description": "État du groupe", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EtatGroupe"}}}},
+          "401": {"description": "JETON_ABSENT ou JETON_INVALIDE", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}},
+          "404": {"description": "Groupe introuvable", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Erreur"}}}}
+        }
+      }
+    }
+  },
+
+  "x-temps-reel": {
+    "_statut": "Partie normative du contrat, au même titre que paths. Backend, frontend et QA s'y conforment sans négociation.",
+
+    "canal": {
+      "protocole": "WebSocket (RFC 6455) brut, sans surcouche de bibliothèque (ADR-TL-03)",
+      "url": "wss://{hote}/tr",
+      "origine_securisee_obligatoire": true,
+      "sous_protocole": "aucun",
+      "format": "JSON UTF-8, une enveloppe par trame texte",
+      "taille_max_trame_octets": 4096,
+      "compression": "aucune (permessage-deflate désactivé : aucun gain utile sur des trames de quelques centaines d'octets, et une compression partagée entre champs publics et privés est une mauvaise idée de principe)"
+    },
+
+    "authentification": {
+      "principe": "Aucun jeton ne circule dans l'URL, ni dans le chemin, ni en paramètre de requête : une URL finit dans les journaux d'accès et l'historique du navigateur.",
+      "sequence": [
+        "1. Le client ouvre la connexion. Le socket est anonyme et ne reçoit RIEN.",
+        "2. Le client envoie, en première trame, la commande authentifier portant son jeton_session et version_protocole.",
+        "3. Le serveur hache le jeton reçu en SHA-256 et le compare à temps constant au condensat stocké. En cas d'échec : événement erreur de code JETON_INVALIDE puis fermeture (code 4401).",
+        "4. En cas de succès, le serveur lie la connexion au joueur_id et envoie immédiatement etat_complet_prive, projeté pour ce joueur seul (RG-73)."
+      ],
+      "delai_max_authentification_ms": 5000,
+      "comportement_si_depassement": "Fermeture du socket avec le code 4408. Aucun message n'a été émis.",
+      "toute_autre_trame_avant_authentification": "Rejetée avec JETON_ABSENT puis fermeture (code 4401).",
+      "identite_de_l_emetteur": "Le joueur_id émetteur est DÉDUIT de la connexion authentifiée. Aucune commande ne porte l'identifiant de son auteur. Si une charge contient malgré tout un champ qui prétend désigner un autre joueur comme auteur, la commande est rejetée avec USURPATION_IDENTITE (CA-44).",
+      "une_connexion_par_joueur": "Une seconde connexion présentant le même jeton remplace la première ; l'ancienne est fermée avec le code 4409. Deux sockets simultanés pour un même joueur sont refusés : ils doubleraient les projections privées sans bénéfice."
+    },
+
+    "enveloppe": {
+      "client_vers_serveur": {
+        "schema": "#/components/schemas/EnveloppeCommande",
+        "exemple": {"id_correlation": "0d0a0f02-5e2a-4c3e-9f1a-2b7c4d8e9a10", "type": "declarer_contribution", "charge": {"montant": 4}}
+      },
+      "serveur_vers_client": {
+        "schema": "#/components/schemas/EnveloppeEvenement",
+        "exemple": {"type": "declaration_publiee", "sequence": 37, "emis_a": "2026-10-27T18:40:12.345Z", "charge": {"joueur_id": "…", "montant_declare": 4}}
+      },
+      "regle_de_nommage": "type en snake_case ; nom de schéma CmdXxx pour les commandes, EvtXxx pour les événements. Aucune autre forme n'est admise.",
+      "type_inconnu": "Rejeté avec COMMANDE_INCONNUE. Le serveur n'ignore jamais silencieusement une trame : un silence serait indiscernable d'une perte réseau.",
+      "charge_non_conforme": "Validation stricte par schéma (propriétés supplémentaires refusées). Rejet avec MESSAGE_MALFORME, sans aucune modification d'état."
+    },
+
+    "correlation": {
+      "principe": "Toute commande porte un id_correlation UUIDv4 généré par le client. Le serveur répond systématiquement, soit par accuse_reception, soit par erreur, en reprenant le même id_correlation. Le client peut ainsi lier la réponse à sa commande et distinguer un refus d'une perte réseau.",
+      "delai_de_reponse_attendu_ms": 120,
+      "accuse_vs_evenements": "L'accusé de réception confirme la PRISE EN COMPTE. Les conséquences visibles arrivent par des événements distincts, éventuellement après. Exemple : declarer_contribution reçoit accuse_reception, puis declaration_publiee part vers toute la table, y compris vers l'auteur.",
+      "idempotence": "Le serveur mémorise les 32 derniers (joueur_id, id_correlation) et leur réponse. Une commande rejouée avec le même id_correlation renvoie la réponse d'origine sans réexécuter l'effet. Ce mécanisme couvre le cas où un accusé se perd pendant une coupure (RG-70).",
+      "idempotence_metier": "Distincte du mécanisme ci-dessus et portée par le moteur (RG-70) : une seconde declarer_contribution avec un id_correlation DIFFÉRENT remplace la première tant que payer_secret n'a pas été soumis, puis est refusée avec DEJA_SOUMIS. Une seconde payer_secret est toujours refusée avec DEJA_SOUMIS."
+    },
+
+    "sequencage": {
+      "champ": "sequence",
+      "portee": "Entier monotone croissant PAR DESTINATAIRE, démarrant à 1 après chaque etat_complet_prive. Deux joueurs n'ont ni les mêmes numéros ni le même nombre de messages : c'est la conséquence directe de la projection par destinataire.",
+      "usage": "Le client détecte un trou de séquence et déclenche une reconnexion. Il ne tente jamais de reconstituer l'état lui-même."
+    },
+
+    "horloge": {
+      "regle": "RG-72 : le serveur est l'unique horloge. phase_fin_at est une date ISO 8601 UTC absolue. Le client affiche un décompte dérivé, purement décoratif.",
+      "synchronisation": "Chaque enveloppe sortante porte emis_a. Le client calcule un décalage moyen glissant entre emis_a et son horloge locale pour que les décomptes de huit téléphones restent alignés (cible : moins de 500 ms d'écart).",
+      "aucun_client_ne_pilote_le_temps": "Il n'existe aucune commande de prolongation, de pause ou de raccourcissement. avancer_phase est la seule accélération possible, réservée à l'hôte et à la seule phase NEGOCIATION."
+    },
+
+    "reconnexion": {
+      "declencheurs": "Fermeture du socket, trou de séquence détecté, retour au premier plan de l'application.",
+      "strategie": "Relance exponentielle 0,5 s, 1 s, 2 s, 4 s, 8 s puis palier à 8 s, avec gigue aléatoire de plus ou moins 20 % — huit téléphones qui se reconnectent en même temps après une coupure Wi-Fi ne doivent pas marteler le serveur en rafale synchronisée.",
+      "apres_reconnexion": "Le client renvoie authentifier avec le même jeton. Le serveur répond par etat_complet_prive : l'état projeté COMPLET pour ce joueur seul, historiques compris, sans aucun secret d'autrui (RG-73, CA-42).",
+      "jeton_invalide": "Événement erreur de code JETON_INVALIDE, fermeture, purge du stockage local côté client, retour à l'écran d'adhésion.",
+      "pendant_la_deconnexion": "La partie continue. Les phases s'enchaînent, les minuteurs courent, les actions non soumises valent 0 (RG-32, CA-11). Le joueur n'est jamais éliminé (RG-46).",
+      "visibilite_de_la_deconnexion": "Les autres joueurs reçoivent joueur_quitte puis joueur_reconnecte. L'état de connexion est public (matrice_visibilite)."
+    },
+
+    "politique_de_rejeu": {
+      "regle": "AUCUN REJEU. Le serveur ne conserve aucune mémoire tampon de messages non délivrés et ne rejoue jamais un événement passé.",
+      "justification": "Un message a été projeté pour un état du jeu donné et pour un destinataire donné. Le rejouer plus tard, c'est livrer une projection périmée — potentiellement calculée avant qu'une révélation ne change l'ensemble des suspects, ou avant qu'une accusation ne soit résolue. La reprise se fait par RE-PROJECTION complète (etat_complet_prive), jamais par rejeu (RG-73). C'est aussi la raison pour laquelle une bibliothèque à mémoire tampon de reconnexion a été écartée (ADR-TL-03).",
+      "consequence_client": "Le client ne doit RIEN accumuler de durable. Son état est la dernière projection reçue. Il ne persiste que son jeton et son identifiant de session."
+    },
+
+    "classes_de_destinataire": {
+      "_regle": "Valeurs admises de x-visibilite. Elles déclarent QUI a le droit de recevoir le message. La construction est une PROJECTION (on ajoute ce qui est autorisé), jamais un FILTRE (on retire ce qui est interdit) — voir ADR-TL-09.",
+      "tous": "Tous les joueurs de la session. Le message est néanmoins RECALCULÉ et envoyé individuellement à chacun : « tous » signifie que la projection se trouve être identique pour tous, pas qu'un objet global est diffusé. Un message de classe tous ne peut contenir que des données classées « visible_par: tous » dans matrice_visibilite.",
+      "proprietaire": "Le ou les joueurs désignés propriétaires de la donnée par matrice_visibilite, chacun recevant sa propre projection. Pour un transfert, l'émetteur ET le destinataire sont propriétaires ; pour un prêt, le prêteur ET l'emprunteur. Le champ x-destinataires précise le cas.",
+      "enqueteur": "Le seul joueur ayant payé l'enquête. Ni la cible ni la table n'apprennent qu'une enquête a eu lieu (RG-27, CA-19).",
+      "porteur_clause_et_faiseur": "Le porteur de clause tiré au sort et tout joueur de rôle FAISEUR_CONTRATS (RG-18, CA-12). L'identité du porteur n'est révélée à personne, jamais, en v1.",
+      "hote": "Le seul joueur portant est_hote. Une seule donnée du produit relève de cette classe : l'état du groupe (compteur de parties, déblocage du mode avancé), qui appartient au porteur du jeton de groupe."
+    },
+
+    "codes_erreur": {
+      "ACTION_HORS_PHASE": {"quand": "Commande reçue en dehors de la phase qui l'autorise (RG-30, CA-43)", "http_equivalent": 409, "etat_modifie": false},
+      "ACTION_NON_AUTORISEE_ROLE": {"quand": "proposer_pret émis par un joueur qui n'a pas le rôle PRETEUR (RG-29, CA-33)", "http_equivalent": 403, "etat_modifie": false},
+      "ACTION_RESERVEE_HOTE": {"quand": "definir_ordre_places, demarrer_partie, avancer_phase ou abandonner_partie émis par un non-hôte", "http_equivalent": 403, "etat_modifie": false},
+      "SOLDE_INSUFFISANT": {"quand": "Enquête, transfert ou déclaration dont le coût excède le solde (RG-26, RG-41, CA-21). Refus a priori, jamais de solde négatif.", "http_equivalent": 409, "etat_modifie": false},
+      "QUOTA_DEPASSE": {"quand": "Seconde accusation dans la manche (RG-19, CA-24) ou seconde enquête sur la même cible dans la manche (RG-28)", "http_equivalent": 409, "etat_modifie": false},
+      "JETON_INVALIDE": {"quand": "Jeton inconnu, révoqué ou session terminée", "http_equivalent": 401, "code_fermeture_ws": 4401},
+      "JETON_ABSENT": {"quand": "Trame reçue avant authentifier", "http_equivalent": 401, "code_fermeture_ws": 4401},
+      "USURPATION_IDENTITE": {"quand": "La charge prétend agir au nom d'un autre joueur que le porteur du jeton (CA-44)", "http_equivalent": 403, "etat_modifie": false, "note": "Journalisé comme incident de sécurité, sans le jeton."},
+      "SESSION_PLEINE": {"quand": "joueurs_max atteint (CA-03)", "http_equivalent": 409},
+      "EFFECTIF_INSUFFISANT": {"quand": "demarrer_partie hors de [joueurs_min, joueurs_max] (RG-02, CA-02)", "http_equivalent": 409, "etat_modifie": false},
+      "SESSION_INTROUVABLE": {"quand": "Code ou identifiant de session inconnu", "http_equivalent": 404},
+      "CODE_ADHESION_INVALIDE": {"quand": "Code mal formé ou expiré. Réponse identique à SESSION_INTROUVABLE en REST, pour ne pas permettre l'énumération.", "http_equivalent": 404},
+      "ORDRE_PLACES_INVALIDE": {"quand": "L'ordre n'est pas une permutation complète et unique des joueurs (RG-06, CA-04)", "http_equivalent": 422, "etat_modifie": false},
+      "CIBLE_INVALIDE": {"quand": "Cible inexistante, hors session, ou égale à l'émetteur (RG-19)", "http_equivalent": 422, "etat_modifie": false},
+      "MONTANT_INVALIDE": {"quand": "Montant non entier, négatif, supérieur au solde (RG-08) ou supérieur au montant déclaré (RG-09, CA-07, CA-09)", "http_equivalent": 422, "etat_modifie": false},
+      "DECLARATION_REQUISE": {"quand": "payer_secret sans declarer_contribution préalable (RG-10)", "http_equivalent": 409, "etat_modifie": false},
+      "DEJA_SOUMIS": {"quand": "Seconde declaration après paiement, ou second paiement (RG-70)", "http_equivalent": 409, "etat_modifie": false},
+      "PSEUDO_INDISPONIBLE": {"quand": "Pseudo déjà pris dans CETTE session (autorisé dans une autre)", "http_equivalent": 409},
+      "MODE_AVANCE_INACTIF": {"quand": "signer_dernier_voeu alors que mode_avance_actif est faux", "http_equivalent": 409, "etat_modifie": false},
+      "ETAT_PARTIE_INCOMPATIBLE": {"quand": "Commande incompatible avec etat_partie, ou version_protocole majeure différente", "http_equivalent": 409, "etat_modifie": false},
+      "MESSAGE_MALFORME": {"quand": "Enveloppe ou charge non conforme au schéma", "http_equivalent": 400, "etat_modifie": false},
+      "COMMANDE_INCONNUE": {"quand": "type absent du catalogue des commandes", "http_equivalent": 400, "etat_modifie": false},
+      "TROP_DE_REQUETES": {"quand": "Plus de 20 commandes par fenêtre glissante de 10 s. Trois dépassements consécutifs ferment la connexion (code 4429).", "http_equivalent": 429},
+      "ERREUR_INTERNE": {"quand": "Défaut du serveur. Le message destiné à l'affichage ne contient jamais de détail technique ni de donnée de jeu.", "http_equivalent": 500}
+    },
+
+    "battement_de_coeur": {
+      "mecanisme": "Trames ping/pong natives du protocole WebSocket, pas de commande applicative : une commande applicative compterait dans la limitation de débit et polluerait le journal de commandes.",
+      "periode_s": 15,
+      "fermeture": "Après 2 pongs manqués : fermeture (code 4408), joueurs.connecte passe à faux, joueur_quitte est projeté vers les autres."
+    },
+
+    "limitation_de_debit": {"commandes": "20 par fenêtre glissante de 10 s et par connexion", "depassement": "TROP_DE_REQUETES ; 3 dépassements consécutifs ferment la connexion", "justification": "Un client modifié ne doit pas pouvoir inonder le serveur pendant une phase de 20 s, ni tenter des enquêtes en rafale pour sonder le refus par SOLDE_INSUFFISANT."},
+
+    "commandes_inexistantes_par_conception": {
+      "_regle": "CA-50. Les opérations suivantes n'existent sous AUCUNE forme de commande client. Aucun chemin, aucun type de message, aucun paramètre ne permet de les déclencher. Elles sont produites exclusivement par le moteur, sur expiration de minuteur ou sur transition.",
+      "liste": ["exécution du pipeline de manche", "sélection ou émission d'une révélation", "distribution des rôles, missions, clauses ou porteur", "tirage du MARCHAND_DEJA_LIE et du GARDIEN_DE_LA_LAMPE", "calcul ou publication des scores finaux", "attribution ou modification d'un solde", "modification de la configuration après la création de session", "lecture de l'état d'un autre joueur"]
+    }
+  },
+
+  "x-couverture-besoins-protocole": {
+    "_note": "Correspondance exhaustive avec besoins_protocole de SPEC-GDV-001.json. Tout écart est motivé par un ADR de ARCHI-GDV-001.json.",
+    "commandes_client_vers_serveur": [
+      {"besoin": "creer_session(pseudo, config_surchargee?, activer_mode_avance?)", "couvert_par": "POST /sessions (REST)", "ecart": "REMANIÉ — ADR-TL-13 : aucun jeton n'existe encore, donc aucune connexion temps réel authentifiée n'est possible."},
+      {"besoin": "rejoindre_session(code_adhesion, pseudo)", "couvert_par": "POST /sessions/{code_adhesion}/joueurs (REST)", "ecart": "REMANIÉ — ADR-TL-13, même motif."},
+      {"besoin": "se_reconnecter(jeton_session)", "couvert_par": "CmdAuthentifier", "ecart": "FUSIONNÉ — ADR-TL-13 : connexion et reconnexion sont le même acte (prouver la détention d'un jeton, puis recevoir etat_complet_prive). Deux chemins de code pour un acte unique seraient deux occasions de divergence."},
+      {"besoin": "definir_ordre_places(liste_ordonnee_joueur_id) [hote]", "couvert_par": "CmdDefinirOrdrePlaces", "ecart": "aucun"},
+      {"besoin": "demarrer_partie() [hote]", "couvert_par": "CmdDemarrerPartie", "ecart": "aucun"},
+      {"besoin": "avancer_phase() [hote, uniquement NEGOCIATION]", "couvert_par": "CmdAvancerPhase", "ecart": "aucun"},
+      {"besoin": "transferer_pieces(cible_joueur_id, montant)", "couvert_par": "CmdTransfererPieces", "ecart": "aucun"},
+      {"besoin": "proposer_pret(emprunteur_joueur_id, principal) [PRETEUR]", "couvert_par": "CmdProposerPret", "ecart": "aucun"},
+      {"besoin": "repondre_pret(pret_id, accepte)", "couvert_par": "CmdRepondrePret", "ecart": "aucun"},
+      {"besoin": "declarer_contribution(montant)", "couvert_par": "CmdDeclarerContribution", "ecart": "aucun"},
+      {"besoin": "payer_secret(montant)", "couvert_par": "CmdPayerSecret", "ecart": "aucun"},
+      {"besoin": "lancer_enquete(cible_joueur_id)", "couvert_par": "CmdLancerEnquete", "ecart": "aucun"},
+      {"besoin": "accuser(accuse_joueur_id)", "couvert_par": "CmdAccuser", "ecart": "aucun"},
+      {"besoin": "signer_dernier_voeu(a_signe)", "couvert_par": "CmdSignerDernierVoeu", "ecart": "aucun"},
+      {"besoin": "abandonner_partie() [hote]", "couvert_par": "CmdAbandonnerPartie", "ecart": "aucun"}
+    ],
+    "evenements_serveur_vers_client": [
+      {"besoin": "etat_complet_prive", "couvert_par": "EvtEtatCompletPrive", "ecart": "aucun"},
+      {"besoin": "joueur_rejoint / joueur_quitte / joueur_reconnecte", "couvert_par": "EvtJoueurRejoint, EvtJoueurQuitte, EvtJoueurReconnecte", "ecart": "SCINDÉ en trois schémas — charges différentes, et x-visibilite doit être annotable par message."},
+      {"besoin": "partie_demarree(ordre_cercle)", "couvert_par": "EvtPartieDemarree", "ecart": "aucun"},
+      {"besoin": "attribution_privee(role, mission)", "couvert_par": "EvtAttributionPrivee", "ecart": "aucun"},
+      {"besoin": "voeu_annonce(numero_manche, objectif)", "couvert_par": "EvtVoeuAnnonce", "ecart": "aucun"},
+      {"besoin": "clause_recue(clause)", "couvert_par": "EvtClauseRecue", "ecart": "aucun"},
+      {"besoin": "phase_changee(phase, phase_fin_at)", "couvert_par": "EvtPhaseChangee", "ecart": "aucun"},
+      {"besoin": "declaration_publiee(joueur_id, montant_declare)", "couvert_par": "EvtDeclarationPubliee", "ecart": "aucun"},
+      {"besoin": "paiement_enregistre()", "couvert_par": "EvtPaiementEnregistre", "ecart": "aucun — ne contient AUCUN montant, même pour son propriétaire : il l'a saisi, le lui renvoyer n'ajoute rien et crée une occasion de fuite par erreur de destinataire."},
+      {"besoin": "revelation_ecart_total(total_declare, total_paye)", "couvert_par": "EvtRevelationEcartTotal", "ecart": "aucun"},
+      {"besoin": "revelation(gabarit, texte, cibles)", "couvert_par": "EvtRevelation", "ecart": "ÉCART ASSUMÉ — ADR-TL-12 : pas de champ texte. Le message porte gabarit, variante_formulation, cibles et valeurs ; le client compose la phrase depuis son fichier de contenu (RG-25, RG-61, ESC-01)."},
+      {"besoin": "resultat_enquete(cible_joueur_id, montant_paye)", "couvert_par": "EvtResultatEnquete", "ecart": "aucun"},
+      {"besoin": "accusation_declaree(accusateur, accuse) + accusation_resolue(verdict)", "couvert_par": "EvtAccusationDeclaree, EvtAccusationResolue", "ecart": "SCINDÉ en deux schémas, conformément à l'énoncé du besoin."},
+      {"besoin": "execution_resultat(reussi, total_paye, recompense, parts, clause_revelee, amendes_liquidees)", "couvert_par": "EvtExecutionResultat", "ecart": "RESTREINT — les montants de consolation individuels NE sont PAS publiés : plancher(montant_paye_i / 2) révélerait le paiement secret de chacun. Seuls l'activation de la clause et le total consolé sont publics ; chaque joueur apprend sa part par EvtSoldeMisAJour, qui est privé."},
+      {"besoin": "solde_mis_a_jour(solde, derniers_mouvements)", "couvert_par": "EvtSoldeMisAJour", "ecart": "aucun"},
+      {"besoin": "dernier_voeu_propose(montant)", "couvert_par": "EvtDernierVoeuPropose", "ecart": "aucun"},
+      {"besoin": "dernier_voeu_resolu(nb_signataires, consequence, genie_libere)", "couvert_par": "EvtDernierVoeuResolu", "ecart": "aucun — l'identité des signataires n'y figure pas (RG-54, CA-39)."},
+      {"besoin": "scores_finaux(classement, roles, missions, paiements_historiques, vainqueur)", "couvert_par": "EvtScoresFinaux", "ecart": "aucun — seul moment où tous les secrets deviennent publics (RG-58)."},
+      {"besoin": "erreur(code, message)", "couvert_par": "EvtErreur", "ecart": "ÉTENDU — ajout de id_correlation pour lier le refus à la commande refusée, sans quoi un client ne peut pas distinguer quel acte a échoué quand deux commandes sont en vol."}
+    ],
+    "evenements_ajoutes": [
+      {"schema": "EvtAccuseReception", "motif": "Corrélation requête/réponse exigée par l'enveloppe. Sans accusé, un client ne distingue pas une commande acceptée d'une commande perdue, et rejouerait à l'aveugle."},
+      {"schema": "EvtEtatPartieChange", "motif": "machine_etats_partie comporte des transitions hors manche (CREEE, SALLE_ATTENTE, PLACEMENT, DISTRIBUTION, DERNIER_VOEU, SCORES, TERMINEE) que phase_changee ne couvre pas."},
+      {"schema": "EvtTransfertEnregistre", "motif": "La commande transferer_pieces existe dans la liste des besoins ; son effet doit être notifié à l'émetteur et au destinataire (matrice_visibilite : transfert visible de l'émetteur et du destinataire)."},
+      {"schema": "EvtPretPropose, EvtPretResolu, EvtPretPreleve", "motif": "Les commandes proposer_pret et repondre_pret existent dans la liste ; l'emprunteur doit être sollicité, les deux parties notifiées, et le prélèvement de l'étape 15 porté à leur connaissance."},
+      {"schema": "EvtPartieAbandonnee", "motif": "La commande abandonner_partie existe dans la liste ; la table doit apprendre que la partie est close."},
+      {"schema": "EvtGroupeMisAJour", "motif": "US-18 / CA-47 : l'hôte doit voir le compteur de parties s'incrémenter et le mode avancé se débloquer. Seul événement de classe hote."}
+    ]
+  },
+
+  "components": {
+    "securitySchemes": {
+      "jetonSession": {"type": "http", "scheme": "bearer", "bearerFormat": "opaque-32-octets-base64url", "description": "Jeton de session émis une seule fois à l'adhésion, stocké haché côté serveur (ADR-TL-15). Jamais transmis dans une URL."},
+      "jetonGroupe": {"type": "apiKey", "in": "header", "name": "X-Jeton-Groupe", "description": "Jeton persistant de groupe, détenu par le seul appareil de l'hôte. Stocké haché côté serveur."}
+    },
+
+    "parameters": {
+      "CodeAdhesion": {
+        "name": "code_adhesion", "in": "path", "required": true,
+        "description": "6 caractères de l'alphabet sans ambiguïté ABCDEFGHJKLMNPQRSTUVWXYZ23456789. Ni I, ni O, ni 0, ni 1 : des joueurs lisent ce code à voix haute dans une pièce.",
+        "schema": {"type": "string", "pattern": "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$"}
+      }
+    },
+
+    "schemas": {
+
+      "Identifiant": {"type": "string", "format": "uuid", "description": "UUIDv4 (ADR-TL-10)"},
+      "Horodatage": {"type": "string", "format": "date-time", "description": "ISO 8601, toujours UTC, suffixe Z obligatoire"},
+      "Pieces": {"type": "integer", "minimum": 0, "description": "Montant en pièces. Entier exclusivement, jamais de flottant (ADR-TL-14)."},
+
+      "CodeErreur": {
+        "type": "string",
+        "enum": ["ACTION_HORS_PHASE", "ACTION_NON_AUTORISEE_ROLE", "ACTION_RESERVEE_HOTE", "SOLDE_INSUFFISANT", "QUOTA_DEPASSE", "JETON_INVALIDE", "JETON_ABSENT", "USURPATION_IDENTITE", "SESSION_PLEINE", "EFFECTIF_INSUFFISANT", "SESSION_INTROUVABLE", "CODE_ADHESION_INVALIDE", "ORDRE_PLACES_INVALIDE", "CIBLE_INVALIDE", "MONTANT_INVALIDE", "DECLARATION_REQUISE", "DEJA_SOUMIS", "PSEUDO_INDISPONIBLE", "MODE_AVANCE_INACTIF", "ETAT_PARTIE_INCOMPATIBLE", "MESSAGE_MALFORME", "COMMANDE_INCONNUE", "TROP_DE_REQUETES", "ERREUR_INTERNE"]
+      },
+      "Erreur": {
+        "type": "object", "additionalProperties": false,
+        "required": ["code", "message"],
+        "description": "Enveloppe d'erreur unique, identique en REST et en temps réel. Ne contient jamais de donnée de jeu ni de détail technique exploitable.",
+        "properties": {
+          "code": {"$ref": "#/components/schemas/CodeErreur"},
+          "message": {"type": "string", "description": "Clé ou phrase destinée à l'affichage. Aucune valeur secrète."},
+          "details": {"type": ["object", "null"], "description": "Contexte non sensible (champ fautif, borne attendue). Jamais un solde, un montant payé, un rôle, une mission ou une clause."},
+          "id_correlation": {"type": ["string", "null"], "format": "uuid", "description": "Présent si l'erreur répond à une commande temps réel."}
+        }
+      },
+      "ErreurValidation": {
+        "type": "object", "additionalProperties": false,
+        "required": ["code", "message", "erreurs"],
+        "properties": {
+          "code": {"$ref": "#/components/schemas/CodeErreur"},
+          "message": {"type": "string"},
+          "erreurs": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}}
+        }
+      },
+
+      "Phase": {"type": "string", "enum": ["VOEU", "NEGOCIATION", "DECLARATION_PAIEMENT", "REVELATION", "ENQUETES_ACCUSATIONS", "EXECUTION", "DV_PROPOSITION", "DV_DEBAT", "DV_SIGNATURE", "DV_RESOLUTION"]},
+      "EtatPartie": {"type": "string", "enum": ["CREEE", "SALLE_ATTENTE", "PLACEMENT", "DISTRIBUTION", "MANCHE_EN_COURS", "DERNIER_VOEU", "SCORES", "TERMINEE", "ABANDONNEE"]},
+      "CleRole": {"type": "string", "enum": ["INSPECTEUR_TRESOR", "FAISEUR_CONTRATS", "PRETEUR", "MARCHAND_EPICES", "MARCHAND_DEJA_LIE"]},
+      "CleMission": {"type": "string", "enum": ["LE_MAGNAT", "LE_FAUSSAIRE", "LE_JUSTICIER", "LE_BATISSEUR", "LE_SABOTEUR", "GARDIEN_DE_LA_LAMPE"]},
+      "CleClause": {"type": "string", "enum": ["GENIE_GARDE_UN_TIERS", "TRESOR_DES_HONNETES", "LE_PLUS_GENEREUX", "CONSOLATION", "PRIME_AU_DELATEUR"]},
+      "CleGabarit": {"type": "string", "enum": ["ECART_TOTAL", "COMPTAGE", "VOISINAGE", "EXONERATION", "COMPARAISON", "PASSE"]},
+      "Verdict": {"type": "string", "enum": ["MENTEUR", "HONNETE"]},
+      "StatutPret": {"type": "string", "enum": ["PROPOSE", "REFUSE", "ACTIF", "SOLDE", "EXPIRE"]},
+      "MotifMouvement": {
+        "type": "string",
+        "enum": ["dotation_initiale", "paiement_voeu", "part_recompense", "bonus_epices", "amende_recue", "amende_payee", "penalite_fausse_accusation_payee", "penalite_fausse_accusation_recue", "cout_enquete", "transfert_emis", "transfert_recu", "pret_emis", "pret_recu", "remboursement_pret", "consolation", "signature_dernier_voeu", "sanction_contrat_conteste"]
+      },
+      "Rationnel": {
+        "type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "integer"},
+        "description": "Fraction [numerateur, denominateur] en arithmétique entière (ADR-TL-14). Aucun flottant ne traverse ce protocole."
+      },
+
+      "ConfigJeuPublique": {
+        "type": "object", "additionalProperties": false,
+        "description": "Les règles du jeu, connues de toute la table. RG-60 : lues depuis une configuration unique, jamais codées en dur. Seuls ces paramètres sortent du serveur ; rien d'autre de la configuration effective n'est exposé.",
+        "required": ["joueurs_min", "joueurs_max", "pieces_initiales", "nb_manches", "objectif_par_joueur", "multiplicateur_recompense", "multiplicateur_recompense_tresor_honnetes", "multiplicateur_amende", "cout_enquete", "cout_enquete_inspecteur_tresor", "cout_fausse_accusation", "accusations_max_par_joueur_par_manche", "bonus_mission_reussie", "bonus_marchand_epices_par_voeu_reussi", "taux_interet_pret", "fraction_retenue_genie", "fraction_consolation", "recompense_signature_dernier_voeu", "manche_min_revelation_passe", "parties_requises_pour_debloquer_dernier_voeu", "durees_phases_s"],
+        "properties": {
+          "joueurs_min": {"type": "integer", "minimum": 2}, "joueurs_max": {"type": "integer", "maximum": 12},
+          "pieces_initiales": {"type": "integer", "minimum": 0}, "nb_manches": {"type": "integer", "minimum": 1},
+          "objectif_par_joueur": {"type": "integer", "minimum": 0},
+          "multiplicateur_recompense": {"type": "integer", "minimum": 1},
+          "multiplicateur_recompense_tresor_honnetes": {"type": "integer", "minimum": 1},
+          "multiplicateur_amende": {"type": "integer", "minimum": 0},
+          "cout_enquete": {"type": "integer", "minimum": 0},
+          "cout_enquete_inspecteur_tresor": {"type": "integer", "minimum": 0},
+          "cout_fausse_accusation": {"type": "integer", "minimum": 0},
+          "accusations_max_par_joueur_par_manche": {"type": "integer", "minimum": 0},
+          "bonus_mission_reussie": {"type": "integer", "minimum": 0},
+          "bonus_marchand_epices_par_voeu_reussi": {"type": "integer", "minimum": 0},
+          "taux_interet_pret": {"$ref": "#/components/schemas/Rationnel"},
+          "fraction_retenue_genie": {"$ref": "#/components/schemas/Rationnel"},
+          "fraction_consolation": {"$ref": "#/components/schemas/Rationnel"},
+          "recompense_signature_dernier_voeu": {"type": "integer", "minimum": 0},
+          "manche_min_revelation_passe": {"type": "integer", "minimum": 1},
+          "parties_requises_pour_debloquer_dernier_voeu": {"type": "integer", "minimum": 0},
+          "durees_phases_s": {
+            "type": "object", "additionalProperties": false,
+            "required": ["VOEU", "NEGOCIATION", "DECLARATION_PAIEMENT", "REVELATION", "ENQUETES_ACCUSATIONS", "EXECUTION", "DV_PROPOSITION", "DV_DEBAT", "DV_SIGNATURE"],
+            "properties": {
+              "VOEU": {"type": "integer", "minimum": 1}, "NEGOCIATION": {"type": "integer", "minimum": 1},
+              "DECLARATION_PAIEMENT": {"type": "integer", "minimum": 1}, "REVELATION": {"type": "integer", "minimum": 1},
+              "ENQUETES_ACCUSATIONS": {"type": "integer", "minimum": 1}, "EXECUTION": {"type": "integer", "minimum": 1},
+              "DV_PROPOSITION": {"type": "integer", "minimum": 1}, "DV_DEBAT": {"type": "integer", "minimum": 1},
+              "DV_SIGNATURE": {"type": "integer", "minimum": 1}
+            }
+          }
+        }
+      },
+      "BornesConfiguration": {
+        "type": "object",
+        "description": "Pour chaque paramètre surchargeable, la borne acceptée par le serveur. Le client s'en sert pour refuser une saisie absurde ; le serveur revalide systématiquement (RG-71).",
+        "additionalProperties": {"type": "object", "properties": {"min": {"type": "integer"}, "max": {"type": "integer"}, "type": {"type": "string", "enum": ["entier", "rationnel", "objet"]}}}
+      },
+
+      "JoueurPublic": {
+        "type": "object", "additionalProperties": false,
+        "description": "Projection publique d'un joueur. Ne contient JAMAIS solde_pieces, role_secret, mission_secrete ni jeton (matrice_visibilite).",
+        "required": ["joueur_id", "pseudo", "connecte", "est_hote"],
+        "properties": {
+          "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "pseudo": {"type": "string", "minLength": 1, "maxLength": 20},
+          "position_cercle": {"type": ["integer", "null"], "minimum": 1, "description": "Nul avant la phase PLACEMENT. Public : l'ordre est physiquement visible dans la pièce."},
+          "connecte": {"type": "boolean"},
+          "est_hote": {"type": "boolean"}
+        }
+      },
+      "JoueurApercu": {
+        "type": "object", "additionalProperties": false,
+        "description": "Aperçu avant adhésion. N'expose PAS joueur_id : avant d'avoir rejoint, rien ne justifie de connaître les identifiants de la table.",
+        "required": ["pseudo", "connecte"],
+        "properties": {"pseudo": {"type": "string"}, "connecte": {"type": "boolean"}}
+      },
+      "MouvementPiece": {
+        "type": "object", "additionalProperties": false,
+        "description": "Ligne du journal de pièces. STRICTEMENT PRIVÉE (CA-36) : elle révélerait sinon le paiement secret, les enquêtes lancées et les transferts.",
+        "required": ["sequence", "delta", "motif", "solde_apres", "cree_at"],
+        "properties": {
+          "sequence": {"type": "integer", "minimum": 1},
+          "manche_numero": {"type": ["integer", "null"], "minimum": 1},
+          "delta": {"type": "integer", "description": "Signé, non nul"},
+          "motif": {"$ref": "#/components/schemas/MotifMouvement"},
+          "contrepartie_joueur_id": {"anyOf": [{"$ref": "#/components/schemas/Identifiant"}, {"type": "null"}], "description": "Présent uniquement quand le destinataire est partie prenante du mouvement."},
+          "solde_apres": {"$ref": "#/components/schemas/Pieces"},
+          "cree_at": {"$ref": "#/components/schemas/Horodatage"}
+        }
+      },
+      "PageMouvements": {
+        "type": "object", "additionalProperties": false,
+        "required": ["elements", "tronque"],
+        "description": "Pagination par curseur (standards.pagination : 50 par défaut, 200 maximum).",
+        "properties": {
+          "elements": {"type": "array", "items": {"$ref": "#/components/schemas/MouvementPiece"}, "maxItems": 200},
+          "curseur_suivant": {"type": ["string", "null"]},
+          "tronque": {"type": "boolean"}
+        }
+      },
+      "PretVuPartie": {
+        "type": "object", "additionalProperties": false,
+        "description": "Visible du seul prêteur et du seul emprunteur (matrice_visibilite). Publier un prêt permettrait de recouper les soldes et de remonter aux paiements.",
+        "required": ["pret_id", "preteur_joueur_id", "emprunteur_joueur_id", "principal", "du_total", "rembourse", "manche_emission", "statut"],
+        "properties": {
+          "pret_id": {"$ref": "#/components/schemas/Identifiant"},
+          "preteur_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "emprunteur_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "principal": {"$ref": "#/components/schemas/Pieces"},
+          "du_total": {"$ref": "#/components/schemas/Pieces"},
+          "rembourse": {"$ref": "#/components/schemas/Pieces"},
+          "manche_emission": {"type": "integer", "minimum": 1},
+          "statut": {"$ref": "#/components/schemas/StatutPret"}
+        }
+      },
+      "DeclarationPublique": {
+        "type": "object", "additionalProperties": false,
+        "required": ["joueur_id", "montant_declare"],
+        "properties": {"joueur_id": {"$ref": "#/components/schemas/Identifiant"}, "montant_declare": {"$ref": "#/components/schemas/Pieces"}}
+      },
+      "AccusationPublique": {
+        "type": "object", "additionalProperties": false,
+        "description": "Acte public, verdict public immédiat (RG-43). L'ampleur du mensonge N'EST PAS incluse : elle révélerait le montant payé de l'accusé avant l'exécution.",
+        "required": ["accusation_id", "accusateur_joueur_id", "accuse_joueur_id", "verdict"],
+        "properties": {
+          "accusation_id": {"$ref": "#/components/schemas/Identifiant"},
+          "accusateur_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "accuse_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "verdict": {"$ref": "#/components/schemas/Verdict"}
+        }
+      },
+      "AmendeLiquidee": {
+        "type": "object", "additionalProperties": false,
+        "description": "Publiée en phase EXECUTION seulement (ADR-CP-06). Inférence sanctionnée par la SPEC : le montant permet de recalculer le paiement d'un menteur démasqué — voir dette_assumee de ARCHI-GDV-001.json.",
+        "required": ["accusation_id", "debiteur_joueur_id", "crediteur_joueur_id", "montant_liquide", "montant_du"],
+        "properties": {
+          "accusation_id": {"$ref": "#/components/schemas/Identifiant"},
+          "debiteur_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "crediteur_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "montant_liquide": {"$ref": "#/components/schemas/Pieces"},
+          "montant_du": {"$ref": "#/components/schemas/Pieces"}
+        }
+      },
+      "PartRecompense": {
+        "type": "object", "additionalProperties": false,
+        "required": ["joueur_id", "part", "exclu_du_partage"],
+        "properties": {
+          "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "part": {"$ref": "#/components/schemas/Pieces"},
+          "exclu_du_partage": {"type": "boolean", "description": "Vrai si le joueur a été démasqué dans la manche (RG-15, poids nul)."}
+        }
+      },
+      "RevelationPublique": {
+        "type": "object", "additionalProperties": false,
+        "description": "ADR-TL-12 : ne porte aucun texte. Le client compose la phrase depuis son fichier de contenu, à partir de (gabarit, variante_formulation) et des valeurs.",
+        "required": ["gabarit", "variante_formulation", "cibles", "valeurs"],
+        "properties": {
+          "gabarit": {"$ref": "#/components/schemas/CleGabarit"},
+          "variante_formulation": {"type": "integer", "minimum": 0, "description": "Index de variante (RG-25). Le client se rabat sur 0 s'il ne connaît pas l'index reçu."},
+          "cibles": {"type": "array", "items": {"$ref": "#/components/schemas/Identifiant"}, "maxItems": 2},
+          "valeurs": {"type": "object", "additionalProperties": {"type": "integer"}, "description": "Valeurs PUBLIQUES uniquement : totaux agrégés, comptages. Jamais un montant payé individuel."}
+        }
+      },
+      "ResumeManchePublique": {
+        "type": "object", "additionalProperties": false,
+        "required": ["numero", "objectif", "cloture"],
+        "properties": {
+          "numero": {"type": "integer", "minimum": 1},
+          "objectif": {"$ref": "#/components/schemas/Pieces"},
+          "cloture": {"type": "boolean"},
+          "total_declare": {"anyOf": [{"$ref": "#/components/schemas/Pieces"}, {"type": "null"}]},
+          "total_paye": {"anyOf": [{"$ref": "#/components/schemas/Pieces"}, {"type": "null"}], "description": "Nul avant la phase REVELATION (matrice_visibilite)."},
+          "reussi": {"type": ["boolean", "null"]},
+          "recompense": {"anyOf": [{"$ref": "#/components/schemas/Pieces"}, {"type": "null"}]},
+          "clause_revelee": {"anyOf": [{"$ref": "#/components/schemas/CleClause"}, {"type": "null"}], "description": "Nul tant que l'étape 16 de l'exécution n'a pas eu lieu."},
+          "declarations": {"type": "array", "items": {"$ref": "#/components/schemas/DeclarationPublique"}},
+          "revelations": {"type": "array", "items": {"$ref": "#/components/schemas/RevelationPublique"}},
+          "accusations": {"type": "array", "items": {"$ref": "#/components/schemas/AccusationPublique"}},
+          "parts": {"type": "array", "items": {"$ref": "#/components/schemas/PartRecompense"}}
+        }
+      },
+
+      "EtatSante": {
+        "type": "object", "additionalProperties": false,
+        "required": ["statut", "version_protocole", "horodatage"],
+        "properties": {
+          "statut": {"type": "string", "enum": ["ok", "degrade"]},
+          "version_protocole": {"type": "string", "description": "Doit correspondre à info.version"},
+          "horodatage": {"$ref": "#/components/schemas/Horodatage"}
+        }
+      },
+      "ReponseConfigurationDefauts": {
+        "type": "object", "additionalProperties": false,
+        "required": ["config_par_defaut", "bornes"],
+        "properties": {
+          "config_par_defaut": {"$ref": "#/components/schemas/ConfigJeuPublique"},
+          "bornes": {"$ref": "#/components/schemas/BornesConfiguration"}
+        }
+      },
+      "CorpsCreerSession": {
+        "type": "object", "additionalProperties": false,
+        "required": ["pseudo"],
+        "properties": {
+          "pseudo": {"type": "string", "minLength": 1, "maxLength": 20},
+          "jeton_groupe": {"type": ["string", "null"], "description": "Jeton persisté sur l'appareil de l'hôte. Absent à la première partie d'un groupe."},
+          "config_surchargee": {"type": ["object", "null"], "description": "Sous-ensemble de ConfigJeuPublique. Validé contre BornesConfiguration (US-17, CA-45). Figé à la création : une partie ne change pas de règles en cours de route.", "additionalProperties": true},
+          "activer_mode_avance": {"type": ["boolean", "null"], "description": "Interrupteur de test (RG-50). Force le mode avancé même si le groupe n'a pas atteint le seuil."}
+        }
+      },
+      "ReponseSessionCreee": {
+        "type": "object", "additionalProperties": false,
+        "description": "SEULE occasion où jeton_session et jeton_groupe sont émis. Ils ne sont jamais réémis ni récupérables (ADR-TL-15).",
+        "required": ["session_id", "code_adhesion", "url_adhesion", "joueur_id", "jeton_session", "jeton_groupe", "mode_avance_actif", "config_effective", "url_temps_reel", "version_protocole"],
+        "properties": {
+          "session_id": {"$ref": "#/components/schemas/Identifiant"},
+          "code_adhesion": {"type": "string", "pattern": "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$"},
+          "url_adhesion": {"type": "string", "format": "uri", "description": "À encoder en QR code (US-01). Ne contient AUCUN jeton : seulement le code d'adhésion."},
+          "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "jeton_session": {"type": "string"},
+          "jeton_groupe": {"type": "string"},
+          "mode_avance_actif": {"type": "boolean"},
+          "config_effective": {"$ref": "#/components/schemas/ConfigJeuPublique"},
+          "url_temps_reel": {"type": "string", "description": "Chemin du canal temps réel, typiquement /tr"},
+          "version_protocole": {"type": "string"}
+        }
+      },
+      "ApercuSession": {
+        "type": "object", "additionalProperties": false,
+        "required": ["code_adhesion", "etat_partie", "nb_joueurs", "joueurs_max", "peut_rejoindre", "joueurs"],
+        "properties": {
+          "code_adhesion": {"type": "string"},
+          "etat_partie": {"$ref": "#/components/schemas/EtatPartie"},
+          "nb_joueurs": {"type": "integer", "minimum": 0},
+          "joueurs_max": {"type": "integer"},
+          "peut_rejoindre": {"type": "boolean"},
+          "motif_refus": {"anyOf": [{"$ref": "#/components/schemas/CodeErreur"}, {"type": "null"}]},
+          "joueurs": {"type": "array", "items": {"$ref": "#/components/schemas/JoueurApercu"}}
+        }
+      },
+      "CorpsRejoindreSession": {
+        "type": "object", "additionalProperties": false,
+        "required": ["pseudo"],
+        "properties": {"pseudo": {"type": "string", "minLength": 1, "maxLength": 20}}
+      },
+      "ReponseAdhesionAcceptee": {
+        "type": "object", "additionalProperties": false,
+        "required": ["session_id", "joueur_id", "jeton_session", "config_effective", "url_temps_reel", "version_protocole"],
+        "properties": {
+          "session_id": {"$ref": "#/components/schemas/Identifiant"},
+          "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "jeton_session": {"type": "string"},
+          "config_effective": {"$ref": "#/components/schemas/ConfigJeuPublique"},
+          "url_temps_reel": {"type": "string"},
+          "version_protocole": {"type": "string"}
+        }
+      },
+      "EtatGroupe": {
+        "type": "object", "additionalProperties": false,
+        "required": ["groupe_id", "parties_terminees", "dernier_voeu_debloque", "parties_requises"],
+        "properties": {
+          "groupe_id": {"$ref": "#/components/schemas/Identifiant"},
+          "parties_terminees": {"type": "integer", "minimum": 0, "description": "Incrémenté au seul passage en TERMINEE, jamais sur un abandon (RG-59, CA-48)."},
+          "dernier_voeu_debloque": {"type": "boolean"},
+          "parties_requises": {"type": "integer", "minimum": 0}
+        }
+      },
+
+      "EnveloppeCommande": {
+        "type": "object", "additionalProperties": false,
+        "description": "Enveloppe de toute trame client vers serveur. Ne porte AUCUN identifiant d'auteur : l'émetteur est déduit de la connexion authentifiée.",
+        "required": ["id_correlation", "type", "charge"],
+        "properties": {
+          "id_correlation": {"$ref": "#/components/schemas/Identifiant"},
+          "type": {"type": "string", "enum": ["authentifier", "definir_ordre_places", "demarrer_partie", "avancer_phase", "transferer_pieces", "proposer_pret", "repondre_pret", "declarer_contribution", "payer_secret", "lancer_enquete", "accuser", "signer_dernier_voeu", "abandonner_partie"]},
+          "charge": {"type": "object", "description": "Validée contre le schéma CmdXxx correspondant au type, en mode strict."}
+        }
+      },
+      "EnveloppeEvenement": {
+        "type": "object", "additionalProperties": false,
+        "description": "Enveloppe de toute trame serveur vers client. Produite par projeterEvenement(etat, effet, destinataire) — une par destinataire, jamais un objet partagé.",
+        "required": ["type", "sequence", "emis_a", "charge"],
+        "properties": {
+          "type": {"type": "string", "enum": ["accuse_reception", "erreur", "etat_complet_prive", "etat_partie_change", "joueur_rejoint", "joueur_quitte", "joueur_reconnecte", "partie_demarree", "attribution_privee", "voeu_annonce", "clause_recue", "phase_changee", "declaration_publiee", "paiement_enregistre", "transfert_enregistre", "pret_propose", "pret_resolu", "pret_preleve", "revelation_ecart_total", "revelation", "resultat_enquete", "accusation_declaree", "accusation_resolue", "execution_resultat", "solde_mis_a_jour", "dernier_voeu_propose", "dernier_voeu_resolu", "scores_finaux", "partie_abandonnee", "groupe_mis_a_jour"]},
+          "sequence": {"type": "integer", "minimum": 1, "description": "Monotone PAR DESTINATAIRE. Remis à 1 après chaque etat_complet_prive."},
+          "emis_a": {"$ref": "#/components/schemas/Horodatage"},
+          "id_correlation": {"type": ["string", "null"], "format": "uuid"},
+          "charge": {"type": "object"}
+        }
+      },
+
+      "CmdAuthentifier": {
+        "type": "object", "additionalProperties": false,
+        "description": "OBLIGATOIREMENT la première trame de toute connexion. Couvre aussi le besoin se_reconnecter (ADR-TL-13).",
+        "required": ["jeton_session", "version_protocole"],
+        "properties": {
+          "jeton_session": {"type": "string", "minLength": 32, "maxLength": 128},
+          "version_protocole": {"type": "string"}
+        },
+        "x-reponse": "EvtEtatCompletPrive en cas de succès ; EvtErreur (JETON_INVALIDE, ETAT_PARTIE_INCOMPATIBLE) sinon.",
+        "x-autorisation": "Aucune phase requise. Valable dans tout état de partie sauf TERMINEE et ABANDONNEE depuis plus de 10 minutes."
+      },
+      "CmdDefinirOrdrePlaces": {
+        "type": "object", "additionalProperties": false,
+        "description": "US-03. L'ordre du cercle est cyclique et immuable une fois validé (RG-06). Il conditionne le gabarit VOISINAGE.",
+        "required": ["ordre"],
+        "properties": {"ordre": {"type": "array", "items": {"$ref": "#/components/schemas/Identifiant"}, "minItems": 2, "maxItems": 12, "uniqueItems": true}},
+        "x-autorisation": "etat_partie = PLACEMENT ; émetteur = hôte. Refus : ACTION_RESERVEE_HOTE, ETAT_PARTIE_INCOMPATIBLE, ORDRE_PLACES_INVALIDE si l'ordre n'est pas une permutation complète et unique (CA-04).",
+        "x-reponse": "EvtAccuseReception, puis EvtEtatPartieChange vers DISTRIBUTION."
+      },
+      "CmdDemarrerPartie": {
+        "type": "object", "additionalProperties": false, "properties": {},
+        "description": "Charge vide. US-01.",
+        "x-autorisation": "etat_partie = SALLE_ATTENTE ; émetteur = hôte ; joueurs_min <= nb connectés <= joueurs_max (RG-02). Refus : EFFECTIF_INSUFFISANT (CA-02), SESSION_PLEINE, ACTION_RESERVEE_HOTE.",
+        "x-reponse": "EvtAccuseReception, puis EvtEtatPartieChange vers PLACEMENT."
+      },
+      "CmdAvancerPhase": {
+        "type": "object", "additionalProperties": false, "properties": {},
+        "description": "Charge vide. SEULE accélération possible du temps, et uniquement en NEGOCIATION. Il n'existe aucune commande de prolongation, de pause ou de retour en arrière (RG-72).",
+        "x-autorisation": "phase = NEGOCIATION ; émetteur = hôte. Refus : ACTION_HORS_PHASE, ACTION_RESERVEE_HOTE.",
+        "x-reponse": "EvtAccuseReception, puis EvtPhaseChangee vers DECLARATION_PAIEMENT."
+      },
+      "CmdTransfererPieces": {
+        "type": "object", "additionalProperties": false,
+        "description": "US-12. Honorer un accord conclu à voix haute. Le transfert n'est jamais publié : il permettrait de recouper les soldes et de remonter aux paiements.",
+        "required": ["cible_joueur_id", "montant"],
+        "properties": {"cible_joueur_id": {"$ref": "#/components/schemas/Identifiant"}, "montant": {"type": "integer", "minimum": 1}},
+        "x-autorisation": "phase = NEGOCIATION ; cible dans la session et différente de l'émetteur ; montant <= solde (RG-41). Refus : ACTION_HORS_PHASE, CIBLE_INVALIDE, SOLDE_INSUFFISANT.",
+        "x-reponse": "EvtAccuseReception, puis EvtTransfertEnregistre et EvtSoldeMisAJour vers l'émetteur ET le destinataire, séparément."
+      },
+      "CmdProposerPret": {
+        "type": "object", "additionalProperties": false,
+        "description": "Monopole du rôle PRETEUR (RG-29, CA-33). Le refus ne révèle jamais pourquoi la commande est interdite à un autre joueur : ACTION_NON_AUTORISEE_ROLE ne nomme aucun rôle.",
+        "required": ["emprunteur_joueur_id", "principal"],
+        "properties": {"emprunteur_joueur_id": {"$ref": "#/components/schemas/Identifiant"}, "principal": {"type": "integer", "minimum": 1}},
+        "x-autorisation": "phase = NEGOCIATION ; émetteur de rôle PRETEUR ; principal <= solde du prêteur. Refus : ACTION_NON_AUTORISEE_ROLE, SOLDE_INSUFFISANT, CIBLE_INVALIDE.",
+        "x-reponse": "EvtAccuseReception au prêteur, EvtPretPropose à l'emprunteur."
+      },
+      "CmdRepondrePret": {
+        "type": "object", "additionalProperties": false,
+        "required": ["pret_id", "accepte"],
+        "properties": {"pret_id": {"$ref": "#/components/schemas/Identifiant"}, "accepte": {"type": "boolean"}},
+        "x-autorisation": "phase = NEGOCIATION ; émetteur = emprunteur désigné du prêt ; statut du prêt = PROPOSE. Refus : CIBLE_INVALIDE, DEJA_SOUMIS, ACTION_HORS_PHASE. Un joueur répondant à un prêt qui ne lui est pas adressé reçoit USURPATION_IDENTITE.",
+        "x-reponse": "EvtAccuseReception, puis EvtPretResolu et EvtSoldeMisAJour aux deux parties."
+      },
+      "CmdDeclarerContribution": {
+        "type": "object", "additionalProperties": false,
+        "description": "US-05. Acte PUBLIC : publié à toute la table dès sa soumission (RG-31).",
+        "required": ["montant"],
+        "properties": {"montant": {"type": "integer", "minimum": 0}},
+        "x-autorisation": "phase = DECLARATION_PAIEMENT ; 0 <= montant <= solde (RG-08, CA-07). Remplace une déclaration antérieure tant que payer_secret n'a pas été soumis, puis refus DEJA_SOUMIS (RG-70). Refus : ACTION_HORS_PHASE, MONTANT_INVALIDE, DEJA_SOUMIS.",
+        "x-reponse": "EvtAccuseReception, puis EvtDeclarationPubliee vers TOUS, auteur compris."
+      },
+      "CmdPayerSecret": {
+        "type": "object", "additionalProperties": false,
+        "description": "US-06. LE secret du jeu. Le montant n'est JAMAIS publié, sous aucune forme et sous aucun nom de champ (CA-10), jusqu'à l'écran de scores finaux.",
+        "required": ["montant"],
+        "properties": {"montant": {"type": "integer", "minimum": 0}},
+        "x-autorisation": "phase = DECLARATION_PAIEMENT ; déclaration préalable obligatoire (RG-10) ; 0 <= montant <= montant_declare (RG-09, CA-09) ; montant <= solde (RG-41). Un second paiement est toujours refusé. Refus : ACTION_HORS_PHASE, DECLARATION_REQUISE, MONTANT_INVALIDE, DEJA_SOUMIS, SOLDE_INSUFFISANT.",
+        "x-reponse": "EvtAccuseReception puis EvtPaiementEnregistre au seul auteur. Les autres joueurs ne reçoivent RIEN — pas même un signal indiquant qu'un paiement a eu lieu. Si tous ont déclaré et payé, EvtPhaseChangee vers REVELATION part immédiatement (CA-49)."
+      },
+      "CmdLancerEnquete": {
+        "type": "object", "additionalProperties": false,
+        "description": "US-09. Secrète de bout en bout (RG-27). Ni la cible ni la table n'apprennent que l'enquête a eu lieu — c'est ce qui rend le chantage possible.",
+        "required": ["cible_joueur_id"],
+        "properties": {"cible_joueur_id": {"$ref": "#/components/schemas/Identifiant"}},
+        "x-autorisation": "phase = ENQUETES_ACCUSATIONS ; cible différente de l'émetteur (RG-19) ; solde >= cout_enquete, ou cout_enquete_inspecteur_tresor pour un INSPECTEUR_TRESOR (RG-26, CA-20, CA-21) ; pas de seconde enquête sur la même cible dans la manche (RG-28). Nombre total d'enquêtes par manche non plafonné. Refus : ACTION_HORS_PHASE, CIBLE_INVALIDE, SOLDE_INSUFFISANT, QUOTA_DEPASSE.",
+        "x-reponse": "EvtAccuseReception, EvtResultatEnquete et EvtSoldeMisAJour au SEUL enquêteur. Aucun message vers la cible, aucun vers la table (CA-19)."
+      },
+      "CmdAccuser": {
+        "type": "object", "additionalProperties": false,
+        "description": "US-10. Acte public, verdict public immédiat. La liquidation monétaire est différée à l'exécution (RG-43, ADR-CP-06).",
+        "required": ["accuse_joueur_id"],
+        "properties": {"accuse_joueur_id": {"$ref": "#/components/schemas/Identifiant"}},
+        "x-autorisation": "phase = ENQUETES_ACCUSATIONS ; accusé différent de l'accusateur ; au plus accusations_max_par_joueur_par_manche accusations par manche (RG-19, CA-24). Le verdict est calculé par le serveur, jamais fourni par le client. Refus : ACTION_HORS_PHASE, CIBLE_INVALIDE, QUOTA_DEPASSE.",
+        "x-reponse": "EvtAccuseReception, puis EvtAccusationDeclaree et EvtAccusationResolue vers TOUS."
+      },
+      "CmdSignerDernierVoeu": {
+        "type": "object", "additionalProperties": false,
+        "description": "US-14. Signature SECRÈTE. Aucun autre joueur n'apprend qui a signé avant l'écran de scores (RG-54, CA-39).",
+        "required": ["a_signe"],
+        "properties": {"a_signe": {"type": "boolean"}},
+        "x-autorisation": "phase = DV_SIGNATURE ; mode_avance_actif = vrai. Non-soumission à l'expiration = refus (a_signe faux). Refus : ACTION_HORS_PHASE, MODE_AVANCE_INACTIF, DEJA_SOUMIS.",
+        "x-reponse": "EvtAccuseReception au seul signataire. Aucun autre message n'est émis avant la résolution."
+      },
+      "CmdAbandonnerPartie": {
+        "type": "object", "additionalProperties": false,
+        "description": "Terminal et irréversible : la SPEC exclut la reprise d'une partie abandonnée. Le compteur du groupe N'EST PAS incrémenté (RG-59, CA-48).",
+        "required": ["confirmation"],
+        "properties": {"confirmation": {"type": "boolean", "const": true, "description": "Garde-fou explicite contre un abandon par trame malformée ou double appui."}},
+        "x-autorisation": "émetteur = hôte ; etat_partie différent de TERMINEE. Refus : ACTION_RESERVEE_HOTE, ETAT_PARTIE_INCOMPATIBLE.",
+        "x-reponse": "EvtAccuseReception, puis EvtPartieAbandonnee vers TOUS."
+      },
+
+      "EvtAccuseReception": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "proprietaire",
+        "x-destinataires": "L'auteur de la commande, et lui seul.",
+        "x-justification-visibilite": "Un accusé de réception confirme un acte qui peut être secret (paiement, enquête, signature). Le diffuser trahirait l'acte lui-même.",
+        "description": "Confirme la PRISE EN COMPTE d'une commande. Ne contient aucune valeur de jeu : les conséquences arrivent par des événements distincts.",
+        "required": ["id_correlation", "type_commande", "accepte"],
+        "properties": {
+          "id_correlation": {"$ref": "#/components/schemas/Identifiant"},
+          "type_commande": {"type": "string"},
+          "accepte": {"type": "boolean", "const": true}
+        }
+      },
+      "EvtErreur": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "proprietaire",
+        "x-destinataires": "L'auteur de la commande refusée, et lui seul.",
+        "x-justification-visibilite": "Un refus révèle une tentative (enquête sans solde, accusation en double). Le diffuser renseignerait la table sur les actes secrets d'un joueur.",
+        "description": "Refus typé. Aucune modification d'état n'a eu lieu (CA-43).",
+        "required": ["code", "message"],
+        "properties": {
+          "code": {"$ref": "#/components/schemas/CodeErreur"},
+          "message": {"type": "string"},
+          "details": {"type": ["object", "null"]},
+          "id_correlation": {"type": ["string", "null"], "format": "uuid"}
+        }
+      },
+      "EvtEtatCompletPrive": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "proprietaire",
+        "x-destinataires": "Le joueur authentifié, et lui seul. Chaque joueur reçoit une projection DIFFÉRENTE.",
+        "x-justification-visibilite": "RG-73 / CA-42 : à la reconnexion, le serveur renvoie l'état projeté complet pour ce joueur seul, historiques compris, sans aucun secret d'autrui. C'est le message le plus riche du protocole, donc le plus surveillé : il est construit par projeterVuePrivee(etat, joueurId), fonction pure couverte à 100 %.",
+        "description": "Émis à la connexion et à la reconnexion. Remet la séquence à 1. Aucun rejeu n'intervient : ce message REMPLACE tout état client antérieur.",
+        "required": ["session", "moi", "joueurs", "manche_courante", "historique_manches", "mes_mouvements"],
+        "properties": {
+          "session": {
+            "type": "object", "additionalProperties": false,
+            "required": ["session_id", "code_adhesion", "etat_partie", "mode_avance_actif", "config"],
+            "properties": {
+              "session_id": {"$ref": "#/components/schemas/Identifiant"},
+              "code_adhesion": {"type": "string"},
+              "etat_partie": {"$ref": "#/components/schemas/EtatPartie"},
+              "mode_avance_actif": {"type": "boolean"},
+              "config": {"$ref": "#/components/schemas/ConfigJeuPublique"}
+            }
+          },
+          "moi": {
+            "type": "object", "additionalProperties": false,
+            "description": "SEULE partie du message qui contient des secrets, et ils appartiennent tous au destinataire.",
+            "required": ["joueur_id", "pseudo", "est_hote", "solde_pieces"],
+            "properties": {
+              "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+              "pseudo": {"type": "string"},
+              "position_cercle": {"type": ["integer", "null"]},
+              "est_hote": {"type": "boolean"},
+              "solde_pieces": {"$ref": "#/components/schemas/Pieces"},
+              "role_secret": {"anyOf": [{"$ref": "#/components/schemas/CleRole"}, {"type": "null"}]},
+              "mission_secrete": {"anyOf": [{"$ref": "#/components/schemas/CleMission"}, {"type": "null"}]},
+              "clause_connue": {"anyOf": [{"$ref": "#/components/schemas/CleClause"}, {"type": "null"}], "description": "Non nul uniquement si le destinataire est porteur de la clause ou FAISEUR_CONTRATS (RG-18)."},
+              "montant_declare": {"anyOf": [{"$ref": "#/components/schemas/Pieces"}, {"type": "null"}]},
+              "montant_paye": {"anyOf": [{"$ref": "#/components/schemas/Pieces"}, {"type": "null"}], "description": "Son propre paiement, jamais celui d'un autre."},
+              "a_accuse_cette_manche": {"type": "boolean"},
+              "mes_enquetes_de_la_manche": {"type": "array", "items": {"$ref": "#/components/schemas/ResultatEnqueteItem"}},
+              "mes_prets": {"type": "array", "items": {"$ref": "#/components/schemas/PretVuPartie"}},
+              "ma_signature_dernier_voeu": {"type": ["boolean", "null"]}
+            }
+          },
+          "joueurs": {"type": "array", "items": {"$ref": "#/components/schemas/JoueurPublic"}},
+          "manche_courante": {
+            "anyOf": [{"$ref": "#/components/schemas/ResumeManchePublique"}, {"type": "null"}],
+            "description": "Nul hors d'un état MANCHE_EN_COURS."
+          },
+          "phase": {"anyOf": [{"$ref": "#/components/schemas/Phase"}, {"type": "null"}]},
+          "phase_fin_at": {"anyOf": [{"$ref": "#/components/schemas/Horodatage"}, {"type": "null"}]},
+          "historique_manches": {"type": "array", "items": {"$ref": "#/components/schemas/ResumeManchePublique"}, "description": "Manches closes, contenu PUBLIC uniquement. Aucun montant payé d'autrui, même pour des manches terminées (RG-73)."},
+          "mes_mouvements": {"$ref": "#/components/schemas/PageMouvements"},
+          "groupe": {"anyOf": [{"$ref": "#/components/schemas/EtatGroupe"}, {"type": "null"}], "description": "Présent UNIQUEMENT si le destinataire est l'hôte. Absent ou nul pour tout autre joueur."}
+        }
+      },
+      "ResultatEnqueteItem": {
+        "type": "object", "additionalProperties": false,
+        "required": ["cible_joueur_id", "montant_paye", "manche_numero"],
+        "properties": {
+          "cible_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "montant_paye": {"$ref": "#/components/schemas/Pieces"},
+          "manche_numero": {"type": "integer", "minimum": 1}
+        }
+      },
+      "EvtEtatPartieChange": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs de la session, chacun recevant sa propre projection.",
+        "x-justification-visibilite": "L'état de la partie est une donnée publique : tout le monde est assis autour de la même table et voit la partie avancer.",
+        "required": ["etat_partie"],
+        "properties": {
+          "etat_partie": {"$ref": "#/components/schemas/EtatPartie"},
+          "manche_courante": {"type": ["integer", "null"], "minimum": 0}
+        }
+      },
+      "EvtJoueurRejoint": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs déjà présents.",
+        "x-justification-visibilite": "matrice_visibilite : pseudo, position et état de connexion sont visibles de tous.",
+        "required": ["joueur", "nb_joueurs"],
+        "properties": {"joueur": {"$ref": "#/components/schemas/JoueurPublic"}, "nb_joueurs": {"type": "integer", "minimum": 1}}
+      },
+      "EvtJoueurQuitte": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs restants.",
+        "x-justification-visibilite": "matrice_visibilite : état de connexion visible de tous. La partie continue : le joueur n'est jamais éliminé (RG-46) et ses actions non soumises valent 0 (RG-32).",
+        "required": ["joueur_id", "nb_connectes"],
+        "properties": {"joueur_id": {"$ref": "#/components/schemas/Identifiant"}, "nb_connectes": {"type": "integer", "minimum": 0}}
+      },
+      "EvtJoueurReconnecte": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les autres joueurs. Le reconnecté reçoit, lui, un EvtEtatCompletPrive.",
+        "x-justification-visibilite": "matrice_visibilite : état de connexion visible de tous.",
+        "required": ["joueur_id", "nb_connectes"],
+        "properties": {"joueur_id": {"$ref": "#/components/schemas/Identifiant"}, "nb_connectes": {"type": "integer", "minimum": 0}}
+      },
+      "EvtPartieDemarree": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs.",
+        "x-justification-visibilite": "matrice_visibilite : l'ordre des places est visible de tous — il est de toute façon physiquement visible dans la pièce. Ce message ne contient AUCUN rôle ni mission : ceux-ci partent par EvtAttributionPrivee.",
+        "required": ["ordre_cercle", "nb_joueurs", "mode_avance_actif"],
+        "properties": {
+          "ordre_cercle": {"type": "array", "items": {"$ref": "#/components/schemas/Identifiant"}, "description": "Cyclique : le dernier est voisin du premier (RG-06)."},
+          "nb_joueurs": {"type": "integer", "minimum": 2},
+          "mode_avance_actif": {"type": "boolean"}
+        }
+      },
+      "EvtAttributionPrivee": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "proprietaire",
+        "x-destinataires": "Le joueur concerné, et lui seul.",
+        "x-justification-visibilite": "matrice_visibilite : role_secret et mission_secrete sont visibles du serveur et du propriétaire uniquement, jusqu'à l'écran de scores (RG-58). CA-05 : aucun message reçu par A ne contient le rôle ou la mission d'un autre.",
+        "description": "US-04. Un message par joueur, chacun ne contenant que SA propre attribution. Il n'existe aucune variante de ce message listant plusieurs joueurs.",
+        "required": ["role_secret", "mission_secrete", "solde_initial"],
+        "properties": {
+          "role_secret": {"$ref": "#/components/schemas/CleRole"},
+          "mission_secrete": {"anyOf": [{"$ref": "#/components/schemas/CleMission"}, {"type": "null"}], "description": "Nul pour le MARCHAND_DEJA_LIE, qui reçoit ce rôle À LA PLACE de sa mission (RG-51)."},
+          "solde_initial": {"$ref": "#/components/schemas/Pieces"}
+        }
+      },
+      "EvtVoeuAnnonce": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs.",
+        "x-justification-visibilite": "RG-07 : l'objectif du vœu est annoncé publiquement en phase VOEU. Ce message ne mentionne NI la clause, NI son porteur.",
+        "required": ["numero_manche", "objectif", "nb_manches"],
+        "properties": {
+          "numero_manche": {"type": "integer", "minimum": 1},
+          "objectif": {"$ref": "#/components/schemas/Pieces"},
+          "nb_manches": {"type": "integer", "minimum": 1}
+        }
+      },
+      "EvtClauseRecue": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "porteur_clause_et_faiseur",
+        "x-destinataires": "Le porteur de clause tiré au sort ET tout joueur de rôle FAISEUR_CONTRATS. Personne d'autre (CA-12).",
+        "x-justification-visibilite": "matrice_visibilite : la clause est visible du serveur, du porteur tiré au sort et de tout FAISEUR_CONTRATS, et devient publique à l'étape 16 de l'exécution. L'identité du porteur n'est révélée à personne, jamais, en v1 — y compris au FAISEUR_CONTRATS : le message ne dit pas QUI porte la clause.",
+        "description": "US-07. Information monnayable : la dire, la vendre, la taire ou mentir.",
+        "required": ["clause", "numero_manche", "je_suis_porteur"],
+        "properties": {
+          "clause": {"$ref": "#/components/schemas/CleClause"},
+          "numero_manche": {"type": "integer", "minimum": 1},
+          "je_suis_porteur": {"type": "boolean", "description": "Indique au destinataire s'il est le porteur tiré au sort ou s'il reçoit la clause au titre de son rôle. Ne désigne jamais un autre joueur."}
+        }
+      },
+      "EvtPhaseChangee": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs.",
+        "x-justification-visibilite": "RG-72 : le serveur est l'unique horloge. phase_fin_at est une date absolue ; le décompte client en est dérivé et purement décoratif.",
+        "required": ["phase", "phase_fin_at", "numero_manche"],
+        "properties": {
+          "phase": {"$ref": "#/components/schemas/Phase"},
+          "phase_fin_at": {"$ref": "#/components/schemas/Horodatage"},
+          "numero_manche": {"type": "integer", "minimum": 1},
+          "actions_autorisees": {"type": "array", "items": {"type": "string"}, "description": "Commandes acceptées dans cette phase. Indication d'affichage : le serveur revalide de toute façon (RG-71). Un client modifié qui ignore cette liste reçoit ACTION_HORS_PHASE (CA-43)."}
+        }
+      },
+      "EvtDeclarationPubliee": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs, auteur compris.",
+        "x-justification-visibilite": "matrice_visibilite : montant_declare est visible de tous dès sa soumission (RG-31, CA-08). C'est une ANNONCE, opposée au paiement qui ne l'est jamais.",
+        "required": ["joueur_id", "montant_declare", "nb_declarations", "nb_joueurs"],
+        "properties": {
+          "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "montant_declare": {"$ref": "#/components/schemas/Pieces"},
+          "nb_declarations": {"type": "integer", "minimum": 0},
+          "nb_joueurs": {"type": "integer", "minimum": 2}
+        }
+      },
+      "EvtPaiementEnregistre": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "proprietaire",
+        "x-destinataires": "Le payeur, et lui seul.",
+        "x-justification-visibilite": "matrice_visibilite : montant_paye est visible du serveur, du propriétaire et de l'enquêteur ayant payé une enquête. CA-10 : la valeur ne doit apparaître dans AUCUN message reçu par un autre joueur, sous aucune forme ni aucun nom de champ. Ce message ne porte donc AUCUN montant, même pour son propriétaire : il vient de le saisir, et un champ de montant en moins est une occasion de fuite en moins.",
+        "description": "Accusé de prise en compte du paiement. Aucun compteur public de paiements n'existe : savoir QUI a déjà payé renseignerait sur le comportement de la table.",
+        "required": ["numero_manche", "enregistre"],
+        "properties": {
+          "numero_manche": {"type": "integer", "minimum": 1},
+          "enregistre": {"type": "boolean", "const": true}
+        }
+      },
+      "EvtTransfertEnregistre": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "proprietaire",
+        "x-destinataires": "L'émetteur ET le destinataire du transfert, chacun recevant sa propre projection. Aucun autre joueur.",
+        "x-justification-visibilite": "matrice_visibilite : un transfert est visible du serveur, de l'émetteur et du destinataire. Le publier permettrait de recouper les soldes et de remonter aux paiements.",
+        "required": ["emetteur_joueur_id", "destinataire_joueur_id", "montant"],
+        "properties": {
+          "emetteur_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "destinataire_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "montant": {"$ref": "#/components/schemas/Pieces"}
+        }
+      },
+      "EvtPretPropose": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "proprietaire",
+        "x-destinataires": "L'emprunteur sollicité ET le prêteur émetteur. Aucun autre joueur.",
+        "x-justification-visibilite": "matrice_visibilite : un prêt est visible du serveur, du prêteur et de l'emprunteur. Le publier révélerait aussi qui détient le rôle PRETEUR, qui est secret.",
+        "required": ["pret"],
+        "properties": {"pret": {"$ref": "#/components/schemas/PretVuPartie"}}
+      },
+      "EvtPretResolu": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "proprietaire",
+        "x-destinataires": "Le prêteur ET l'emprunteur.",
+        "x-justification-visibilite": "Identique à EvtPretPropose.",
+        "required": ["pret", "accepte"],
+        "properties": {"pret": {"$ref": "#/components/schemas/PretVuPartie"}, "accepte": {"type": "boolean"}}
+      },
+      "EvtPretPreleve": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "proprietaire",
+        "x-destinataires": "Le prêteur ET l'emprunteur.",
+        "x-justification-visibilite": "Étape 15 du pipeline. Le prélèvement est plafonné au solde ; le reliquat reste dû et sera prélevé aux exécutions suivantes (RG-29, CA-34). Information strictement bilatérale.",
+        "required": ["pret", "montant_preleve", "reliquat_du"],
+        "properties": {
+          "pret": {"$ref": "#/components/schemas/PretVuPartie"},
+          "montant_preleve": {"$ref": "#/components/schemas/Pieces"},
+          "reliquat_du": {"$ref": "#/components/schemas/Pieces"}
+        }
+      },
+      "EvtRevelationEcartTotal": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs.",
+        "x-justification-visibilite": "matrice_visibilite : total_paye de la manche devient public en phase REVELATION. Agrégat sur toute la table : il ne désigne personne (CA-14).",
+        "description": "Émis SYSTÉMATIQUEMENT à l'ouverture de la phase REVELATION, hors catalogue de sélection.",
+        "required": ["numero_manche", "total_declare", "total_paye", "objectif"],
+        "properties": {
+          "numero_manche": {"type": "integer", "minimum": 1},
+          "total_declare": {"$ref": "#/components/schemas/Pieces"},
+          "total_paye": {"$ref": "#/components/schemas/Pieces"},
+          "objectif": {"$ref": "#/components/schemas/Pieces"}
+        }
+      },
+      "EvtRevelation": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs.",
+        "x-justification-visibilite": "Une révélation est publique par nature : c'est son objet. Elle est soumise aux trois lois du génie — vraie (RG-20, revérifiée par une fonction distincte de celle qui l'a sélectionnée), jamais complète (RG-21, au moins 2 suspects restants après émission, CA-16), provocatrice (RG-22). Si aucun gabarit n'est éligible, ce message n'est PAS émis : le génie n'invente jamais un énoncé de remplacement (CA-15).",
+        "description": "ADR-TL-12 : ne porte AUCUN texte. Le client compose la phrase depuis son fichier de contenu, à partir de (gabarit, variante_formulation) et des valeurs. Trancher l'univers (ESC-01) ne touche donc ni le serveur, ni ce contrat.",
+        "required": ["numero_manche", "revelation", "suspects_restants"],
+        "properties": {
+          "numero_manche": {"type": "integer", "minimum": 1},
+          "revelation": {"$ref": "#/components/schemas/RevelationPublique"},
+          "suspects_restants": {"type": "integer", "minimum": 2, "description": "RG-21 gravé dans le schéma : une valeur inférieure à 2 est structurellement non représentable."}
+        }
+      },
+      "EvtResultatEnquete": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "enqueteur",
+        "x-destinataires": "Le seul joueur ayant payé l'enquête.",
+        "x-justification-visibilite": "matrice_visibilite : l'existence même de l'enquête et son résultat sont visibles du serveur et de l'enquêteur uniquement. La cible ne sait PAS qu'elle a été enquêtée — c'est ce qui rend le chantage possible (RG-27, CA-19). Aucun message n'est émis vers la cible ni vers la table, ni maintenant ni plus tard.",
+        "description": "US-09. Achat d'une certitude.",
+        "required": ["cible_joueur_id", "montant_paye", "cout_paye", "numero_manche"],
+        "properties": {
+          "cible_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "montant_paye": {"$ref": "#/components/schemas/Pieces", "description": "Montant RÉELLEMENT payé par la cible. Seule circonstance où le paiement d'autrui sort du serveur avant l'écran de scores."},
+          "montant_declare": {"$ref": "#/components/schemas/Pieces"},
+          "cout_paye": {"$ref": "#/components/schemas/Pieces"},
+          "numero_manche": {"type": "integer", "minimum": 1}
+        }
+      },
+      "EvtAccusationDeclaree": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs.",
+        "x-justification-visibilite": "matrice_visibilite : accusation et verdict sont visibles de tous dès la soumission.",
+        "required": ["accusation_id", "accusateur_joueur_id", "accuse_joueur_id", "numero_manche"],
+        "properties": {
+          "accusation_id": {"$ref": "#/components/schemas/Identifiant"},
+          "accusateur_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "accuse_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+          "numero_manche": {"type": "integer", "minimum": 1}
+        }
+      },
+      "EvtAccusationResolue": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs.",
+        "x-justification-visibilite": "RG-43 / ADR-CP-06 : le verdict est public immédiatement, la liquidation monétaire est différée à l'EXECUTION. Ce message NE CONTIENT PAS ampleur_mensonge ni montant d'amende : l'ampleur révélerait le montant payé de l'accusé, et le montant révélerait la clause PRIME_AU_DELATEUR avant l'étape 16.",
+        "required": ["accusation_id", "verdict"],
+        "properties": {
+          "accusation_id": {"$ref": "#/components/schemas/Identifiant"},
+          "verdict": {"$ref": "#/components/schemas/Verdict"},
+          "liquidation_differee": {"type": "boolean", "const": true}
+        }
+      },
+      "EvtExecutionResultat": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs.",
+        "x-justification-visibilite": "Étape 16 du pipeline : publication de reussi/echoue, total_paye, recompense, parts par joueur, clause révélée et son effet, verdicts et amendes liquidées. DEUX RESTRICTIONS imposées par RG-01 : (1) les montants de consolation INDIVIDUELS ne sont pas publiés — plancher(montant_paye_i / 2) révélerait le paiement de chacun ; seul le total consolé l'est, chaque joueur apprenant sa part par EvtSoldeMisAJour qui est privé. (2) L'identité du porteur de clause n'est pas publiée (matrice_visibilite : jamais en v1). Inférence sanctionnée par la SPEC et consignée dans dette_assumee de ARCHI-GDV-001.json : avec la clause LE_PLUS_GENEREUX révélée, la comparaison des parts aux déclarations désigne le plus gros payeur réel.",
+        "required": ["numero_manche", "reussi", "total_declare", "total_paye", "objectif", "clause_revelee", "parts", "amendes_liquidees"],
+        "properties": {
+          "numero_manche": {"type": "integer", "minimum": 1},
+          "reussi": {"type": "boolean"},
+          "total_declare": {"$ref": "#/components/schemas/Pieces"},
+          "total_paye": {"$ref": "#/components/schemas/Pieces"},
+          "objectif": {"$ref": "#/components/schemas/Pieces"},
+          "recompense": {"$ref": "#/components/schemas/Pieces"},
+          "multiplicateur_applique": {"type": "integer", "minimum": 0, "description": "Révélé ici seulement : il trahirait sinon la clause TRESOR_DES_HONNETES avant l'étape 16."},
+          "clause_revelee": {"$ref": "#/components/schemas/CleClause"},
+          "effet_clause": {"type": "string", "description": "Clé technique neutre de l'effet appliqué. Le libellé affiché vit dans le fichier de contenu du client (RG-61)."},
+          "parts": {"type": "array", "items": {"$ref": "#/components/schemas/PartRecompense"}},
+          "reliquat_non_distribue": {"$ref": "#/components/schemas/Pieces", "description": "RG-14 : le reliquat d'arrondi n'est pas distribué, le génie le garde. Publié pour que la table puisse vérifier que la somme des parts plus le reliquat égale la récompense."},
+          "consolation_appliquee": {"type": "boolean"},
+          "total_consolation": {"anyOf": [{"$ref": "#/components/schemas/Pieces"}, {"type": "null"}], "description": "Total agrégé UNIQUEMENT. Le détail par joueur n'est jamais publié."},
+          "amendes_liquidees": {"type": "array", "items": {"$ref": "#/components/schemas/AmendeLiquidee"}},
+          "bonus_epices_verse": {"type": "boolean", "description": "Indique qu'au moins un MARCHAND_EPICES a touché son bonus, sans jamais nommer qui : le rôle est secret (étape 10)."}
+        }
+      },
+      "EvtSoldeMisAJour": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "proprietaire",
+        "x-destinataires": "Le propriétaire du solde, et lui seul.",
+        "x-justification-visibilite": "ADR-CP-05 : un solde public permettrait de déduire le paiement secret par différence. CA-36 : le message qui porte un solde ne contient QUE le solde du destinataire et SES propres mouvements. Il n'existe aucune variante listant les soldes de plusieurs joueurs.",
+        "description": "US-13. Seul vecteur par lequel un joueur apprend sa consolation, son bonus d'épices, son amende ou son prélèvement de prêt.",
+        "required": ["solde_pieces", "derniers_mouvements"],
+        "properties": {
+          "solde_pieces": {"$ref": "#/components/schemas/Pieces"},
+          "derniers_mouvements": {"$ref": "#/components/schemas/PageMouvements"}
+        }
+      },
+      "EvtDernierVoeuPropose": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "proprietaire",
+        "x-destinataires": "Chaque marchand individuellement.",
+        "x-justification-visibilite": "RG-52 : le Vœu de liberté est proposé EN PRIVÉ à chaque marchand. La proposition étant identique pour tous, elle reste néanmoins projetée individuellement — et surtout, aucune réponse d'autrui n'y figure.",
+        "description": "US-14. Phase DV_PROPOSITION.",
+        "required": ["montant_propose", "phase_fin_at"],
+        "properties": {
+          "montant_propose": {"$ref": "#/components/schemas/Pieces"},
+          "phase_fin_at": {"$ref": "#/components/schemas/Horodatage"}
+        }
+      },
+      "EvtDernierVoeuResolu": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs.",
+        "x-justification-visibilite": "RG-54 / CA-39 : sont publics le NOMBRE de signataires et la conséquence appliquée. L'identité des signataires n'est révélée qu'à l'écran de scores finaux. Ce message ne porte donc aucun identifiant de signataire, ni aucun montant individuel de sanction.",
+        "required": ["nb_signataires", "consequence", "genie_libere"],
+        "properties": {
+          "nb_signataires": {"type": "integer", "minimum": 0},
+          "consequence": {"type": "string", "enum": ["AUCUN_SIGNATAIRE", "SIGNATAIRE_UNIQUE_RECOMPENSE", "CONTRAT_CONTESTE"], "description": "Clé technique neutre ; le libellé vit dans le fichier de contenu du client."},
+          "genie_libere": {"type": "boolean"}
+        }
+      },
+      "EvtScoresFinaux": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs.",
+        "x-justification-visibilite": "RG-58 : l'écran de scores finaux est le SEUL moment où tous les secrets deviennent publics — rôles, missions et leur réussite, paiements réels de chaque manche, signataires du Dernier Vœu. Une seule exception maintenue : l'identité du porteur de clause reste non révélée (matrice_visibilite : jamais en v1). C'est le seul message de classe tous qui contienne des données auparavant secrètes, et il n'est émis que dans l'état SCORES.",
+        "description": "US-15. Permet de vérifier a posteriori qui a menti et de constater que le génie ne pouvait pas tricher.",
+        "required": ["classement", "vainqueurs", "genie_libere", "paiements_historiques"],
+        "properties": {
+          "classement": {
+            "type": "array",
+            "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["joueur_id", "pseudo", "pieces_restantes", "score_final", "role_secret", "mission_reussie"],
+              "properties": {
+                "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+                "pseudo": {"type": "string"},
+                "pieces_restantes": {"$ref": "#/components/schemas/Pieces"},
+                "score_final": {"type": "integer"},
+                "role_secret": {"$ref": "#/components/schemas/CleRole"},
+                "mission_secrete": {"anyOf": [{"$ref": "#/components/schemas/CleMission"}, {"type": "null"}]},
+                "mission_reussie": {"type": "boolean"},
+                "a_signe_dernier_voeu": {"type": ["boolean", "null"], "description": "RG-58 : révélé ici, et nulle part avant."},
+                "rang": {"type": "integer", "minimum": 1}
+              }
+            }
+          },
+          "vainqueurs": {"type": "array", "items": {"$ref": "#/components/schemas/Identifiant"}, "description": "Plusieurs en cas d'ex aequo après départage par pieces_restantes (RG-57). Un seul, le MARCHAND_DEJA_LIE, si genie_libere est vrai (RG-56)."},
+          "victoire_par_liberation": {"type": "boolean"},
+          "genie_libere": {"type": "boolean"},
+          "paiements_historiques": {
+            "type": "array",
+            "description": "RG-58 : tous les paiements réels de toutes les manches, enfin publics.",
+            "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["numero_manche", "joueur_id", "montant_declare", "montant_paye"],
+              "properties": {
+                "numero_manche": {"type": "integer", "minimum": 1},
+                "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
+                "montant_declare": {"$ref": "#/components/schemas/Pieces"},
+                "montant_paye": {"$ref": "#/components/schemas/Pieces"}
+              }
+            }
+          }
+        }
+      },
+      "EvtPartieAbandonnee": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs.",
+        "x-justification-visibilite": "Information publique. Aucun secret n'est révélé par un abandon : la SPEC réserve la révélation à l'écran de scores d'une partie TERMINEE. Le compteur du groupe n'est pas incrémenté (RG-59, CA-48).",
+        "required": ["motif"],
+        "properties": {
+          "motif": {"type": "string", "enum": ["ABANDON_HOTE", "INACTIVITE_DEPASSEE"]},
+          "compteur_groupe_incremente": {"type": "boolean", "const": false}
+        }
+      },
+      "EvtGroupeMisAJour": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "hote",
+        "x-destinataires": "Le seul joueur portant est_hote.",
+        "x-justification-visibilite": "US-18 / CA-47. L'état du groupe appartient au porteur du jeton de groupe, c'est-à-dire à l'hôte. C'est la seule donnée du produit relevant de la classe hote. Aucun autre joueur n'a de raison de connaître l'historique de parties du groupe de l'hôte.",
+        "description": "Émis au passage en TERMINEE, quand parties_terminees est incrémenté.",
+        "required": ["groupe"],
+        "properties": {"groupe": {"$ref": "#/components/schemas/EtatGroupe"}}
+      }
+    }
+  },
+
+  "x-ruptures-de-compatibilite": []
+}

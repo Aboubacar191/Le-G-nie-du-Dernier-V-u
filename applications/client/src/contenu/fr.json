@@ -1,0 +1,149 @@
+{
+  "_regle": "RG-61 / ESC-01 : le serveur n'émet AUCUN libellé affichable, seulement des clés techniques et des valeurs numériques. Ce fichier est le SEUL endroit où le texte français existe. Clés exhaustives et exactes ; valeurs à écrire au nœud S5, après clôture d'ESC-01. Une valeur vide est un trou visible, pas un défaut caché.",
+  "phase": {
+    "VOEU": "",
+    "NEGOCIATION": "",
+    "DECLARATION_PAIEMENT": "",
+    "REVELATION": "",
+    "ENQUETES_ACCUSATIONS": "",
+    "EXECUTION": "",
+    "DV_PROPOSITION": "",
+    "DV_DEBAT": "",
+    "DV_SIGNATURE": "",
+    "DV_RESOLUTION": ""
+  },
+  "etat_partie": {
+    "CREEE": "",
+    "SALLE_ATTENTE": "",
+    "PLACEMENT": "",
+    "DISTRIBUTION": "",
+    "MANCHE_EN_COURS": "",
+    "DERNIER_VOEU": "",
+    "SCORES": "",
+    "TERMINEE": "",
+    "ABANDONNEE": ""
+  },
+  "role": {
+    "INSPECTEUR_TRESOR": "",
+    "FAISEUR_CONTRATS": "",
+    "PRETEUR": "",
+    "MARCHAND_EPICES": "",
+    "MARCHAND_DEJA_LIE": ""
+  },
+  "role_description": {
+    "INSPECTEUR_TRESOR": "",
+    "FAISEUR_CONTRATS": "",
+    "PRETEUR": "",
+    "MARCHAND_EPICES": "",
+    "MARCHAND_DEJA_LIE": ""
+  },
+  "mission": {
+    "LE_MAGNAT": "",
+    "LE_FAUSSAIRE": "",
+    "LE_JUSTICIER": "",
+    "LE_BATISSEUR": "",
+    "LE_SABOTEUR": "",
+    "GARDIEN_DE_LA_LAMPE": ""
+  },
+  "mission_description": {
+    "LE_MAGNAT": "",
+    "LE_FAUSSAIRE": "",
+    "LE_JUSTICIER": "",
+    "LE_BATISSEUR": "",
+    "LE_SABOTEUR": "",
+    "GARDIEN_DE_LA_LAMPE": ""
+  },
+  "clause": {
+    "GENIE_GARDE_UN_TIERS": "",
+    "TRESOR_DES_HONNETES": "",
+    "LE_PLUS_GENEREUX": "",
+    "CONSOLATION": "",
+    "PRIME_AU_DELATEUR": ""
+  },
+  "clause_description": {
+    "GENIE_GARDE_UN_TIERS": "",
+    "TRESOR_DES_HONNETES": "",
+    "LE_PLUS_GENEREUX": "",
+    "CONSOLATION": "",
+    "PRIME_AU_DELATEUR": ""
+  },
+  "gabarit": {
+    "ECART_TOTAL": "",
+    "COMPTAGE": "",
+    "VOISINAGE": "",
+    "EXONERATION": "",
+    "COMPARAISON": "",
+    "PASSE": ""
+  },
+  "verdict": {
+    "MENTEUR": "",
+    "HONNETE": ""
+  },
+  "statut_pret": {
+    "PROPOSE": "",
+    "REFUSE": "",
+    "ACTIF": "",
+    "SOLDE": "",
+    "EXPIRE": ""
+  },
+  "motif_mouvement": {
+    "dotation_initiale": "",
+    "paiement_voeu": "",
+    "part_recompense": "",
+    "bonus_epices": "",
+    "amende_recue": "",
+    "amende_payee": "",
+    "penalite_fausse_accusation_payee": "",
+    "penalite_fausse_accusation_recue": "",
+    "cout_enquete": "",
+    "transfert_emis": "",
+    "transfert_recu": "",
+    "pret_emis": "",
+    "pret_recu": "",
+    "remboursement_pret": "",
+    "consolation": "",
+    "signature_dernier_voeu": "",
+    "sanction_contrat_conteste": ""
+  },
+  "code_erreur": {
+    "ACTION_HORS_PHASE": "",
+    "ACTION_NON_AUTORISEE_ROLE": "",
+    "ACTION_RESERVEE_HOTE": "",
+    "SOLDE_INSUFFISANT": "",
+    "QUOTA_DEPASSE": "",
+    "JETON_INVALIDE": "",
+    "JETON_ABSENT": "",
+    "USURPATION_IDENTITE": "",
+    "SESSION_PLEINE": "",
+    "EFFECTIF_INSUFFISANT": "",
+    "SESSION_INTROUVABLE": "",
+    "CODE_ADHESION_INVALIDE": "",
+    "ORDRE_PLACES_INVALIDE": "",
+    "CIBLE_INVALIDE": "",
+    "MONTANT_INVALIDE": "",
+    "DECLARATION_REQUISE": "",
+    "DEJA_SOUMIS": "",
+    "PSEUDO_INDISPONIBLE": "",
+    "MODE_AVANCE_INACTIF": "",
+    "ETAT_PARTIE_INCOMPATIBLE": "",
+    "MESSAGE_MALFORME": "",
+    "COMMANDE_INCONNUE": "",
+    "TROP_DE_REQUETES": "",
+    "ERREUR_INTERNE": ""
+  },
+  "action": {
+    "authentifier": "",
+    "definir_ordre_places": "",
+    "demarrer_partie": "",
+    "avancer_phase": "",
+    "transferer_pieces": "",
+    "proposer_pret": "",
+    "repondre_pret": "",
+    "declarer_contribution": "",
+    "payer_secret": "",
+    "lancer_enquete": "",
+    "accuser": "",
+    "signer_dernier_voeu": "",
+    "abandonner_partie": ""
+  }
+}

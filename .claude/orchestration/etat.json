@@ -1,0 +1,179 @@
+{
+  "projet": "Le Génie du Dernier Vœu — backend + PWA (v1 prototype)",
+  "racine": "D:\\Le Génie du Dernier Vœu",
+  "cree_le": "2026-10-27",
+  "mis_a_jour_le": "2026-10-27T00:00:00Z",
+  "plafond_iterations": 3,
+  "noeuds": [
+    {
+      "id": "S1",
+      "nom": "SPEC",
+      "agent": "chef-de-projet",
+      "dependances": [],
+      "statut": "VALIDE",
+      "iteration": 1,
+      "validation": "node valider-contrat.mjs SPEC => CONFORME. 73 règles de gestion, 50 critères d'acceptation testables, matrice de visibilité des secrets, 2 machines à états, pipeline d'exécution à 17 étapes ordonnées, 15 points déduits tracés.",
+      "livrables": [
+        "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\SPEC-GDV-001.json"
+      ]
+    },
+    {
+      "id": "S2",
+      "nom": "DESIGN",
+      "agent": "ux-ui-designer",
+      "dependances": ["S1"],
+      "statut": "VALIDE",
+      "iteration": 1,
+      "validation": "Contrôle de livraison indépendant : validateur DESIGN CONFORME ; 32 écrans, 22 composants ; champ jamais_affiche présent sur 32/32 écrans (adossé à matrice_visibilite, ce qui rend chaque écran réfutable) ; 0 valeur littérale de couleur ou de dimension dans composants et ecrans — tout est chemin de token ; 132 ratios de contraste consignés ; les 18 user stories référencées ; les 6 phases de manche couvertes ; les 4 écrans que le prototype n'avait pas et que la SPEC exige sont présents (ordre des places, clause privée, résultat d'enquête, reconnexion). 1 échec de mon comparateur, faux positif : le token statut-avertissement contient la chaîne « vert ».",
+      "controle_prototype": "Les 32 écrans conçus couvrent et dépassent les 15 écrans du prototype. Aucune resynchronisation nécessaire : travailler sans le prototype a produit une couverture plus complète, et a eu l'avantage d'écarter tout risque de contamination thématique.",
+      "perimetre": "Parcours + structure des écrans + tokens NEUTRES (placeholder). Le choix d'univers visuel est explicitement reporté (décision utilisateur ouverte).",
+      "livrables": [
+        "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\DESIGN-GDV-001.json"
+      ]
+    },
+    {
+      "id": "S3",
+      "nom": "ARCHI",
+      "agent": "tech-lead",
+      "dependances": ["S1"],
+      "statut": "VALIDE",
+      "iteration": 1,
+      "validation": "Contrôle de livraison indépendant du chef de projet (script de contrôle, sans se fier au rapport de l'agent) : validateur ARCHI CONFORME, validateur API CONFORME ; 12/12 entités de modele_conceptuel au schéma de données (+1 ajoutée : journal_commandes) ; 30 schémas d'événement, 30/30 porteurs de x-visibilite, 5 classes de destinataire ; 13 commandes client, aucune n'expose exécution/révélation/distribution (CA-50 tenu) ; extension x-temps-reel présente ; 6 routes REST ; 16 ADR ; balayage de non-fuite sur les 16 événements de classe tous : aucune fuite réelle, 3 faux positifs de mes motifs tous justifiés (RG-20, RG-54, RG-58).",
+      "apport_non_demande": "Le tech-lead a relevé un trou dans la SPEC (consolation individuelle) et a refusé de publier la donnée. SPEC corrigée à la source, conflits CONF-02 et CONF-03 journalisés.",
+      "perimetre": "Stack, transport temps réel, persistance, structure mono-repo, schéma de données, ET contrat de protocole client/serveur (frontière de secret).",
+      "livrables": [
+        "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\ARCHI-GDV-001.json",
+        "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\API-GDV-001.json"
+      ]
+    },
+    {
+      "id": "S3B",
+      "nom": "SCAFFOLD",
+      "agent": "ingenieur-devops",
+      "dependances": ["S3"],
+      "statut": "EN_COURS",
+      "iteration": 1,
+      "perimetre": "git init, squelette mono-repo, outillage (TS, lint, tests), paquet partagé de types/config, portes de qualité dont outils/verifier-visibilite.mjs. Aucune logique de jeu.",
+      "livrables": [
+        "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\SCAFFOLD-GDV-001.json"
+      ]
+    },
+    {
+      "id": "S4",
+      "nom": "BACKEND",
+      "agent": "dev-backend",
+      "dependances": ["S3", "S3B"],
+      "statut": "EN_ATTENTE",
+      "iteration": 0,
+      "perimetre": "Moteur de jeu complet + serveur temps réel + projections par destinataire. Secrets strictement serveur.",
+      "livrables": [
+        "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\RAPPORT-BACKEND-001.json"
+      ]
+    },
+    {
+      "id": "S5",
+      "nom": "FRONTEND",
+      "agent": "dev-frontend",
+      "dependances": ["S2", "S3", "S4"],
+      "statut": "EN_ATTENTE",
+      "iteration": 0,
+      "perimetre": "PWA : création/rejoint session, salle d'attente, 6 phases de manche, fin de partie. Styles placeholder.",
+      "livrables": [
+        "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\RAPPORT-FRONTEND-001.json"
+      ]
+    },
+    {
+      "id": "S6",
+      "nom": "QA",
+      "agent": "ingenieur-qa",
+      "dependances": ["S4", "S5"],
+      "statut": "EN_ATTENTE",
+      "iteration": 0,
+      "perimetre": "Non-fuite des secrets, matrice de gains, machine à états de la manche.",
+      "livrables": [
+        "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\QA-GDV-001.json"
+      ]
+    },
+    {
+      "id": "S7",
+      "nom": "DEPLOIEMENT",
+      "agent": "ingenieur-devops",
+      "dependances": ["S6"],
+      "statut": "NON_RETENU",
+      "iteration": 0,
+      "justification_exclusion": "Le client demande explicitement 6 livrables : cadrage, fondation, scaffolding, backend, PWA, QA. Aucun déploiement n'est demandé. Le nœud reste déclaré pour reprise ultérieure."
+    }
+  ],
+  "parallelisations": [
+    {
+      "noeuds": ["S2", "S3"],
+      "raison": "Aucune dépendance mutuelle : le design ne contraint pas la stack, la stack ne contraint pas le parcours."
+    }
+  ],
+  "sequentialisations_imposees": [
+    {
+      "noeuds": ["S4", "S5"],
+      "raison": "Arbitrage priorité : fiabilité (2) > délai (4). Le frontend doit intégrer contre un serveur réellement lancé, pas contre un simulacre, sous peine de divergence détectée seulement en S6."
+    }
+  ],
+  "journal": [
+    {
+      "horodatage": "2026-10-27T00:00:00Z",
+      "evenement": "Graphe initialisé. S1 passé EN_COURS (livrable propre du chef de projet)."
+    },
+    {
+      "horodatage": "2026-10-27T00:10:00Z",
+      "evenement": "S1 VALIDE (validateur CONFORME). S2 et S3 dispatchés en parallèle."
+    },
+    {
+      "horodatage": "2026-10-27T00:20:00Z",
+      "evenement": "Précision utilisateur en cours de cycle : le concept docx a été simplifié par le PDF de Game Design. Vérifié : la SPEC est bâtie sur la bonne source (le PDF). Aucune reprise de SPEC nécessaire. Hiérarchie des sources inscrite au registre.",
+      "impact_graphe": "nul"
+    },
+    {
+      "horodatage": "2026-10-27T00:25:00Z",
+      "evenement": "Découverte en local du prototype mobile des 15 écrans, que le brief S2 déclarait inaccessible. 15 écrans extraits et décodés dans reference-prototype/. Arbitrage CONF-01 : adopté en version dégradée (structure et interaction oui, peau visuelle non).",
+      "consequence_procedurale": "Aucun canal de message vers un agent déjà en cours d'exécution n'est disponible. La correction ne passe donc pas par une interruption mais par le contrôle de livraison : à la livraison de DESIGN-GDV-001.json, son inventaire d'écrans sera confronté aux 15 écrans éprouvés. S2 ne sera repassé en A_RESYNCHRONISER qu'en cas d'écart réel, pas par principe. Le nœud S5 recevra le prototype dès son brief initial, là où la valeur de structure compte le plus."
+    },
+    {
+      "horodatage": "2026-10-27T00:26:00Z",
+      "evenement": "Erreur d'orchestration de ma part, consignée : un agent de type fork a été lancé par méprise avec une consigne vide, en tentant de notifier S2. Sans effet sur les livrables, mais c'est un démarrage à froid gaspillé.",
+      "impact_graphe": "nul"
+    },
+    {
+      "horodatage": "2026-10-27T00:30:00Z",
+      "evenement": "Confirmé : l'utilisateur a lui-même déposé les trois documents sources dans la racine du projet (prototype HTML à 15:19). Chemins du registre corrigés vers les copies internes au dépôt."
+    },
+    {
+      "horodatage": "2026-10-27T00:55:00Z",
+      "evenement": "S3 livré puis VALIDE après contrôle de livraison indépendant. api_version fixée à 1.0.0. Stack inscrite au registre.",
+      "correction_amont": "Le contrôle a révélé un défaut de MA spécification (publication des consolations individuelles). SPEC portée en 1.1.0 : RG-74 et RG-75 ajoutées, étape 16 du pipeline affinée, 3 entrées ajoutées à matrice_visibilite. Revalidée CONFORME. Conflits CONF-02 et CONF-03 journalisés au registre.",
+      "consequence_graphe": "Aucun nœud à resynchroniser : S2 ne dépend pas de ces règles (elles ne changent aucun écran, seulement ce que le serveur publie), et S4, S5, S6 ne sont pas encore dispatchés — ils recevront la SPEC 1.1.0 d'emblée."
+    },
+    {
+      "horodatage": "2026-10-27T01:00:00Z",
+      "evenement": "S3B dispatché (scaffolding). Exigence ajoutée au brief : l'outil outils/verifier-visibilite.mjs, nommément requis par l'ARCHI, qui vérifie mécaniquement x-visibilite du contrat API contre matrice_visibilite de la SPEC. C'est ce qui fait passer la non-fuite du déclaratif au vérifiable."
+    },
+    {
+      "horodatage": "2026-10-27T01:20:00Z",
+      "evenement": "S2 livré puis VALIDE après contrôle de livraison indépendant.",
+      "correction_amont": "Deuxième tour de corrections de MA spécification, portée en 1.2.0 : RG-58 réécrite en liste fermée (la formulation « tout devient public » invitait l'aval à divulguer), RG-76 (un abandon ne révèle rien), RG-77 (états masqués indiscernables entre joueurs), RG-78 (aucun clavier numérique), RG-79 (décalage d'horloge). Revalidée CONFORME. Conflits CONF-04, CONF-05, CONF-06 journalisés ; dettes DETTE-01 et DETTE-02 inscrites.",
+      "arbitrage_de_refus": "CONF-06 : j'ai REFUSÉ les deux modifications de contrat demandées par le designer au tech-lead, après vérification dans le contrat API et non par supposition. Le décalage d'horloge y était déjà prescrit ; l'uniformité de la carte de clause ne nécessite aucune trame puisqu'une clause est tirée à chaque manche par règle. Ratio 0,5 : refusé, motif écrit. S3 n'est pas resynchronisé.",
+      "consequence_graphe": "S2 et S3 VALIDE. S4 reste bloqué par S3B, seule dépendance manquante."
+    }
+  ],
+  "controles_de_livraison_programmes": [
+    {
+      "noeud": "S2",
+      "controle": "Confronter l'inventaire des écrans de DESIGN-GDV-001.json aux 15 écrans de reference-prototype/INVENTAIRE.json. Vérifier en particulier la présence des écrans que le prototype N'A PAS et que la SPEC exige : saisie de l'ordre des places (RG-06), réception privée de la clause (RG-18), résultat privé d'enquête, états de déconnexion et de reconnexion (CA-42)."
+    },
+    {
+      "noeud": "S2",
+      "controle": "Vérifier qu'aucun écran n'affiche une donnée interdite à son destinataire par matrice_visibilite, et que la saisie du paiement secret traite le regard du voisin — canal de fuite que le prototype laisse ouvert."
+    },
+    {
+      "noeud": "S3",
+      "controle": "Vérifier que les 12 entités de modele_conceptuel sont toutes au schéma de données, que les 35 besoins de besoins_protocole sont couverts, et que chaque message serveur vers client porte x-visibilite."
+    }
+  ]
+}

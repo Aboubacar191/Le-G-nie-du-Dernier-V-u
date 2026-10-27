@@ -1,0 +1,888 @@
+{
+  "id": "ARCHI-GDV-001",
+  "titre": "Le Génie du Dernier Vœu — fondation technique, modèle de données et standards imposés",
+  "version": "1.0.0",
+  "auteur": "tech-lead",
+  "date": "2026-10-27",
+  "spec_source": "SPEC-GDV-001.json (v1.0.0). En cas de divergence, la SPEC prime sur les règles de jeu ; le présent contrat prime sur tout choix technique.",
+  "contrat_protocole": "API-GDV-001.json — contrat unique backend / frontend / QA. Le code n'est jamais la source de vérité.",
+
+  "exigences_non_fonctionnelles_retenues": [
+    {"axe": "securite", "rang": 1, "exigence": "RG-01 / RG-71 / RG-73 — aucun message sortant ne contient un secret dont le destinataire n'est pas propriétaire ; aucune diffusion d'état global ; l'autorisation est exclusivement serveur ; un client modifié n'obtient aucun effet interdit.", "consequence_architecturale": "La projection par destinataire est un module PUR du moteur, pas un filtre du transport. Le transport n'expose aucune primitive de diffusion."},
+    {"axe": "fiabilite", "rang": 2, "exigence": "RG-40 (17 étapes ordonnées), RG-41 (aucun solde négatif), RG-42 (solde = somme des mouvements), 50 critères d'acceptation, verification_matrice_gains figée.", "consequence_architecturale": "Moteur pur, déterministe, sans E/S, aléa et horloge injectés ; arithmétique entière exclusivement ; journal de commandes rejouable pour survivre à un redémarrage en pleine partie."},
+    {"axe": "performance", "rang": 3, "exigence": "Phases de 20 s à 120 s, 8 clients, simultanéité des déclarations (RG-31) ; le serveur est l'unique horloge (RG-72).", "consequence_architecturale": "Transport poussé (WebSocket) et non sondé ; une projection par destinataire sur 8 destinataires maximum, coût négligeable ; ordonnanceur de phases unique côté serveur."},
+    {"axe": "delai", "rang": 4, "exigence": "Prototype v1, aucune date imposée.", "consequence_architecturale": "Aucune brique n'entre si elle n'est pas portée par une exigence ci-dessus. Langage unique sur les trois paquets pour supprimer la double définition des contrats."},
+    {"axe": "esthetique", "rang": 5, "exigence": "ESC-01 ouverte (univers non tranché), ADR-CP-03 (jetons sémantiques neutres), RG-61 (libellés hors moteur).", "consequence_architecturale": "Aucun libellé affiché ni couleur signée ne quitte le serveur : le serveur émet des clés techniques et des valeurs, le client rend le texte."}
+  ],
+
+  "stack": {
+    "runtime": "Node.js 24.18.1 (version mesurée sur le poste) — LTS, ligne 24",
+    "langage": "TypeScript 5.x, mode strict, ESM, sur les quatre paquets (partagé, moteur, serveur, client)",
+    "backend_http": "Fastify 5.x",
+    "backend_temps_reel": "ws 8.x (WebSocket brut, RFC 6455) — aucune bibliothèque de diffusion",
+    "validation_messages": "Zod 3.x dans le paquet partagé — un schéma par commande, strict (additionalProperties refusées)",
+    "persistance": "SQLite via le module intégré node:sqlite (DatabaseSync), fichier unique, journal WAL, foreign_keys=ON",
+    "frontend": "Vue 3.5 + Vite 6 + TypeScript, PWA via vite-plugin-pwa (Workbox)",
+    "tests": "node:test (intégré) + c8 pour la couverture + fast-check pour les tests de propriété sur la projection",
+    "qualite": "ESLint 9 (config plate) + typescript-eslint + dependency-cruiser (règles de couches)",
+    "mono_repo": "npm workspaces (intégré à npm, aucun orchestrateur supplémentaire)",
+    "hebergement": "HORS PÉRIMÈTRE (ADR-CP-02, nœud S7 non retenu). Une seule contrainte est imposée dès maintenant : voir standards.transport_chiffre.",
+    "_mesures_faites": "node:sqlite exécuté sur ce poste : DatabaseSync fonctionnel, PRAGMA journal_mode=WAL accepté sur fichier, 2000 insertions transactionnelles en 189 ms. Aucune compilation native requise sous Windows.",
+    "_non_mesure": "Les budgets de contraintes_perf sont des cibles à instrumenter par le QA, pas des mesures."
+  },
+
+  "standards": {
+    "style_api": "REST minimal pour l'amorçage + WebSocket pour le jeu",
+    "_justification_style_api": "Le jeu est une machine à états poussée par le serveur : une phase se termine sur expiration d'un minuteur serveur (RG-72), une déclaration est publiée à toute la table dès sa soumission (RG-31). Un modèle requête/réponse imposerait un sondage de 8 clients, ajouterait une latence d'un intervalle de sondage sur la simultanéité des déclarations et émettrait des réponses identiques pour 95 % des appels. Le besoin de poussée est fonctionnel, pas esthétique. REST ne subsiste que pour ce qui doit fonctionner AVANT l'existence d'un jeton de session (création, adhésion, aperçu, configuration) et pour la sonde de santé. GraphQL est refusé : aucune sur-récupération constatée, clients homogènes (une seule PWA), et un moteur de résolution générique est précisément la brique qui rendrait une fuite de champ possible par composition de requête.",
+    "format_contrat": "OpenAPI 3.1 JSON — API-GDV-001.json. Les messages temps réel y sont décrits dans components.schemas et l'extension x-temps-reel. Le paquet partagé importe ce fichier ; le code ne redéfinit aucun message.",
+    "identifiants": "UUIDv4 en chaîne, généré par crypto.randomUUID() (intégré), pour TOUTES les clés primaires. Aucun entier auto-incrémenté exposé.",
+    "_justification_identifiants": "Les identifiants de joueur circulent dans des messages publics et le jeton de groupe persiste sur l'appareil de l'hôte au-delà d'une partie. Un entier séquentiel divulguerait l'ordre d'arrivée et rendrait énumérables les sessions et les groupes d'un même serveur. UUIDv4 est fourni par le runtime, sans dépendance. Coût accepté : clés de 36 octets et absence de localité d'index — négligeable au volume de ce projet (voir contraintes_perf).",
+    "code_adhesion": "6 caractères tirés de l'alphabet sans ambiguïté ABCDEFGHJKLMNPQRSTUVWXYZ23456789 (ni I, ni O, ni 0, ni 1), tirés par crypto.randomBytes avec rejet du biais modulo. Unique parmi les sessions NON terminées uniquement (index unique partiel). Réutilisable après TERMINEE ou ABANDONNEE.",
+    "format_date": "ISO 8601 avec fuseau explicite, toujours UTC, sur le fil (exemple : 2026-10-27T18:40:00.000Z). Stockage en base : entier, millisecondes depuis l'époque Unix. Aucune date locale n'est jamais persistée ni transmise.",
+    "casse_json": "snake_case pour toutes les propriétés de messages et toutes les colonnes SQL",
+    "casse_code": "camelCase pour les variables et fonctions TypeScript, PascalCase pour les types et classes, SCREAMING_SNAKE_CASE pour les clés d'énumération métier (PHASE, ETAT_PARTIE, ROLE, MISSION, CLAUSE, MOTIF, VERDICT) — ces clés sont identiques en base, sur le fil et dans le code.",
+    "nommage_messages": "Valeur du champ type sur le fil : snake_case (declarer_contribution, declaration_publiee). Nom du schéma OpenAPI : CmdXxx pour client vers serveur, EvtXxx pour serveur vers client. Aucune autre forme n'est admise.",
+    "pagination": "Curseur opaque + limite. Limite par défaut 50, maximum 200. Obligatoire sur mouvements_pieces et journal_commandes. Toute liste potentiellement non bornée dans un message sortant est paginée ou tronquée avec un champ booléen tronque.",
+    "enveloppe_erreur": {
+      "forme": {"code": "string (énumération fermée, voir codes_erreur)", "message": "string (français, destiné à l'affichage, sans donnée secrète)", "details": "object optionnel, jamais de valeur secrète", "id_correlation": "string uuid optionnel, présent si l'erreur répond à une commande"},
+      "portee": "Identique en REST (corps de toute réponse 4xx/5xx) et en temps réel (événement de type erreur). Une seule forme pour toute la frontière."
+    },
+    "codes_erreur": [
+      "ACTION_HORS_PHASE", "ACTION_NON_AUTORISEE_ROLE", "ACTION_RESERVEE_HOTE", "SOLDE_INSUFFISANT",
+      "QUOTA_DEPASSE", "JETON_INVALIDE", "JETON_ABSENT", "USURPATION_IDENTITE", "SESSION_PLEINE",
+      "EFFECTIF_INSUFFISANT", "SESSION_INTROUVABLE", "CODE_ADHESION_INVALIDE", "ORDRE_PLACES_INVALIDE",
+      "CIBLE_INVALIDE", "MONTANT_INVALIDE", "DECLARATION_REQUISE", "DEJA_SOUMIS", "PSEUDO_INDISPONIBLE",
+      "MODE_AVANCE_INACTIF", "ETAT_PARTIE_INCOMPATIBLE", "MESSAGE_MALFORME", "COMMANDE_INCONNUE",
+      "TROP_DE_REQUETES", "ERREUR_INTERNE"
+    ],
+    "montants": "Entier de pièces exclusivement. Aucun flottant ne traverse le moteur, la base ou le fil. Les fractions du jeu sont représentées en rationnels [numerateur, denominateur] : fraction_retenue_genie [1,3], fraction_consolation [1,2], taux_interet_pret [1,2] (valeur numériquement identique au 0,5 de la SPEC — représentation changée, valeur inchangée). Les arrondis sont explicites : plancher(a*n/d) et plafond(a*n/d) sont deux fonctions entières nommées du paquet moteur/monnaie, utilisées à chaque étape du pipeline.",
+    "transport_chiffre": "OBLIGATOIRE : https:// et wss:// en toute circonstance, y compris en playtest sur réseau local. Le serveur refuse de démarrer en mode production sans TLS. Justification par exigence, pas par principe : le jeton de session vaut accès total aux secrets de son propriétaire (matrice_visibilite, dernière entrée) ; en clair sur un Wi-Fi partagé par 8 joueurs assis dans la même pièce, l'écoute passive d'un jeton contourne RG-01 sans qu'aucune ligne de code du moteur ne soit en cause. L'obtention du certificat relève du nœud S7 ; l'exigence, elle, est posée ici.",
+    "taille_max_message_octets": 4096,
+    "_justification_taille": "Aucune commande légitime ne dépasse 300 octets (la plus grosse est definir_ordre_places avec 8 UUID). Le plafond coupe l'inondation mémoire par un client modifié avant toute désérialisation.",
+    "limitation_debit": {"commandes_temps_reel": "20 commandes par fenêtre glissante de 10 s par connexion, puis TROP_DE_REQUETES ; 3 dépassements consécutifs ferment la connexion", "adhesion_rest": "10 tentatives par minute et par adresse IP sur POST /sessions/{code_adhesion}/joueurs et GET /sessions/{code_adhesion}/apercu", "creation_rest": "5 sessions par minute et par adresse IP"},
+    "journalisation": "Les journaux applicatifs passent par un rédacteur qui supprime toute clé listée dans CHAMPS_SECRETS du paquet partagé. Aucun jeton, aucun montant payé, aucun rôle, aucune mission, aucune clause, aucune graine d'aléa ne peut apparaître dans un log, à aucun niveau, y compris en mode débogage.",
+    "versionnement_protocole": "Le champ info.version de API-GDV-001.json fait foi. Le client envoie version_protocole dans la commande authentifier ; une version majeure différente est refusée avec ETAT_PARTIE_INCOMPATIBLE plutôt que de laisser une partie se dérouler sur deux formats."
+  },
+
+  "seuils_qualite": {
+    "couverture_couche_metier": 95,
+    "_justification_couverture_couche_metier": "La couche métier est ici le paquet moteur : logique pure, déterministe, sans E/S, sans horloge, sans aléa non injecté. Le coût d'un test y est celui d'un appel de fonction — aucun simulacre, aucun serveur, aucune base. Le seuil usuel de 85 % est calibré pour du code mêlé d'infrastructure ; il serait ici un aveu de paresse. La priorité 2 est la fiabilité et le moteur est l'arbitre unique d'une partie en présentiel : il n'existe aucun recours humain pour corriger un calcul faux pendant la partie, et la section verification_matrice_gains de la SPEC fait du résultat numérique un invariant, pas une préférence. 95 % de lignes ET de branches sur le paquet moteur.",
+    "couverture_projection_lignes": 100,
+    "couverture_projection_branches": 100,
+    "_justification_couverture_projection": "Le module moteur/projection est la frontière de sécurité (RG-01, priorité 1). Chaque branche non exécutée y est un chemin par lequel un secret peut sortir sans qu'aucun test ne l'ait vu. 100 % est atteignable parce que le module est pur et que le produit (classe de destinataire × type d'événement) est fini et énuméré dans API-GDV-001.json.",
+    "couverture_globale_plancher": 70,
+    "complexite_cyclomatique_max": 10,
+    "longueur_fonction_max": 50,
+    "profondeur_imbrication_max": 3,
+    "taille_fichier_max_lignes": 300,
+    "vulnerabilites_tolerees": {"critique": 0, "haute": 0, "moyenne": "à arbitrer par le tech-lead et consigner dans dette_assumee avec sa date"},
+    "commandes_de_verification": [
+      "npm run verifier — enchaîne les sept portes ci-dessous et échoue à la première",
+      "npm run lint — ESLint 9, règles complexity, max-lines-per-function, max-depth, max-lines, no-restricted-syntax",
+      "npm run types — tsc --noEmit sur les quatre paquets, strict et noUncheckedIndexedAccess",
+      "npm run verifier:couches — dependency-cruiser, règles de couches ci-dessous",
+      "npm run test -- --experimental-test-coverage — node:test sur les quatre paquets",
+      "npm run couverture — c8 check-coverage, seuils par paquet (moteur 95, moteur/projection 100, global 70)",
+      "npm audit --audit-level=high — 0 critique, 0 haute",
+      "node ~/.claude/equipe/outils/scanner-secrets.mjs . — aucun secret en dur"
+    ],
+    "interdits_mecaniques": [
+      {"regle": "no-restricted-globals / no-restricted-properties sur paquets/moteur : Math.random, Date.now, new Date() sans argument, process, crypto sont interdits", "empeche": "Un moteur non déterministe, donc des tests non reproductibles et un rejeu de journal faux."},
+      {"regle": "no-restricted-imports sur paquets/moteur : tout module node: et toute dépendance externe hors @gdv/partage sont interdits", "empeche": "Une E/S qui s'infiltre dans la couche pure et rend le moteur non testable sans serveur."},
+      {"regle": "no-magic-numbers sur paquets/moteur, seuls 0 et 1 autorisés", "empeche": "CA-46 : un paramètre d'équilibrage codé en dur au lieu d'être lu dans la configuration (RG-60)."},
+      {"regle": "no-restricted-syntax sur applications/serveur/temps-reel : aucune fonction nommée diffuser, broadcast, emitAll, toAll ne peut être déclarée ; le diffuseur n'expose que envoyerA(joueurId, evenement)", "empeche": "RG-01 : la réapparition d'une diffusion d'état global."},
+      {"regle": "Test mécanique obligatoire : pour chaque schéma EvtXxx de API-GDV-001.json, pour chaque classe de destinataire, la sortie de projeterEvenement ne contient aucune clé listée dans CHAMPS_SECRETS si le destinataire n'en est pas propriétaire. Implémenté en test de propriété (fast-check) sur des états générés aléatoirement.", "empeche": "CA-05, CA-10, CA-36, CA-39, CA-42 : une fuite introduite par un champ ajouté plus tard."},
+      {"regle": "Test mécanique obligatoire : x-visibilite de chaque EvtXxx est cohérent avec matrice_visibilite de la SPEC ; outils/verifier-visibilite.mjs échoue sinon", "empeche": "Une dérive silencieuse entre le contrat et la règle métier."}
+    ],
+    "invariants_testes_obligatoires": [
+      "RG-41 — après chaque transition, pour chaque joueur, solde_pieces >= 0.",
+      "RG-42 — après chaque transition, pour chaque joueur, solde_pieces == somme(mouvements_pieces.delta).",
+      "RG-20 — toute révélation émise est revérifiée vraie contre les montants payés enregistrés, par une fonction distincte de celle qui l'a sélectionnée.",
+      "RG-21 — suspects_restants_apres >= 2 pour toute révélation du catalogue émise.",
+      "RG-18 / CA-13 — les 5 clauses d'une partie sont distinctes.",
+      "RG-04 / CA-06 — 4 rôles tous présents, aucun au-delà de 2 exemplaires, 1 rôle et 1 mission par joueur.",
+      "Déterminisme — deux exécutions du moteur sur la même graine et la même séquence de commandes produisent un état bit-à-bit identique.",
+      "Rejeu — l'état obtenu par rejeu du journal est identique à l'état en mémoire avant arrêt.",
+      "verification_matrice_gains — E[Mensonge] = 6 - 13p et E[Verite] = 3 retrouvées depuis le moteur réel (section figée de la SPEC)."
+    ]
+  },
+
+  "modele_donnees": [
+    {
+      "entite": "groupes",
+      "entite_spec": "Groupe",
+      "volume_attendu": "moyen",
+      "attributs": ["id", "jeton_hote_hache", "parties_terminees", "dernier_voeu_debloque", "cree_le", "derniere_activite_le"],
+      "types": {"id": "TEXT uuid v4, clé primaire", "jeton_hote_hache": "TEXT, SHA-256 en hexadécimal du jeton de groupe de 32 octets", "parties_terminees": "INTEGER >= 0", "dernier_voeu_debloque": "INTEGER 0|1", "cree_le": "INTEGER ms époque UTC", "derniere_activite_le": "INTEGER ms époque UTC"},
+      "cles_etrangeres": [],
+      "index": ["jeton_hote_hache", "derniere_activite_le"],
+      "unicite": ["jeton_hote_hache"],
+      "contraintes": ["parties_terminees >= 0", "dernier_voeu_debloque dérivé : parties_terminees >= config.parties_requises_pour_debloquer_dernier_voeu (RG-50)", "parties_terminees n'est incrémenté qu'au passage en TERMINEE, jamais sur ABANDONNEE (RG-59)"],
+      "champs_secrets": ["jeton_hote_hache"],
+      "_note_secret": "Le jeton de groupe en clair n'est émis qu'une fois, dans la réponse de POST /sessions, au seul hôte. Il n'est jamais stocké en clair ni rejoué."
+    },
+    {
+      "entite": "sessions",
+      "entite_spec": "Session",
+      "volume_attendu": "moyen",
+      "attributs": ["id", "code_adhesion", "groupe_id", "etat_partie", "config_json", "mode_avance_actif", "manche_courante", "graine_alea", "genie_libere", "version_protocole", "sequence_journal", "cree_le", "termine_le"],
+      "types": {"id": "TEXT uuid v4, clé primaire", "code_adhesion": "TEXT 6 caractères majuscules", "etat_partie": "TEXT parmi CREEE, SALLE_ATTENTE, PLACEMENT, DISTRIBUTION, MANCHE_EN_COURS, DERNIER_VOEU, SCORES, TERMINEE, ABANDONNEE", "config_json": "TEXT, configuration effective sérialisée (défauts + surcharges hôte), figée à la création", "mode_avance_actif": "INTEGER 0|1", "manche_courante": "INTEGER 0..nb_manches", "graine_alea": "TEXT, 32 octets hexadécimaux", "genie_libere": "INTEGER 0|1 nullable", "sequence_journal": "INTEGER, dernier numéro de séquence écrit"},
+      "cles_etrangeres": ["groupe_id"],
+      "index": ["groupe_id", "code_adhesion", "etat_partie", "cree_le"],
+      "unicite": [],
+      "unicite_composite": ["UNIQUE(code_adhesion) WHERE etat_partie NOT IN ('TERMINEE','ABANDONNEE') — index unique partiel, traite le cas limite « code collisionnant avec une session active »"],
+      "contraintes": ["manche_courante entre 0 et config.nb_manches", "etat_partie dans l'énumération", "termine_le non nul si et seulement si etat_partie dans (TERMINEE, ABANDONNEE)", "config_json valide contre le schéma de configuration du paquet partagé (RG-60)"],
+      "champs_secrets": ["graine_alea"],
+      "_note_secret": "graine_alea est un secret de premier rang : la connaître avec le journal permet de recalculer rôles, missions, clauses et porteurs. Elle ne figure dans AUCUN message sortant, ni dans aucun journal applicatif."
+    },
+    {
+      "entite": "joueurs",
+      "entite_spec": "Joueur",
+      "volume_attendu": "moyen",
+      "attributs": ["id", "session_id", "pseudo", "jeton_session_hache", "position_cercle", "connecte", "role_secret", "mission_secrete", "solde_pieces", "est_hote", "score_activite", "mission_reussie", "score_final", "est_vainqueur", "rejoint_le", "derniere_activite_le"],
+      "types": {"id": "TEXT uuid v4, clé primaire", "pseudo": "TEXT 1..20 caractères", "jeton_session_hache": "TEXT, SHA-256 hexadécimal d'un jeton de 32 octets", "position_cercle": "INTEGER 1..joueurs_max, nullable avant PLACEMENT", "connecte": "INTEGER 0|1", "role_secret": "TEXT parmi INSPECTEUR_TRESOR, FAISEUR_CONTRATS, PRETEUR, MARCHAND_EPICES, MARCHAND_DEJA_LIE", "mission_secrete": "TEXT parmi LE_MAGNAT, LE_FAUSSAIRE, LE_JUSTICIER, LE_BATISSEUR, LE_SABOTEUR, GARDIEN_DE_LA_LAMPE", "solde_pieces": "INTEGER >= 0", "score_activite": "INTEGER >= 0 (RG-24)", "mission_reussie": "INTEGER 0|1 nullable avant SCORES", "score_final": "INTEGER nullable avant SCORES"},
+      "cles_etrangeres": ["session_id"],
+      "index": ["session_id", "jeton_session_hache", "position_cercle", "connecte"],
+      "unicite": ["jeton_session_hache"],
+      "unicite_composite": ["UNIQUE(session_id, pseudo)", "UNIQUE(session_id, position_cercle) WHERE position_cercle IS NOT NULL", "UNIQUE(session_id) WHERE est_hote = 1"],
+      "contraintes": ["CHECK(solde_pieces >= 0) — RG-41 garanti aussi par la base, pas seulement par le code", "position_cercle forme une permutation complète des joueurs de la session après PLACEMENT (RG-06)", "pseudo unique au sein d'une session ; le même pseudo dans deux sessions distinctes est autorisé (cas limite SPEC)"],
+      "champs_secrets": ["jeton_session_hache", "role_secret", "mission_secrete", "solde_pieces", "score_activite"],
+      "_note_secret": "role_secret, mission_secrete et solde_pieces ne sortent que vers leur propriétaire, jusqu'à l'écran de scores (RG-58). score_activite est ajouté par rapport à la SPEC : il sert la loi 3 du génie (RG-24) et n'est jamais émis, car il laisse deviner les enquêtes lancées, qui sont secrètes (RG-27)."
+    },
+    {
+      "entite": "manches",
+      "entite_spec": "Manche",
+      "volume_attendu": "moyen",
+      "attributs": ["id", "session_id", "numero", "phase", "phase_fin_at", "objectif", "clause_cle", "porteur_clause_joueur_id", "total_declare", "total_paye", "reussi", "recompense", "multiplicateur_applique", "facteur_amende", "cloture", "cloture_at"],
+      "types": {"numero": "INTEGER 1..nb_manches", "phase": "TEXT parmi VOEU, NEGOCIATION, DECLARATION_PAIEMENT, REVELATION, ENQUETES_ACCUSATIONS, EXECUTION", "phase_fin_at": "INTEGER ms époque UTC", "objectif": "INTEGER = objectif_par_joueur * nb_joueurs (RG-07)", "reussi": "INTEGER 0|1 nullable avant EXECUTION", "cloture": "INTEGER 0|1"},
+      "cles_etrangeres": [
+        {"colonne": "session_id", "reference": "sessions"},
+        {"colonne": "clause_cle", "reference": "clauses"},
+        {"colonne": "porteur_clause_joueur_id", "reference": "joueurs"}
+      ],
+      "index": ["session_id", "clause_cle", "porteur_clause_joueur_id", "phase"],
+      "unicite": [],
+      "unicite_composite": ["UNIQUE(session_id, numero)", "UNIQUE(session_id, clause_cle) — impose en base le tirage sans remise RG-18 / CA-13"],
+      "contraintes": ["phase progresse strictement dans l'ordre de l'énumération, sans saut ni retour (RG-30)", "total_paye >= 0", "reussi = (total_paye >= objectif) — RG-12, égalité stricte incluse", "cloture_at non nul si et seulement si cloture = 1"],
+      "champs_secrets": ["clause_cle", "porteur_clause_joueur_id", "total_paye", "multiplicateur_applique", "facteur_amende"],
+      "_note_secret": "clause_cle sort vers le porteur et tout FAISEUR_CONTRATS dès VOEU, vers tous à l'étape 16 de l'exécution. porteur_clause_joueur_id ne sort JAMAIS en v1 (matrice_visibilite). total_paye ne sort qu'à partir de REVELATION. multiplicateur_applique et facteur_amende divulgueraient la clause avant l'étape 16 : ils restent internes jusqu'à la clôture."
+    },
+    {
+      "entite": "contributions",
+      "entite_spec": "Contribution",
+      "volume_attendu": "eleve",
+      "attributs": ["id", "manche_id", "joueur_id", "montant_declare", "montant_paye", "declare_at", "paye_at"],
+      "types": {"montant_declare": "INTEGER >= 0, nullable tant que non déclaré", "montant_paye": "INTEGER >= 0, nullable tant que non payé"},
+      "cles_etrangeres": [
+        {"colonne": "manche_id", "reference": "manches"},
+        {"colonne": "joueur_id", "reference": "joueurs"}
+      ],
+      "index": ["manche_id", "joueur_id", "declare_at"],
+      "unicite": [],
+      "unicite_composite": ["UNIQUE(manche_id, joueur_id) — un enregistrement et un seul par joueur et par manche"],
+      "contraintes": [
+        "CHECK(montant_paye IS NULL OR montant_declare IS NOT NULL) — RG-10 : pas de paiement sans déclaration",
+        "CHECK(montant_paye IS NULL OR (montant_paye >= 0 AND montant_paye <= montant_declare)) — RG-09",
+        "montant_declare <= solde du joueur au moment de la déclaration — RG-08, vérifié par le moteur (le solde évolue, la base ne peut pas l'exprimer)",
+        "RG-32 : à l'expiration, les valeurs nulles sont matérialisées à 0 avant l'exécution"
+      ],
+      "champs_secrets": ["montant_paye", "paye_at"],
+      "_note_secret": "montant_paye est LE secret du jeu (CA-10). Il ne sort que vers son propriétaire, vers l'enquêteur qui a payé une enquête sur ce joueur pour cette manche, et vers tous à l'écran de scores. paye_at est secret aussi : connaître l'instant de paiement d'un joueur qui n'a pas encore déclaré est une information de comportement non prévue par la matrice."
+    },
+    {
+      "entite": "clauses",
+      "entite_spec": "Clause",
+      "volume_attendu": "faible",
+      "_nature": "Catalogue en lecture seule, chargé par migration de données, jamais écrit à l'exécution.",
+      "attributs": ["cle", "effet_type", "parametres_json", "etape_pipeline"],
+      "types": {"cle": "TEXT parmi GENIE_GARDE_UN_TIERS, TRESOR_DES_HONNETES, LE_PLUS_GENEREUX, CONSOLATION, PRIME_AU_DELATEUR, clé primaire", "parametres_json": "TEXT, rationnels et multiplicateurs lus depuis la configuration de session, jamais codés en dur (RG-60)"},
+      "cles_etrangeres": [],
+      "index": ["effet_type"],
+      "unicite": ["cle"],
+      "contraintes": ["cle dans l'énumération du catalogue_clauses de la SPEC", "etape_pipeline cohérente avec pipeline_execution"],
+      "champs_secrets": [],
+      "_note_secret": "Le catalogue lui-même est public (les joueurs connaissent les clauses possibles). C'est l'association clause/manche qui est secrète, et elle vit dans manches.clause_cle."
+    },
+    {
+      "entite": "revelations",
+      "entite_spec": "Revelation",
+      "volume_attendu": "moyen",
+      "attributs": ["id", "manche_id", "gabarit", "variante_formulation", "cibles_json", "valeurs_json", "suspects_restants_apres", "verifiee_vraie", "emise_at"],
+      "types": {"gabarit": "TEXT parmi ECART_TOTAL, COMPTAGE, VOISINAGE, EXONERATION, COMPARAISON, PASSE", "variante_formulation": "INTEGER >= 0, index de variante tiré par l'aléa injecté (RG-25)", "cibles_json": "TEXT, tableau d'identifiants de joueurs", "valeurs_json": "TEXT, objet de valeurs numériques publiques uniquement", "verifiee_vraie": "INTEGER 0|1, écrit par la revérification indépendante (RG-20)"},
+      "cles_etrangeres": [{"colonne": "manche_id", "reference": "manches"}],
+      "index": ["manche_id", "gabarit", "emise_at"],
+      "unicite": [],
+      "contraintes": ["CHECK(verifiee_vraie = 1) — une révélation non vérifiée ne peut pas être écrite, donc pas émise (RG-20)", "CHECK(gabarit = 'ECART_TOTAL' OR suspects_restants_apres >= 2) — RG-21 gravé en base", "au plus une révélation de catalogue par manche, en plus de l'écart total"],
+      "champs_secrets": [],
+      "_note_secret": "Par construction, le contenu d'une révélation est public : c'est son objet. valeurs_json ne peut contenir qu'un total agrégé ou un comptage, jamais un montant_paye individuel. La vérification mécanique de ce point fait partie des interdits_mecaniques."
+    },
+    {
+      "entite": "enquetes",
+      "entite_spec": "Enquete",
+      "volume_attendu": "moyen",
+      "attributs": ["id", "manche_id", "enqueteur_joueur_id", "cible_joueur_id", "cout_paye", "resultat_montant_paye", "cree_at"],
+      "types": {"cout_paye": "INTEGER, cout_enquete ou cout_enquete_inspecteur_tresor selon le rôle (RG-26)", "resultat_montant_paye": "INTEGER, copie figée du montant payé de la cible à l'instant de l'enquête"},
+      "cles_etrangeres": [
+        {"colonne": "manche_id", "reference": "manches"},
+        {"colonne": "enqueteur_joueur_id", "reference": "joueurs"},
+        {"colonne": "cible_joueur_id", "reference": "joueurs"}
+      ],
+      "index": ["manche_id", "enqueteur_joueur_id", "cible_joueur_id"],
+      "unicite": [],
+      "unicite_composite": ["UNIQUE(manche_id, enqueteur_joueur_id, cible_joueur_id) — RG-28, une seule enquête par cible et par manche"],
+      "contraintes": ["CHECK(enqueteur_joueur_id <> cible_joueur_id) — RG-19", "cout_paye <= solde de l'enquêteur au moment de la demande, sinon refus a priori (RG-26, RG-41)", "nombre d'enquêtes par manche non plafonné (RG-28)"],
+      "champs_secrets": ["id", "manche_id", "enqueteur_joueur_id", "cible_joueur_id", "cout_paye", "resultat_montant_paye", "cree_at"],
+      "_note_secret": "L'entité ENTIÈRE est secrète (RG-27). Ni la cible ni la table n'apprennent qu'une enquête a eu lieu. Aucun événement sortant ne mentionne l'existence d'une enquête sauf vers son enquêteur. Conséquence : le mouvement de pièces de motif cout_enquete est lui aussi privé, et le solde étant privé (ADR-CP-05), rien ne le trahit."
+    },
+    {
+      "entite": "accusations",
+      "entite_spec": "Accusation",
+      "volume_attendu": "moyen",
+      "attributs": ["id", "manche_id", "accusateur_joueur_id", "accuse_joueur_id", "verdict", "ampleur_mensonge", "montant_amende_du", "montant_amende_liquide", "liquide_at", "cree_at"],
+      "types": {"verdict": "TEXT parmi MENTEUR, HONNETE", "ampleur_mensonge": "INTEGER >= 0", "montant_amende_du": "INTEGER >= 0, calculé à l'étape 13/14", "montant_amende_liquide": "INTEGER >= 0, plafonné au solde du débiteur"},
+      "cles_etrangeres": [
+        {"colonne": "manche_id", "reference": "manches"},
+        {"colonne": "accusateur_joueur_id", "reference": "joueurs"},
+        {"colonne": "accuse_joueur_id", "reference": "joueurs"}
+      ],
+      "index": ["manche_id", "accusateur_joueur_id", "accuse_joueur_id", "verdict"],
+      "unicite": [],
+      "unicite_composite": ["UNIQUE(manche_id, accusateur_joueur_id) — RG-19 / CA-24, une accusation par manche et par accusateur"],
+      "contraintes": ["CHECK(accusateur_joueur_id <> accuse_joueur_id) — RG-19", "verdict calculé serveur à la soumission, jamais fourni par le client", "montant_amende_liquide <= solde du débiteur à l'étape de liquidation (RG-41, CA-25)", "liquide_at renseigné en phase EXECUTION uniquement (RG-43, ADR-CP-06)"],
+      "champs_secrets": ["ampleur_mensonge", "montant_amende_du"],
+      "_note_secret": "ampleur_mensonge = montant_declare - montant_paye : la divulguer avant EXECUTION divulguerait le paiement secret de l'accusé. Elle reste interne jusqu'à l'étape 16. Observation signalée au chef de projet : à l'étape 16 la SPEC rend public le montant d'amende liquidé (CA-22), ce qui permet de recalculer exactement le montant payé d'un menteur démasqué. Ce n'est pas une violation — l'accusé est démasqué et la SPEC l'exige — mais c'est une inférence volontaire, consignée ici pour qu'elle ne soit pas prise plus tard pour un défaut."
+    },
+    {
+      "entite": "mouvements_pieces",
+      "entite_spec": "MouvementPieces",
+      "volume_attendu": "eleve",
+      "attributs": ["id", "session_id", "manche_numero", "joueur_id", "delta", "motif", "contrepartie_joueur_id", "solde_apres", "sequence", "cree_at"],
+      "types": {"delta": "INTEGER non nul, signé", "motif": "TEXT parmi dotation_initiale, paiement_voeu, part_recompense, bonus_epices, amende_recue, amende_payee, penalite_fausse_accusation_payee, penalite_fausse_accusation_recue, cout_enquete, transfert_emis, transfert_recu, pret_emis, pret_recu, remboursement_pret, consolation, signature_dernier_voeu, sanction_contrat_conteste", "sequence": "INTEGER, compteur monotone par joueur, base de la pagination par curseur", "solde_apres": "INTEGER >= 0, dénormalisé pour que RG-42 soit vérifiable par une seule requête"},
+      "cles_etrangeres": [
+        {"colonne": "session_id", "reference": "sessions"},
+        {"colonne": "joueur_id", "reference": "joueurs"},
+        {"colonne": "contrepartie_joueur_id", "reference": "joueurs"}
+      ],
+      "index": ["session_id", "joueur_id", "contrepartie_joueur_id", "motif", "sequence", "manche_numero"],
+      "unicite": [],
+      "unicite_composite": ["UNIQUE(joueur_id, sequence)"],
+      "contraintes": ["CHECK(delta <> 0)", "CHECK(solde_apres >= 0) — RG-41", "motif dans l'énumération ci-dessus", "RG-42 : pour tout joueur, joueurs.solde_pieces = SUM(delta) et = solde_apres du mouvement de séquence maximale ; les deux égalités sont testées", "tout transfert produit exactement deux lignes symétriques (émis + reçu) écrites dans la même transaction"],
+      "champs_secrets": ["delta", "motif", "contrepartie_joueur_id", "solde_apres", "sequence", "manche_numero"],
+      "_note_secret": "Le journal de pièces d'un joueur est strictement privé (CA-36). Il révélerait sinon le paiement secret (motif paiement_voeu), les enquêtes lancées (motif cout_enquete) et les transferts, tous couverts par la matrice. Seule exception : l'écran de scores finaux (RG-58)."
+    },
+    {
+      "entite": "prets",
+      "entite_spec": "Pret",
+      "volume_attendu": "moyen",
+      "attributs": ["id", "session_id", "preteur_joueur_id", "emprunteur_joueur_id", "principal", "du_total", "rembourse", "manche_emission", "statut", "cree_at", "repondu_at"],
+      "types": {"principal": "INTEGER > 0", "du_total": "INTEGER = plafond(principal * (1 + taux_interet_pret)) avec taux en rationnel [1,2] — RG-29", "rembourse": "INTEGER >= 0, cumul prélevé", "statut": "TEXT parmi PROPOSE, REFUSE, ACTIF, SOLDE, EXPIRE"},
+      "cles_etrangeres": [
+        {"colonne": "session_id", "reference": "sessions"},
+        {"colonne": "preteur_joueur_id", "reference": "joueurs"},
+        {"colonne": "emprunteur_joueur_id", "reference": "joueurs"}
+      ],
+      "index": ["session_id", "preteur_joueur_id", "emprunteur_joueur_id", "statut", "manche_emission"],
+      "unicite": [],
+      "contraintes": ["CHECK(preteur_joueur_id <> emprunteur_joueur_id)", "CHECK(principal > 0)", "CHECK(rembourse >= 0 AND rembourse <= du_total)", "seul un joueur de rôle PRETEUR peut être preteur_joueur_id (RG-29, CA-33) — vérifié par le moteur", "le prélèvement a lieu à l'exécution de la manche suivant manche_emission, plafonné au solde ; le reliquat reste dû (étape 15)"],
+      "champs_secrets": ["principal", "du_total", "rembourse", "preteur_joueur_id", "emprunteur_joueur_id"],
+      "_note_secret": "Un prêt n'est visible que du prêteur et de l'emprunteur (matrice_visibilite). Le publier permettrait de recouper les soldes et de remonter aux paiements. Corollaire : l'identité du PRETEUR n'est jamais publiée, même quand un prêt existe."
+    },
+    {
+      "entite": "signatures_dernier_voeu",
+      "entite_spec": "SignatureDernierVoeu",
+      "volume_attendu": "faible",
+      "attributs": ["id", "session_id", "joueur_id", "a_signe", "cree_at"],
+      "types": {"a_signe": "INTEGER 0|1, valeur par défaut 0 si non soumis à l'expiration de DV_SIGNATURE"},
+      "cles_etrangeres": [
+        {"colonne": "session_id", "reference": "sessions"},
+        {"colonne": "joueur_id", "reference": "joueurs"}
+      ],
+      "index": ["session_id", "joueur_id"],
+      "unicite": ["joueur_id"],
+      "contraintes": ["une ligne par joueur de la session en mode avancé", "RG-53 : la table de résolution se calcule sur SUM(a_signe)"],
+      "champs_secrets": ["a_signe", "joueur_id"],
+      "_note_secret": "RG-54 / CA-39 : seul le NOMBRE de signataires est public à la résolution. Les identités ne sortent qu'à l'écran de scores finaux."
+    },
+    {
+      "entite": "journal_commandes",
+      "entite_spec": "(ajout du tech-lead — ne figure pas dans modele_conceptuel)",
+      "_justification_ajout": "Support du rejeu déterministe (ADR-TL-05). Sans lui, un redémarrage du serveur détruit 30 minutes de jeu en présentiel, ce que la priorité 2 (fiabilité) interdit. Il est aussi la pièce d'audit qui permet au QA de rejouer une partie litigieuse à l'identique.",
+      "volume_attendu": "eleve",
+      "attributs": ["id", "session_id", "sequence", "joueur_id", "type_commande", "charge_json", "id_correlation", "accepte", "code_erreur", "horodatage_serveur", "cree_at"],
+      "types": {"sequence": "INTEGER > 0, monotone par session", "type_commande": "TEXT, valeur du champ type de l'enveloppe", "charge_json": "TEXT, charge validée de la commande", "horodatage_serveur": "INTEGER ms époque UTC — rejoué tel quel pour que le rejeu soit déterministe malgré l'horloge", "accepte": "INTEGER 0|1"},
+      "cles_etrangeres": [
+        {"colonne": "session_id", "reference": "sessions"},
+        {"colonne": "joueur_id", "reference": "joueurs"}
+      ],
+      "index": ["session_id", "joueur_id", "id_correlation", "sequence", "type_commande"],
+      "unicite": [],
+      "unicite_composite": ["UNIQUE(session_id, sequence)", "UNIQUE(joueur_id, id_correlation) — base de l'idempotence RG-70"],
+      "contraintes": ["CHECK(sequence > 0)", "CHECK(accepte IN (0,1))", "écriture dans la MÊME transaction SQLite que les effets de la commande ; un rejeu ne peut donc jamais diverger de l'état persisté", "les commandes refusées sont journalisées avec accepte = 0 et ne sont PAS rejouées", "purge : les lignes d'une session TERMINEE ou ABANDONNEE depuis plus de 7 jours sont supprimées par une tâche de maintenance"],
+      "champs_secrets": ["charge_json", "joueur_id", "type_commande"],
+      "_note_secret": "charge_json contient les montants payés et les cibles d'enquête. Le journal est strictement serveur : il n'est exposé par aucune route, aucun événement, aucun log applicatif."
+    }
+  ],
+
+  "conventions": {
+    "structure_dossiers": "Mono-repo npm workspaces à quatre paquets, arborescence normative ci-dessous (arborescence_depot). Le découpage sépare strictement le MOTEUR PUR (déterministe, sans E/S) de la COUCHE TRANSPORT. Le moteur se teste sans serveur, sans socket et sans base.",
+    "arborescence_depot": {
+      "_racine": "D:\\Le Génie du Dernier Vœu  (le dépôt git est initialisé à la racine du projet existant par l'ingénieur DevOps, nœud S3B)",
+      "fichiers_racine": [
+        "package.json — workspaces: [\"paquets/*\", \"applications/*\"], private: true, scripts : verifier, lint, types, verifier:couches, test, couverture, dev, dev:serveur, dev:client, construire, migrer, rejouer",
+        "package-lock.json",
+        "tsconfig.base.json — strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes, module NodeNext, target ES2023",
+        "eslint.config.mjs — configuration plate unique, surcharges par paquet (voir seuils_qualite.interdits_mecaniques)",
+        ".dependency-cruiser.cjs — règles de couches",
+        ".editorconfig",
+        ".gitignore",
+        ".nvmrc — 24.18.1",
+        ".env.exemple — PORT, HOTE, CHEMIN_BDD, ORIGINE_AUTORISEE, MODE, CHEMIN_CERT, CHEMIN_CLE",
+        "README.md"
+      ],
+      "paquets/partage": {
+        "_role": "Contrats. Seul paquet importable par tous les autres. Ne contient aucune logique de jeu.",
+        "fichiers": [
+          "package.json — nom @gdv/partage",
+          "tsconfig.json",
+          "src/index.ts",
+          "src/protocole/enveloppe.ts — EnveloppeCommande, EnveloppeEvenement, corrélation, séquence",
+          "src/protocole/commandes.ts — un schéma Zod strict par commande, dérivé de API-GDV-001.json",
+          "src/protocole/evenements.ts — un type par événement sortant",
+          "src/protocole/codes-erreur.ts — énumération fermée (standards.codes_erreur)",
+          "src/protocole/visibilite.ts — CLASSES_DESTINATAIRE, CHAMPS_SECRETS (registre des noms de champs interdits hors propriétaire), VISIBILITE_PAR_EVENEMENT",
+          "src/config/schema-config.ts — schéma Zod de la configuration de jeu, avec bornes",
+          "src/config/defauts.json — TOUTES les valeurs de parametres_configuration de la SPEC, aucune ailleurs",
+          "src/domaine/enums.ts — PHASE, ETAT_PARTIE, ROLE, MISSION, CLAUSE, GABARIT, MOTIF_MOUVEMENT, VERDICT, STATUT_PRET",
+          "src/domaine/identifiants.ts — types nominaux JoueurId, SessionId, MancheId",
+          "src/contrat/api.json — copie exacte de API-GDV-001.json, importée ; un test échoue si les deux divergent",
+          "tests/"
+        ]
+      },
+      "paquets/moteur": {
+        "_role": "MOTEUR PUR. Aucune E/S, aucun module node:, aucune dépendance hors @gdv/partage. Entrée : (etat, commande, contexte). Sortie : (etat, effets) ou erreur typée. Testable intégralement sans serveur.",
+        "fichiers": [
+          "package.json — nom @gdv/moteur, dependencies: { @gdv/partage }",
+          "tsconfig.json",
+          "src/index.ts — appliquer(), demarrer(), expirerPhase(), projeterVuePrivee(), projeterEvenement()",
+          "src/etat/ — types d'état de session, construction initiale, invariants vérifiables",
+          "src/alea/interface.ts — interface Alea { entier(min,max), choisir(liste), melanger(liste), booleen() }",
+          "src/alea/sfc32.ts — générateur graine-able déterministe, implémenté ici (aucune dépendance)",
+          "src/horloge/interface.ts — Horloge { maintenant(): number } ; jamais Date.now dans le moteur",
+          "src/monnaie/ — entiers, rationnels [num,den], plancher(), plafond(), plafonnerAuSolde()",
+          "src/machine/partie.ts — transitions de machine_etats_partie",
+          "src/machine/manche.ts — transitions de machine_etats_manche (RG-30)",
+          "src/commandes/ — une fonction pure par commande client, autorisation incluse (phase, rôle, solde, quota)",
+          "src/distribution/ — roles.ts, missions.ts, clauses.ts, porteur.ts, dernier-voeu.ts",
+          "src/pipeline/etape-01.ts … etape-17.ts + index.ts — une fonction par étape de pipeline_execution, dans l'ordre normatif",
+          "src/revelations/ — suspects.ts, score-activite.ts, eligibilite.ts, selection.ts, verification.ts",
+          "src/scores/ — missions.ts, classement.ts, dernier-voeu.ts",
+          "src/projection/ — vue-privee.ts, evenement.ts, regles-visibilite.ts  ← FRONTIÈRE DE SÉCURITÉ",
+          "tests/pipeline/, tests/revelations/, tests/projection/, tests/invariants/, tests/criteres-acceptation/ (un fichier par CA-xx de la SPEC)"
+        ]
+      },
+      "applications/serveur": {
+        "_role": "Transport, persistance, horloge, sécurité. Contient ZÉRO règle de jeu.",
+        "fichiers": [
+          "package.json — nom @gdv/serveur, dependencies: { @gdv/partage, @gdv/moteur, fastify, ws, zod }",
+          "tsconfig.json",
+          "src/index.ts — amorçage, arrêt propre, rejeu des sessions vivantes au démarrage",
+          "src/configuration/ — lecture de l'environnement, fusion de la configuration de jeu, refus de démarrer sans TLS en mode production",
+          "src/http/serveur.ts + src/http/routes/ — sante.ts, sessions.ts, groupes.ts, configuration.ts",
+          "src/temps-reel/serveur-ws.ts — mise à niveau, contrôle d'origine, plafond de taille, minuterie d'authentification de 5 s",
+          "src/temps-reel/authentification.ts — vérification du jeton haché, liaison connexion ↔ joueur",
+          "src/temps-reel/registre-connexions.ts — map joueurId → socket",
+          "src/temps-reel/diffuseur.ts — N'EXPOSE QUE envoyerA(joueurId, evenement). Un « événement public » est une boucle de projections individuelles.",
+          "src/temps-reel/corrélation.ts — idempotence par (joueur, id_correlation), cache des 32 derniers accusés",
+          "src/temps-reel/battement.ts — ping/pong 15 s, fermeture après 2 pongs manqués",
+          "src/orchestration/ordonnanceur-phases.ts — unique horloge (RG-72), minuteries reconstruites depuis phase_fin_at au démarrage",
+          "src/orchestration/boucle-session.ts — reçoit une commande, appelle le moteur, persiste, projette",
+          "src/persistance/depot.ts — interface DepotSqlite (abstraction du moteur de stockage)",
+          "src/persistance/sqlite/ — implémentation node:sqlite, mappeurs, transactions",
+          "src/persistance/journal.ts — écriture et rejeu",
+          "src/securite/jetons.ts — génération 32 octets, hachage SHA-256, comparaison à temps constant",
+          "src/securite/limitation-debit.ts",
+          "src/journalisation/redacteur.ts — suppression des CHAMPS_SECRETS avant toute écriture de log",
+          "migrations/001-schema-initial.sql",
+          "migrations/002-catalogue-clauses.sql",
+          "tests/"
+        ]
+      },
+      "applications/client": {
+        "_role": "PWA. Affiche la dernière projection reçue. Ne calcule AUCUNE règle, ne détient AUCUN secret d'autrui, ne filtre RIEN.",
+        "fichiers": [
+          "package.json — nom @gdv/client, dependencies: { @gdv/partage, vue }, devDependencies: { vite, @vitejs/plugin-vue, vite-plugin-pwa }",
+          "tsconfig.json",
+          "vite.config.ts — plugin PWA configuré selon strategie_pwa",
+          "index.html",
+          "public/manifest.webmanifest",
+          "public/icones/ — 192, 512, maskable (placeholders neutres, remplacés à la clôture d'ESC-01)",
+          "src/main.ts",
+          "src/app.vue",
+          "src/routeur/ — accueil, adhesion/:code, salle-attente, placement, manche, dernier-voeu, scores",
+          "src/transport/client-ws.ts — reconnexion exponentielle 0,5/1/2/4/8 s avec gigue, corrélation, file d'attente",
+          "src/transport/stockage-jeton.ts — localStorage, clé unique, purgée sur JETON_INVALIDE",
+          "src/magasin/session.ts — état local = dernière projection reçue, en lecture seule",
+          "src/vues/ , src/composants/",
+          "src/contenu/fr.json — RG-61 : tous les libellés affichés, indexés par clés techniques neutres",
+          "src/contenu/revelations.fr.json — formulations par (gabarit, variante_formulation), RG-25",
+          "src/styles/jetons.css — variables CSS sémantiques neutres (ADR-CP-03). Aucune couleur signée, aucune police d'identité.",
+          "tests/"
+        ]
+      },
+      "outils": [
+        "outils/verifier-visibilite.mjs — compare x-visibilite de API-GDV-001.json à matrice_visibilite de SPEC-GDV-001.json, code 1 si divergence",
+        "outils/verifier-couches.mjs — enveloppe de dependency-cruiser avec message explicite"
+      ]
+    },
+    "regles_de_couches": [
+      "partage ne dépend de rien d'autre que de zod.",
+      "moteur ne peut importer que partage. Aucun module node:, aucune autre dépendance. Violation = échec de npm run verifier:couches.",
+      "serveur peut importer partage et moteur. serveur ne peut PAS être importé par moteur.",
+      "client peut importer partage. client ne peut PAS importer moteur ni serveur — un client qui embarque le moteur embarque les règles de calcul des secrets.",
+      "Aucune règle de jeu dans serveur : toute valeur de parametres_configuration lue hors de moteur est une violation à signaler."
+    ],
+    "nommage": "Voir standards.casse_json, standards.casse_code, standards.nommage_messages. Fichiers en kebab-case. Un fichier = une responsabilité, 300 lignes maximum. Les étapes du pipeline sont numérotées dans le nom du fichier pour que l'ordre normatif de RG-40 soit lisible dans l'arborescence.",
+    "gestion_erreurs": "Le moteur N'EMET PAS d'exception pour une erreur métier : appliquer() retourne { ok: false, erreur: { code, message, details } } où code appartient à standards.codes_erreur. Une exception dans le moteur est un défaut de programmation, pas un refus métier. La couche transport traduit : erreur métier → événement erreur (temps réel) ou code HTTP (REST, correspondance déclarée dans API-GDV-001.json). Aucune erreur ne modifie l'état : le moteur retourne l'état d'entrée inchangé (CA-43).",
+    "strategie_tests": [
+      "Unitaire pur sur moteur : un fichier de test par critère d'acceptation CA-01 à CA-50, nommé d'après le critère. Le QA doit pouvoir lire la couverture des CA dans la liste des fichiers.",
+      "Tests de propriété (fast-check) sur moteur/projection : pour tout état généré, tout événement, tout destinataire, la sortie ne contient aucun CHAMPS_SECRETS dont le destinataire n'est pas propriétaire. C'est la preuve mécanique de RG-01 demandée par CA-05, CA-10, CA-36, CA-39.",
+      "Tests d'invariants après chaque transition : RG-41 et RG-42 vérifiés sur l'état complet.",
+      "Test de déterminisme : même graine + même séquence de commandes = état identique.",
+      "Test de rejeu : arrêt brutal simulé, rejeu du journal, comparaison d'état.",
+      "Intégration transport : faux socket en mémoire, un cas négatif par code d'erreur, dont USURPATION_IDENTITE (CA-44) et ACTION_HORS_PHASE (CA-43).",
+      "Aucun test ne lit l'horloge système ni Math.random : horloge et aléa sont injectés partout."
+    ],
+    "determinisme_et_alea": {
+      "regle": "Le moteur ne tire JAMAIS un nombre lui-même. Toute source d'aléa est l'interface Alea, passée dans le contexte d'appel.",
+      "generateur": "sfc32, graine de 128 bits dérivée de sessions.graine_alea, implémenté dans paquets/moteur/src/alea/sfc32.ts sans dépendance externe.",
+      "graine": "32 octets tirés par crypto.randomBytes dans la couche transport à la création de session, persistés dans sessions.graine_alea. Le moteur reçoit la graine, pas le générateur système.",
+      "ordre_de_consommation": "L'ordre des tirages est normatif et documenté : rôles, puis missions, puis (mode avancé) MARCHAND_DEJA_LIE et GARDIEN_DE_LA_LAMPE, puis par manche : clause, porteur, variante de formulation de la révélation. Changer cet ordre invalide le rejeu de tout journal existant : c'est une rupture de compatibilité à déclarer.",
+      "tests": "Les tests injectent soit une graine fixe, soit un Alea scripté (file de valeurs prédéterminées) pour forcer un cas limite.",
+      "interdiction": "Math.random, crypto et Date sont bannis du paquet moteur par règle ESLint (interdits_mecaniques). Sans cela, aucun test reproductible n'est possible et le rejeu du journal ne reconstruit pas le même état."
+    },
+    "configuration_de_jeu": {
+      "regle": "RG-60 : toutes les valeurs de parametres_configuration vivent dans paquets/partage/src/config/defauts.json, validées par un schéma Zod avec bornes. Aucune n'apparaît en littéral dans le code du moteur (règle ESLint no-magic-numbers, CA-46).",
+      "surcharge": "L'hôte peut surcharger tout ou partie à la création de session (US-17, CA-45). La configuration effective est figée dans sessions.config_json à la création et n'est plus modifiable : une partie ne change pas de règles en cours de route, et le rejeu reste exact.",
+      "exposition": "La configuration effective PUBLIQUE (joueurs_min, joueurs_max, nb_manches, objectif_par_joueur, pieces_initiales, cout_enquete, cout_fausse_accusation, multiplicateurs, durees_phases_s, bonus_mission_reussie, recompense_signature_dernier_voeu) est envoyée aux joueurs : ce sont les règles du jeu, connues de tous autour de la table. Rien d'autre n'en sort."
+    },
+    "contenu_et_theme": {
+      "regle": "RG-61 / ESC-01 / ADR-CP-03 : le serveur n'émet AUCUN libellé affichable. Il émet des clés techniques neutres (ROLE, MISSION, CLAUSE, GABARIT, MOTIF, code d'erreur) et des valeurs numériques. Le client rend le texte depuis src/contenu/fr.json et src/contenu/revelations.fr.json.",
+      "consequence": "Trancher l'univers (ouest-africain ou Mille et une nuits) ne touchera ni le moteur, ni le protocole, ni la base : uniquement deux fichiers de contenu et un fichier de jetons CSS. Cette décision reste entière et ouverte.",
+      "manifeste_pwa": "theme_color et background_color du manifeste sont des gris neutres placeholders, explicitement marqués à remplacer à la clôture d'ESC-01. Ce choix n'engage aucun univers."
+    },
+    "strategie_pwa": {
+      "objectif": "Installabilité et rechargement instantané après verrouillage du téléphone ou passage d'ascenseur (US-16). PAS de jeu hors ligne : le serveur est l'arbitre, une partie hors ligne n'a aucun sens.",
+      "service_worker": "vite-plugin-pwa, stratégie generateSW (Workbox). Préchargement de la coquille applicative (HTML, JS, CSS, polices locales, icônes). NetworkOnly sur /api et aucune interception de la connexion temps réel.",
+      "interdiction_de_cache": "Aucune réponse de /api n'est mise en cache, à aucun moment. Mettre en cache une projection privée la rendrait lisible après coup sur un téléphone prêté — exactement le scénario que le GDD interdit.",
+      "mise_a_jour": "registerType: 'prompt'. Le client REFUSE d'appliquer une mise à jour tant que etat_partie n'est pas TERMINEE, ABANDONNEE ou SCORES. Un skipWaiting en pleine phase DECLARATION_PAIEMENT remplacerait l'application sous les doigts du joueur et lui ferait manquer sa déclaration : inacceptable au rang 2.",
+      "manifeste": "display: standalone, orientation: portrait, start_url: '/', scope: '/', icônes 192/512 + maskable.",
+      "stockage": "Seul le jeton de session et l'identifiant de session sont persistés (localStorage), pour US-16. Aucune donnée de jeu n'est persistée côté client : à la reconnexion, tout provient de etat_complet_prive (RG-73)."
+    },
+    "securite_operationnelle": [
+      "Jetons de 32 octets (crypto.randomBytes), transmis en base64url, stockés HACHÉS en SHA-256. Une lecture du fichier de base ou d'une sauvegarde ne permet aucune usurpation.",
+      "Comparaison de jetons à temps constant (crypto.timingSafeEqual sur les condensats).",
+      "Le jeton n'apparaît JAMAIS dans une URL (ni chemin, ni requête) : il voyage dans l'en-tête Authorization en REST et dans la première trame authentifier en temps réel. Une URL se retrouve dans les journaux d'accès et l'historique du navigateur.",
+      "Contrôle d'origine à la mise à niveau WebSocket.",
+      "Toute commande est revalidée contre le jeton de la connexion : un champ joueur_id fourni par le client et différent du porteur du jeton déclenche USURPATION_IDENTITE (CA-44). En pratique, les commandes ne portent AUCUN joueur_id émetteur : il est déduit de la connexion.",
+      "En-têtes de la PWA : Content-Security-Policy stricte (default-src 'self', connect-src 'self' wss:, script-src 'self', object-src 'none'), X-Content-Type-Options, Referrer-Policy: no-referrer.",
+      "Aucune dépendance de rendu HTML brut côté client (pas de v-html) : le seul vecteur d'exfiltration du jeton en localStorage serait une XSS."
+    ]
+  },
+
+  "adr": [
+    {
+      "id": "ADR-TL-01",
+      "objet": "Langage et runtime du serveur",
+      "contexte": "Le protocole EST la frontière de sécurité (ADR-CP-04). Chaque message sortant est une projection calculée par destinataire (RG-01). La liste des champs secrets, les schémas de 13 commandes et 28 événements, et les bornes de configuration doivent être identiques côté serveur et côté PWA, sous peine qu'une divergence de validation ouvre un chemin de fuite ou un refus incohérent.",
+      "option_a": {
+        "nom": "TypeScript sur Node 24 pour serveur, moteur et client (langage unique)",
+        "avantages": [
+          "Les schémas de messages, l'énumération des champs secrets et le schéma de configuration sont définis UNE fois dans @gdv/partage et consommés par les trois autres paquets : aucune double définition à maintenir, donc aucune dérive possible entre ce que le serveur refuse et ce que le client envoie.",
+          "Le moteur pur est directement réutilisable en test sans adaptateur, et le vérificateur de types garantit à la compilation qu'aucun champ secret ne figure dans un type de message sortant (types nominaux).",
+          "Runtime déjà présent et mesuré sur le poste (24.18.1), SQLite et UUID fournis par la bibliothèque standard : zéro compilation native sous Windows."
+        ],
+        "inconvenients": [
+          "Node est mono-thread : un calcul long bloquerait l'ordonnanceur de phases (le pipeline de 17 étapes sur 8 joueurs est de l'ordre de la microseconde, donc sans effet ici, mais la contrainte est réelle et devra être surveillée si le catalogue de révélations grossit).",
+          "L'écosystème npm impose une discipline d'audit de dépendances stricte ; ici compensée par un nombre de dépendances directes volontairement réduit à quatre (fastify, ws, zod, vue).",
+          "Un même langage des deux côtés rend plus facile, par inadvertance, d'importer du code serveur dans le client : neutralisé par une règle de couches vérifiée mécaniquement."
+        ]
+      },
+      "option_b": {
+        "nom": "Backend séparé (PHP 8.3/Laravel ou Python/FastAPI) + frontend TypeScript",
+        "avantages": [
+          "Écosystèmes matures, outillage de validation et d'ORM éprouvé.",
+          "Séparation physique des deux bases de code, qui rend structurellement impossible l'import de code serveur dans le client."
+        ],
+        "inconvenients": [
+          "Chaque schéma de message existe DEUX fois, dans deux langages. Sur un protocole de 41 messages dont la correction est la frontière de sécurité, c'est une source permanente de divergence silencieuse : le jour où un champ est ajouté d'un seul côté, la fuite n'est détectée par aucun compilateur.",
+          "Le temps réel est le mode principal de ce produit, pas un ajout : PHP/Laravel impose un processus de travail séparé (Reverb/Swoole) pour tenir des connexions longues, soit un composant de plus à déployer et superviser pour un prototype.",
+          "Deux chaînes d'outillage, deux gestionnaires de paquets, deux formats de couverture, deux audits de vulnérabilités — au rang 4 (délai), coût net sans contrepartie identifiée."
+        ]
+      },
+      "decision": "Option A — TypeScript strict sur Node 24, langage unique sur les quatre paquets.",
+      "justification_besoin": "Exigence RG-01 et RG-71 : la définition UNIQUE des schémas de messages et du registre des champs secrets est ce qui rend la non-fuite vérifiable mécaniquement à la compilation ET par test de propriété. Une double définition dans deux langages détruit cette garantie. Ce n'est pas un argument de confort de développement mais de vérifiabilité de l'exigence de rang 1.",
+      "consequences_acceptees": "Le moteur est mono-thread : tout traitement du moteur doit rester borné et sans boucle non majorée. La règle de couches qui interdit au client d'importer le moteur devient obligatoire et vérifiée par commande, puisque rien dans le langage ne l'empêche."
+    },
+    {
+      "id": "ADR-TL-02",
+      "objet": "Cadre HTTP du serveur",
+      "contexte": "Six routes REST seulement, dont la raison d'être est d'exister AVANT le jeton de session. Elles doivent valider strictement leurs entrées (code d'adhésion, pseudo, surcharges de configuration) et partager la même mise à niveau HTTP que le serveur WebSocket.",
+      "option_a": {
+        "nom": "Fastify 5",
+        "avantages": [
+          "Validation par schéma JSON intégrée au cycle de requête : les bornes des surcharges de configuration (US-17) sont refusées par le cadre avant d'atteindre le code, sans glu écrite à la main.",
+          "Sérialisation par schéma : la réponse est produite à partir du schéma déclaré, donc un champ non déclaré dans le schéma de sortie ne peut PAS être sérialisé par accident. C'est un second filet contre la fuite de champ, aligné sur la priorité 1.",
+          "Crochets d'arrêt propre et accès direct au serveur HTTP sous-jacent pour la mise à niveau WebSocket."
+        ],
+        "inconvenients": [
+          "Écosystème de greffons plus restreint qu'Express ; moins d'exemples disponibles en cas de blocage.",
+          "Le système de types des schémas demande une mise en correspondance explicite avec Zod (deux descriptions de la même donnée à garder alignées sur les routes REST)."
+        ]
+      },
+      "option_b": {
+        "nom": "Express 5",
+        "avantages": ["Ubiquité maximale", "Intergiciels disponibles pour tout besoin"],
+        "inconvenients": [
+          "Aucune validation ni sérialisation par schéma : la réponse est l'objet que le code passe à res.json(). Un objet d'entité renvoyé par mégarde expose tous ses champs, y compris jeton_session_hache. Au rang 1, retirer ce filet est disqualifiant.",
+          "Gestion des erreurs asynchrones à câbler manuellement."
+        ]
+      },
+      "decision": "Option A — Fastify 5. NestJS écarté sans examen détaillé : un conteneur d'injection de dépendances et une architecture à décorateurs pour six routes et un serveur de jeu mono-processus viole la règle de moindre complexité, sans exigence qui le porte.",
+      "justification_besoin": "Exigence RG-01 : la sérialisation par schéma interdit structurellement la sortie d'un champ non déclaré. C'est une barrière automatique, pas une discipline de relecture.",
+      "consequences_acceptees": "Toute route REST exige un schéma de réponse explicite : ajouter un champ à une réponse demande de modifier API-GDV-001.json puis le schéma, jamais seulement le code. C'est le coût voulu."
+    },
+    {
+      "id": "ADR-TL-03",
+      "objet": "Transport temps réel : WebSocket brut ou bibliothèque de plus haut niveau",
+      "contexte": "RG-01 impose qu'il n'existe AUCUN message d'état global diffusé. Tout message sortant est une projection calculée pour un destinataire unique. Huit joueurs, une pièce, des téléphones qui peuvent changer de main et des outils de développement ouvrables.",
+      "option_a": {
+        "nom": "ws 8.x — WebSocket brut, enveloppe et corrélation écrites à la main",
+        "avantages": [
+          "La couche transport n'expose qu'une seule primitive : envoyerA(joueurId, evenement). Il n'existe littéralement pas de fonction capable de diffuser un état global : une violation de RG-01 ne peut pas s'écrire par étourderie en une ligne.",
+          "La reconnexion est entièrement sous contrôle : à la reconnexion le serveur RE-PROJETTE l'état complet pour ce joueur (RG-73) au lieu de rejouer des messages calculés pour un état antérieur.",
+          "Surface de dépendance minimale à auditer sur une frontière de sécurité (vulnerabilites_tolerees : 0 critique, 0 haute).",
+          "Aucune négociation de transport : plafond de taille de trame, contrôle d'origine et minuterie d'authentification sont posés directement sur la mise à niveau."
+        ],
+        "inconvenients": [
+          "Battement de cœur, reconnexion exponentielle côté client, corrélation requête/réponse et idempotence sont à écrire : de l'ordre de 250 à 350 lignes, à tester comme le reste.",
+          "Pas de repli long-polling : un réseau qui bloque le protocole WebSocket rend le jeu inutilisable (risque jugé nul en présentiel sur Wi-Fi local ou partage de connexion ; à réévaluer si un réseau d'entreprise filtrant entre dans le périmètre).",
+          "Pas d'outillage d'inspection prêt à l'emploi : le débogage passe par des journaux applicatifs, eux-mêmes expurgés des secrets."
+        ]
+      },
+      "option_b": {
+        "nom": "Socket.IO 4.x",
+        "avantages": [
+          "Reconnexion, battement de cœur, accusés de réception et salons fournis.",
+          "Repli HTTP long-polling sur réseaux hostiles.",
+          "Outillage et documentation abondants."
+        ],
+        "inconvenients": [
+          "Sa valeur centrale — les salons et la diffusion io.to(salon).emit() — est exactement la primitive que RG-01 interdit. L'avoir sous la main transforme une violation bloquante en une ligne de code plausible et relue sans méfiance. Au rang 1, une bibliothèque dont la fonctionnalité phare est interdite n'est pas un outil, c'est un piège.",
+          "La mémoire tampon de reconnexion rejoue des messages calculés pour un état antérieur du jeu, ce qui entre en conflit frontal avec RG-73 (re-projection complète) et pourrait livrer une projection périmée.",
+          "Le repli long-polling ne sert aucun besoin ici et ajoute une surface d'attaque HTTP permanente.",
+          "Protocole propriétaire au-dessus de WebSocket : surcoût de trame et dépendance supplémentaire à auditer."
+        ]
+      },
+      "decision": "Option A — ws brut, avec un diffuseur qui n'expose que envoyerA(joueurId, evenement). Un événement dit « public » est une BOUCLE de projections individuelles, chacune recalculée pour son destinataire, jamais un objet partagé envoyé N fois.",
+      "justification_besoin": "Exigence RG-01, rang 1 : « il n'existe aucun message d'état global diffusé à tous ». L'architecture doit rendre la violation difficile à écrire, pas seulement interdite par convention. Une règle ESLint interdit de surcroît la déclaration de toute fonction nommée diffuser/broadcast/emitAll dans la couche temps réel.",
+      "consequences_acceptees": "Nous écrivons et testons nous-mêmes battement, reconnexion, corrélation et idempotence. Aucun repli pour un réseau qui bloque WebSocket. Le coût est assumé : il achète l'impossibilité pratique de la diffusion globale."
+    },
+    {
+      "id": "ADR-TL-04",
+      "objet": "Persistance : durabilité contre complexité",
+      "contexte": "Une partie dure 25-30 minutes puis meurt. Mais : (a) groupes.parties_terminees doit survivre à un redémarrage (RG-50, RG-59, US-18, CA-47, CA-48) ; (b) un serveur qui redémarre en pleine partie ruine 30 minutes de jeu de huit personnes assises ensemble, sans aucun recours — la fiabilité est au rang 2 ; (c) RG-42 exige que solde = somme des mouvements soit testable à tout instant, ce qui suppose des mouvements matérialisés et interrogeables.",
+      "option_a": {
+        "nom": "SQLite fichier unique via node:sqlite (intégré), WAL, état vivant en mémoire, écriture transactionnelle à chaque commande acceptée",
+        "avantages": [
+          "Durabilité réelle : le compteur de groupe et l'intégralité d'une partie en cours survivent à un arrêt du processus.",
+          "Module intégré au runtime : zéro dépendance, zéro compilation native sous Windows. Vérifié sur ce poste : WAL activé sur fichier, 2000 écritures transactionnelles en 189 ms — trois ordres de grandeur au-dessus du besoin (environ 1500 écritures pour une partie entière).",
+          "RG-42 et l'audit du QA deviennent de simples requêtes SQL sur mouvements_pieces, avec contraintes CHECK qui gravent RG-41 et RG-21 dans la base elle-même.",
+          "Un seul fichier à sauvegarder, à copier, à joindre à un rapport de défaut."
+        ],
+        "inconvenients": [
+          "node:sqlite est un module récent : sa surface d'API peut encore évoluer d'une version mineure de Node à l'autre. Mitigé par l'interface DepotSqlite, derrière laquelle un remplacement par better-sqlite3 coûte un fichier (voir dette_assumee).",
+          "Un seul écrivain : exclut toute montée en charge horizontale. Sans effet ici (une session = un processus, 8 clients), mais c'est une porte fermée.",
+          "Une écriture par commande acceptée ajoute une transaction disque dans le chemin critique de la réponse."
+        ]
+      },
+      "option_b": {
+        "nom": "Tout en mémoire, plus un fichier JSON pour le seul compteur de parties du groupe",
+        "avantages": [
+          "La plus simple à écrire et à comprendre. Aucun schéma, aucune migration, aucune dépendance.",
+          "Latence de commande minimale, aucune écriture dans le chemin critique."
+        ],
+        "inconvenients": [
+          "Un redémarrage en pleine manche 3 détruit la partie de huit personnes réunies physiquement. Il n'existe aucun recours : le génie est l'autorité, personne ne peut reconstituer les paiements secrets de mémoire. C'est précisément l'accident que la priorité 2 interdit.",
+          "RG-42 n'est vérifiable qu'en mémoire, donc jamais après coup : un rapport de défaut du QA n'est pas reproductible.",
+          "Un fichier JSON réécrit en entier n'est pas atomique : une coupure pendant l'écriture corrompt le compteur de groupe."
+        ]
+      },
+      "decision": "Option A — SQLite via node:sqlite, fichier unique, WAL, foreign_keys activées, écriture transactionnelle par commande acceptée. PostgreSQL écarté : un serveur de base, un pilote, un outil de migration et un démon à superviser pour huit joueurs dans une pièce, sans aucun besoin de concurrence, de volume ni de réplication — violation de la règle de moindre complexité, aucune exigence ne le porte.",
+      "justification_besoin": "Deux exigences nommées : RG-50/RG-59 (le compteur de groupe doit survivre) imposent une persistance durable, et la fiabilité au rang 2 (30 minutes de jeu en présentiel irrécupérables) impose que la partie EN COURS y survive aussi, pas seulement le compteur. Mesure à l'appui : le coût d'écriture est négligeable à ce volume.",
+      "consequences_acceptees": "Un schéma relationnel à maintenir et des migrations versionnées dès la première ligne de code. Un seul processus écrivain, donc pas de montée en charge horizontale. L'accès au fichier de base donne accès aux secrets de la partie : les jetons y sont donc hachés et le fichier est traité comme un actif sensible."
+    },
+    {
+      "id": "ADR-TL-05",
+      "objet": "Mécanisme de reprise après redémarrage",
+      "contexte": "Le moteur est pur et déterministe. Il faut reconstruire, après un arrêt, un état de session qui comprend non seulement les données normalisées mais aussi l'état transitoire : échéance de phase, ensemble des suspects publics, accusations non liquidées, prêts en cours, position dans la séquence de tirages aléatoires.",
+      "option_a": {
+        "nom": "Rejeu du journal de commandes depuis la graine d'aléa",
+        "avantages": [
+          "Exploite le déterminisme déjà exigé par la fiabilité : l'état reconstruit est identique bit à bit, y compris l'état transitoire qu'aucune table ne porte.",
+          "Le mécanisme de reprise est testable par une assertion simple et forte : rejouer le journal produit l'état en mémoire. Ce test est aussi un test de déterminisme du moteur, donc il sert deux fois.",
+          "Le journal est en outre la pièce d'audit qui permet de rejouer une partie litigieuse à l'identique, ce qu'aucune photographie d'état ne permet."
+        ],
+        "inconvenients": [
+          "Double écriture : le journal ET les tables projetées (mouvements, contributions, accusations) sont écrits. Coût mesuré négligeable, coût de code réel.",
+          "Tout changement de l'ordre de consommation de l'aléa ou d'une règle du moteur invalide le rejeu des journaux antérieurs : c'est une rupture de compatibilité à déclarer explicitement.",
+          "Le temps de reprise croît avec la longueur de la partie (borné ici : environ 1500 commandes, quelques dizaines de millisecondes)."
+        ]
+      },
+      "option_b": {
+        "nom": "Réhydratation du moteur depuis les tables normalisées",
+        "avantages": [
+          "Reprise en temps constant, indépendante de la longueur de la partie.",
+          "Pas de journal à écrire ni à purger."
+        ],
+        "inconvenients": [
+          "Exige un mappeur capable de reconstruire TOUT l'état transitoire, y compris la position dans la séquence de tirages aléatoires — qui n'est pas une donnée métier et n'a aucune raison d'être une colonne. Ce mappeur est du code non trivial, dupliquant la logique de construction d'état du moteur, et il n'existe aucun moyen simple de prouver qu'il est complet.",
+          "Un champ transitoire oublié produit une reprise silencieusement fausse : le jeu continue avec un état légèrement faux, ce qui est pire qu'un échec franc.",
+          "Perd la capacité d'audit par rejeu."
+        ]
+      },
+      "decision": "Option A — reprise par rejeu du journal. Les tables normalisées restent écrites, mais comme PROJECTION d'audit (lecture, QA, RG-42), pas comme source de reconstruction.",
+      "justification_besoin": "Fiabilité, rang 2 : la reprise doit être prouvable, pas plausible. Le déterminisme du moteur, déjà exigé par les tests reproductibles, rend le rejeu exact et son exactitude testable par une seule assertion. L'option B n'offre aucune preuve équivalente.",
+      "consequences_acceptees": "Double écriture assumée. Toute modification des règles du moteur ou de l'ordre de consommation de l'aléa est une rupture de compatibilité de rejeu : elle se déclare, et les journaux antérieurs ne sont plus rejouables. Les journaux sont purgés 7 jours après la fin d'une session."
+    },
+    {
+      "id": "ADR-TL-06",
+      "objet": "Cadre de l'application PWA",
+      "contexte": "Huit téléphones, une PWA ouverte par scan de QR (US-01 : rassembler la table en quelques secondes). Aucune logique de jeu côté client : l'écran affiche la dernière projection reçue. Besoins réels : rendu réactif de formulaires et de minuteurs, installabilité, et un thème entièrement rethémable sans toucher aux composants (ADR-CP-03, ESC-01 ouverte).",
+      "option_a": {
+        "nom": "Vue 3 + Vite",
+        "avantages": [
+          "Réactivité intégrée suffisante pour un client qui ne fait qu'afficher un état poussé : aucune bibliothèque d'état tierce à choisir ni à justifier (moindre complexité).",
+          "Composants monofichiers avec styles délimités et variables CSS : les jetons sémantiques neutres d'ADR-CP-03 se rebranchent en remplaçant un seul fichier, sans modifier un composant — c'est exactement ce qu'exige une décision d'univers laissée ouverte.",
+          "vite-plugin-pwa (Workbox) de première classe dans cet écosystème ; chaîne de construction Vite déjà requise par TypeScript.",
+          "Charge utile d'exécution compacte, ce qui sert le budget de premier affichage sur un téléphone d'entrée de gamme en partage de connexion."
+        ],
+        "inconvenients": [
+          "Écosystème de composants plus restreint que React ; moins de réponses disponibles sur les cas exotiques.",
+          "Les composants monofichiers exigent un outillage d'éditeur dédié ; le typage des gabarits est moins direct que du JSX.",
+          "Compétence de l'équipe non établie (l'équipe de ce projet n'est pas constituée) : cet axe ne peut pas départager honnêtement les options."
+        ]
+      },
+      "option_b": {
+        "nom": "React 19 + Vite",
+        "avantages": [
+          "Écosystème et bassin de compétences les plus larges.",
+          "Typage des composants direct en TypeScript, sans format de fichier intermédiaire."
+        ],
+        "inconvenients": [
+          "Nécessite des choix supplémentaires immédiats (routeur, gestion d'état, convention de styles) qui ne sont portés par AUCUN besoin de ce projet : trois dépendances et trois décisions de plus pour un client qui n'affiche qu'un état poussé.",
+          "Charge d'exécution de base plus lourde, pour un bénéfice nul ici.",
+          "Le style par convention (modules CSS, CSS-in-JS) demande une décision supplémentaire pour garantir la rethématisation sans toucher aux composants."
+        ]
+      },
+      "decision": "Option A — Vue 3 + Vite + vite-plugin-pwa. Svelte écarté : gain de taille réel mais écosystème PWA moins établi, et aucun besoin de ce projet n'exige d'aller en deçà du budget déjà tenu par Vue.",
+      "justification_besoin": "Deux exigences nommées : ADR-CP-03 / ESC-01 (le thème doit pouvoir être tranché plus tard sans retoucher un composant — les variables CSS et les styles délimités de Vue y répondent sans dépendance supplémentaire) et la règle de moindre complexité (zéro décision annexe de routeur ou de gestion d'état pour un client purement passif). L'écart de performance entre les deux options n'est PAS mesuré et n'entre pas dans la décision.",
+      "consequences_acceptees": "Si le projet recrute un développeur React, il y aura un coût d'apprentissage. L'arbitrage est réversible à faible coût : le client ne contient aucune règle de jeu, il ne fait que rendre le contrat API-GDV-001.json. Réécrire le client ne touche ni le moteur, ni le protocole, ni la base."
+    },
+    {
+      "id": "ADR-TL-07",
+      "objet": "Stratégie de service worker et de mise à jour",
+      "contexte": "Le jeu est strictement en ligne (le serveur est l'arbitre). Le besoin réel est US-16 : survivre à un verrouillage d'écran ou à un passage d'ascenseur sans perdre sa place, et retrouver son état exact à la reconnexion (RG-73).",
+      "option_a": {
+        "nom": "Précache de la coquille uniquement, NetworkOnly sur /api, mise à jour sur invite et refusée pendant une partie",
+        "avantages": [
+          "Rechargement instantané après verrouillage, sans retélécharger l'application.",
+          "Aucune projection privée ne touche un cache : un téléphone prêté après la partie ne restitue aucune donnée de jeu.",
+          "Aucune mise à jour ne remplace l'application pendant une phase minutée."
+        ],
+        "inconvenients": [
+          "Les correctifs ne se propagent qu'entre deux parties : un défaut découvert en playtest exige de terminer ou d'abandonner la partie en cours.",
+          "Code supplémentaire côté client pour bloquer la mise à jour selon l'état de partie."
+        ]
+      },
+      "option_b": {
+        "nom": "Mise à jour automatique (skipWaiting + clientsClaim) et mise en cache des réponses applicatives",
+        "avantages": ["Correctifs appliqués immédiatement", "Écrans déjà consultés affichables instantanément"],
+        "inconvenients": [
+          "Un remplacement d'application pendant DECLARATION_PAIEMENT fait manquer sa déclaration au joueur, qui tombe à 0 déclaré / 0 payé (RG-32) sans l'avoir voulu. Inacceptable au rang 2.",
+          "Mettre en cache une réponse applicative, c'est écrire une projection privée sur le disque du téléphone. Le GDD interdit exactement ce scénario : l'appareil peut changer de main."
+        ]
+      },
+      "decision": "Option A.",
+      "justification_besoin": "Sécurité rang 1 (aucune projection privée persistée sur l'appareil) et fiabilité rang 2 (aucune substitution d'application pendant une phase minutée).",
+      "consequences_acceptees": "Les correctifs ne s'appliquent qu'entre deux parties. Accepté : une partie dure 30 minutes."
+    },
+    {
+      "id": "ADR-TL-08",
+      "objet": "Source d'aléa du moteur",
+      "contexte": "Le moteur tire les rôles, les missions, les clauses sans remise, le porteur de clause, les deux rôles du Dernier Vœu et les variantes de formulation des révélations. Les critères CA-06, CA-13, CA-18 et la vérification de la matrice de gains exigent des scénarios reproductibles ; le rejeu du journal (ADR-TL-05) exige que les mêmes tirages se reproduisent à l'identique.",
+      "option_a": {
+        "nom": "Interface Alea injectée, implémentée par un générateur graine-able (sfc32) déterministe, graine persistée par session",
+        "avantages": [
+          "Reproductibilité totale : un rapport de défaut se réduit à une graine et une séquence de commandes.",
+          "Rend possible le rejeu du journal, donc la reprise après redémarrage.",
+          "Les tests peuvent injecter un aléa scripté pour forcer un cas limite (égalité sur le plus gros paiement, aucun gabarit éligible) sans tâtonner sur des graines."
+        ],
+        "inconvenients": [
+          "La graine devient un secret de premier rang : la connaître avec le journal permet de recalculer rôles, missions et clauses. Elle doit être traitée comme tel (persistée, jamais émise, jamais journalisée).",
+          "Un générateur pseudo-aléatoire non cryptographique est prédictible par qui en connaît l'état — acceptable uniquement parce que son état ne sort jamais du serveur.",
+          "Oblige à fixer et documenter un ORDRE de consommation des tirages, qui devient une contrainte de compatibilité."
+        ]
+      },
+      "option_b": {
+        "nom": "Appels directs à crypto.randomInt dans le moteur",
+        "avantages": ["Qualité cryptographique", "Aucun ordre de consommation à documenter", "Aucun secret de graine à protéger"],
+        "inconvenients": [
+          "Rend le moteur impur et non déterministe : aucun test reproductible, aucun rejeu possible, donc aucune reprise après redémarrage.",
+          "Introduit un module node: dans la couche pure, ce qui détruit la séparation moteur/transport et oblige à simuler crypto dans chaque test."
+        ]
+      },
+      "decision": "Option A, impérativement. Math.random, crypto et Date sont bannis du paquet moteur par règle ESLint vérifiée en intégration.",
+      "justification_besoin": "Fiabilité rang 2 : sans aléa injectable et graine-able, ni les 50 critères d'acceptation ni la vérification de la matrice de gains ne sont testables de façon reproductible, et la reprise par rejeu (ADR-TL-05) est impossible.",
+      "consequences_acceptees": "sessions.graine_alea est classée secrète au même titre qu'un jeton. L'ordre de consommation des tirages est normatif : le modifier invalide le rejeu de tout journal antérieur et constitue une rupture de compatibilité à déclarer."
+    },
+    {
+      "id": "ADR-TL-09",
+      "objet": "Où vit le calcul de visibilité",
+      "contexte": "Règle maîtresse RG-01 : chaque message sortant est une projection calculée pour un destinataire unique. Il faut décider si ce calcul appartient au moteur pur ou à la couche transport.",
+      "option_a": {
+        "nom": "La projection est un module PUR du moteur : projeterVuePrivee(etat, joueurId) et projeterEvenement(etat, effet, joueurId) -> Message | null",
+        "avantages": [
+          "La non-fuite devient une propriété d'une fonction pure, donc testable exhaustivement sans serveur, sans socket et sans base : un test de propriété couvre tous les couples (état, événement, destinataire).",
+          "Le transport devient trivial et sans décision : il boucle sur les connectés et envoie ce que le moteur lui donne, ou rien si la fonction retourne null.",
+          "La couverture à 100 % de ce seul module (seuils_qualite) devient atteignable et significative.",
+          "CA-05, CA-10, CA-36, CA-39 et CA-42 deviennent des tests unitaires, pas des tests d'intégration fragiles."
+        ],
+        "inconvenients": [
+          "Le moteur doit connaître la forme des messages sortants, ce qui le couple au protocole : un changement de protocole touche le moteur. Atténué par le fait que les types de messages vivent dans @gdv/partage, pas dans le moteur.",
+          "Une même transition produit jusqu'à 8 appels de projection au lieu d'un objet construit une fois — coût négligeable à ce volume, mais c'est bien du calcul répété."
+        ]
+      },
+      "option_b": {
+        "nom": "Le moteur produit un état complet ; la couche transport filtre par destinataire avant l'envoi",
+        "avantages": ["Moteur plus simple, ignorant du protocole", "Un seul objet construit par transition"],
+        "inconvenients": [
+          "Fait transiter l'état COMPLET, secrets compris, dans la couche transport : la sécurité repose alors sur l'exhaustivité d'un filtre, c'est-à-dire sur une liste de champs à ne pas oublier. Tout champ ajouté plus tard est divulgué par défaut.",
+          "Rend la non-fuite testable seulement en intégration, à travers un socket, donc jamais exhaustivement.",
+          "C'est, à une étape près, l'architecture que le GDD qualifie d'échec de mission : diffuser l'état et filtrer. Même filtré côté serveur, le principe de construction par soustraction est fragile par nature."
+        ]
+      },
+      "decision": "Option A — la projection par destinataire est un module pur du moteur. Le transport ne filtre RIEN : il ne reçoit jamais autre chose qu'un message déjà projeté.",
+      "justification_besoin": "RG-01, rang 1. Le choix porte sur le sens de construction : construire par ajout de ce qui est autorisé (projection), jamais par soustraction de ce qui est interdit (filtre). Un champ ajouté plus tard est alors absent par défaut, pas divulgué par défaut.",
+      "consequences_acceptees": "Le moteur connaît la forme des messages sortants et un changement de protocole le touche. Coût accepté : c'est le prix d'une frontière de sécurité testable sans infrastructure."
+    },
+    {
+      "id": "ADR-TL-10",
+      "objet": "Format des identifiants",
+      "contexte": "Les identifiants de joueur circulent dans des messages publics (déclarations, accusations, ordre du cercle). Le jeton de groupe persiste sur l'appareil de l'hôte au-delà d'une partie. Volume total dérisoire.",
+      "option_a": {"nom": "UUIDv4 en chaîne, crypto.randomUUID()", "avantages": ["Fourni par le runtime, aucune dépendance", "Ne divulgue ni l'ordre d'arrivée, ni le nombre de sessions du serveur", "Non énumérable : impossible de deviner l'identifiant d'une session voisine", "Fusion de bases et export de journaux d'audit sans collision"], "inconvenients": ["36 octets par clé, aucune localité d'index (sans effet au volume de ce projet)", "Moins lisible dans les journaux de débogage qu'un entier", "Ne porte aucune information d'ordre, là où un entier donne gratuitement l'ordre de création"]},
+      "option_b": {"nom": "Entier auto-incrémenté", "avantages": ["Clés compactes, index performants", "Lisibilité en débogage", "Ordre de création gratuit"], "inconvenients": ["Divulgue l'ordre d'arrivée des joueurs et le volume de sessions du serveur", "Énumérable : connaître un identifiant donne tous les autres", "Oblige à poser une seconde couche d'identifiants opaques pour tout ce qui sort, soit deux identités par entité à maintenir"]},
+      "decision": "Option A — UUIDv4 pour toutes les clés primaires, sans exception et sans identifiant interne parallèle.",
+      "justification_besoin": "Sécurité rang 1 : des identifiants énumérables sur une frontière où la projection par destinataire est la seule barrière ajoutent une surface d'attaque gratuite. Moindre complexité : une seule identité par entité, pas deux.",
+      "consequences_acceptees": "Clés de 36 octets et index moins compacts. Au volume de ce projet (quelques milliers de lignes par partie), l'impact est nul."
+    },
+    {
+      "id": "ADR-TL-11",
+      "objet": "Organisation du dépôt",
+      "contexte": "Quatre unités : contrats partagés, moteur pur, serveur, client PWA. Le paquet partagé doit être consommé par les trois autres sans publication sur un registre.",
+      "option_a": {"nom": "Mono-repo npm workspaces (intégré à npm)", "avantages": ["Fourni avec le runtime déjà installé : aucun outil supplémentaire à apprendre, installer ou auditer", "Une modification de contrat et ses trois consommateurs sont dans le même commit : impossible de livrer un serveur et un client désaccordés", "Les règles de couches se vérifient sur un seul arbre de fichiers"], "inconvenients": ["Pas de cache de construction incrémentale : sur quatre paquets, la construction complète reste rapide mais sera entièrement rejouée", "Résolution des dépendances moins stricte que pnpm : un paquet peut importer une dépendance qu'il n'a pas déclarée (dépendance fantôme), masquant une erreur de déclaration", "Un seul historique git pour quatre unités"]},
+      "option_b": {"nom": "pnpm workspaces + orchestrateur de tâches (Turborepo ou Nx)", "avantages": ["Isolation stricte des dépendances, pas de dépendance fantôme", "Cache de tâches, utile sur de gros arbres"], "inconvenients": ["Deux outils de plus à installer, configurer et auditer, pour quatre paquets et une construction qui dure quelques secondes : aucune exigence ne le porte", "Le cache de tâches résout un problème de temps de construction qui n'existe pas ici"]},
+      "decision": "Option A — npm workspaces, quatre paquets : paquets/partage, paquets/moteur, applications/serveur, applications/client.",
+      "justification_besoin": "Moindre complexité, et une exigence réelle : le contrat de protocole étant la frontière de sécurité, serveur et client doivent être versionnés ensemble pour qu'aucune livraison ne les désaccorde.",
+      "consequences_acceptees": "Risque de dépendance fantôme : neutralisé par la règle de couches de dependency-cruiser, qui vérifie les imports déclarés paquet par paquet et échoue en intégration."
+    },
+    {
+      "id": "ADR-TL-12",
+      "objet": "Qui rend le texte des révélations du génie",
+      "contexte": "besoins_protocole prévoit revelation(gabarit, texte, cibles). Or RG-25 fait des variantes de formulation du contenu éditorial stocké hors du moteur, RG-61 exige que les libellés vivent dans un fichier de contenu séparé, et ESC-01 laisse l'univers ouvert.",
+      "option_a": {"nom": "Le serveur envoie {gabarit, variante_formulation, cibles, valeurs} ; le client compose le texte depuis son fichier de contenu", "avantages": ["Trancher l'univers (ouest-africain ou Mille et une nuits) ne touche ni le serveur, ni le protocole, ni la base : deux fichiers de contenu côté client suffisent", "Aucun libellé éditorial dans le moteur, conformément à RG-25 et RG-61", "Le QA vérifie la véracité d'une révélation sur des VALEURS numériques, pas sur une chaîne de caractères — contrôle bien plus robuste", "Trames plus petites, et l'invariant RG-20 reste vérifié côté serveur sur les valeurs"], "inconvenients": ["Deux implémentations doivent rester d'accord sur la liste des variantes : si le client ne connaît pas une variante émise, il doit se rabattre sur la variante 0 (comportement de repli à implémenter et à tester)", "Un journal de débogage serveur affiche une clé et des valeurs, pas la phrase lue par les joueurs : la relecture d'une partie demande de recomposer le texte"]},
+      "option_b": {"nom": "Le serveur compose et envoie le texte français", "avantages": ["Un seul lieu de vérité pour la phrase affichée", "Le client n'a rien à composer", "Les journaux serveur contiennent la phrase exacte lue par les joueurs"], "inconvenients": ["Met l'écriture éditoriale et donc l'univers dans le serveur, en contradiction avec RG-61 et avec ESC-01 laissée ouverte : trancher l'univers imposerait alors de modifier et redéployer le serveur", "Transforme la vérification de véracité (RG-20) en analyse de chaîne de caractères", "Rend l'internationalisation future dépendante du serveur, alors qu'elle est hors périmètre v1"]},
+      "decision": "Option A. ÉCART ASSUMÉ par rapport à besoins_protocole : l'événement revelation ne porte PAS de champ texte. Il porte gabarit, variante_formulation, cibles[] et valeurs{}.",
+      "justification_besoin": "RG-61 et ESC-01 : la décision d'univers du client doit rester entière et ne doit coûter aucune modification du serveur. RG-20 : la véracité se vérifie sur des valeurs, pas sur une phrase.",
+      "consequences_acceptees": "Le client doit implémenter un repli sur la variante 0 si une variante inconnue est reçue, et ce repli doit être testé. Le catalogue de variantes est dupliqué conceptuellement entre la SPEC et le fichier de contenu du client."
+    },
+    {
+      "id": "ADR-TL-13",
+      "objet": "Frontière REST / temps réel pour les trois premières commandes",
+      "contexte": "besoins_protocole liste creer_session, rejoindre_session et se_reconnecter parmi les commandes client vers serveur. Or les deux premières s'exécutent nécessairement AVANT qu'un jeton de session existe, donc avant qu'une connexion temps réel authentifiée puisse être établie.",
+      "option_a": {"nom": "creer_session et rejoindre_session en REST ; se_reconnecter fusionné dans la trame authentifier du canal temps réel", "avantages": ["La connexion temps réel n'existe JAMAIS sans jeton authentifié : il n'y a aucun état de socket anonyme à gérer, donc aucune fenêtre pendant laquelle une connexion non identifiée reçoit quoi que ce soit", "La limitation de débit sur l'adhésion s'applique au niveau HTTP, là où l'adresse IP est disponible et où l'outillage existe", "L'adhésion par QR est une navigation HTTP : la page d'adhésion fonctionne sans aucun code temps réel chargé", "se_reconnecter et authentifier font exactement la même chose — prouver qu'on détient un jeton — les fusionner supprime un chemin de code en double, donc un chemin de bogue"]},
+      "option_b": {"nom": "Tout en temps réel, avec une connexion anonyme autorisée le temps de créer ou de rejoindre", "avantages": ["Un seul protocole à implémenter côté client", "Pas de double chaîne de validation REST et temps réel"], "inconvenients": ["Introduit un état de socket anonyme : une classe entière de questions de sécurité à traiter (que peut recevoir un socket non authentifié, combien de temps vit-il, comment le limiter en débit sans adresse IP exploitable)", "La limitation de débit par adresse IP sur l'adhésion devient malaisée", "Une page scannée par QR devrait charger le code temps réel avant de pouvoir afficher quoi que ce soit"]},
+      "decision": "Option A. REMANIEMENT ASSUMÉ : 2 des 15 commandes listées deviennent des routes REST (POST /sessions, POST /sessions/{code_adhesion}/joueurs) et 1 est fusionnée (se_reconnecter devient la commande authentifier, obligatoirement première sur toute connexion). Il reste 13 commandes temps réel. Les 15 besoins fonctionnels sont tous couverts.",
+      "justification_besoin": "Sécurité rang 1 : aucune connexion temps réel non authentifiée ne doit exister, car c'est le canal par lequel transitent toutes les projections privées. RG-73 : la reconnexion est, par définition, une authentification suivie d'une re-projection complète.",
+      "consequences_acceptees": "Deux protocoles côté client (fetch pour l'amorçage, WebSocket pour le jeu) et deux chaînes de validation, toutes deux alimentées par les mêmes schémas Zod de @gdv/partage."
+    },
+    {
+      "id": "ADR-TL-14",
+      "objet": "Arithmétique des montants et des fractions",
+      "contexte": "Le pipeline impose plancher(recompense * 2/3), plafond(principal * 1,5), plancher(montant_paye / 2), plancher(solde / 2) et un partage au prorata avec reliquat non distribué. La section verification_matrice_gains est figée et vérifiée : le moteur doit reproduire des entiers exacts.",
+      "option_a": {"nom": "Entiers exclusivement, fractions en rationnels [numerateur, denominateur], arrondis explicites et nommés", "avantages": ["Résultats exacts et identiques sur toute machine : aucune dépendance au mode d'arrondi des flottants", "plancher(a*n/d) se calcule en entiers : (a*n - ((a*n) mod d)) / d, sans jamais quitter le domaine entier", "Rend l'intention d'arrondi visible dans le code : plancher() et plafond() sont deux fonctions distinctes, impossibles à confondre", "Le reliquat non distribué du partage (RG-14) devient une quantité calculée et assertable, pas un effet de bord"]},
+      "option_b": {"nom": "Flottants avec Math.floor / Math.ceil au moment opportun", "avantages": ["Écriture plus directe, proche de l'énoncé du GDD", "Moins de code de support"], "inconvenients": ["Les valeurs intermédiaires non entières se propagent : une seule étape du pipeline qui oublie d'arrondir décale toutes les suivantes, et le défaut n'apparaît que sur certaines combinaisons de montants", "Math.floor sur un flottant légèrement inférieur à l'entier attendu produit un résultat faux d'une unité, défaut classique et difficile à reproduire", "Au rang 2, un écart d'une pièce sur un partage fausse un classement final sans qu'aucune erreur ne soit levée"]},
+      "decision": "Option A. Aucun flottant ne traverse le moteur, la base ou le fil. taux_interet_pret est représenté [1,2], fraction_retenue_genie [1,3], fraction_consolation [1,2] — valeurs numériquement identiques à celles de la SPEC, représentation seule modifiée.",
+      "justification_besoin": "Fiabilité rang 2 et section verification_matrice_gains figée : le moteur doit reproduire des entiers exacts et reproductibles, et le QA doit pouvoir asserter l'égalité stricte.",
+      "consequences_acceptees": "Le schéma de configuration accepte les fractions sous forme de paires d'entiers, ce qui s'écarte de la notation 0.5 de la SPEC. La valeur de jeu est inchangée ; l'écart est purement de représentation et est signalé au chef de projet."
+    },
+    {
+      "id": "ADR-TL-15",
+      "objet": "Stockage des jetons de session et de groupe",
+      "contexte": "Un jeton de session fuité permet l'usurpation et donc l'accès à tous les secrets de son propriétaire (matrice_visibilite, dernière entrée). Le fichier de base de données sera manipulé par les développeurs et le QA, et joint à des rapports de défaut.",
+      "option_a": {"nom": "Jeton de 32 octets généré par crypto.randomBytes, transmis une seule fois, stocké en condensat SHA-256, comparé à temps constant", "avantages": ["Une copie du fichier de base ou une sauvegarde jointe à un rapport ne permet aucune usurpation", "Aucun jeton en clair ne peut apparaître dans un vidage de table", "Comparaison à temps constant : pas de fuite par mesure de durée"], "inconvenients": ["Le jeton n'est plus récupérable côté serveur : un joueur qui a effacé le stockage de son navigateur ne peut pas revenir dans sa partie (traité : l'hôte peut abandonner la partie ; pas de reprise de partie abandonnée, hors périmètre v1)", "Un hachage par vérification de jeton à chaque commande : coût négligeable (SHA-256 sur 32 octets) mais non nul"]},
+      "option_b": {"nom": "Jeton stocké en clair, index direct", "avantages": ["Recherche directe sans hachage", "Un jeton perdu est récupérable côté serveur, donc support possible"], "inconvenients": ["Le fichier de base devient l'équivalent d'un trousseau de huit identités complètes : quiconque l'ouvre peut rejouer n'importe quel joueur et lire tous ses secrets", "Incompatible avec la manipulation normale d'un fichier de base par le QA et les développeurs"]},
+      "decision": "Option A.",
+      "justification_besoin": "Sécurité rang 1 : matrice_visibilite classe le jeton de session comme donnée dont la fuite permet l'usurpation et donc l'accès aux secrets d'autrui. La protection doit survivre à la copie du fichier de base.",
+      "consequences_acceptees": "Un joueur qui perd son jeton (stockage local effacé) ne peut pas réintégrer la partie en cours. Documenté comme limite connue de la v1, cohérent avec hors_perimetre (pas de reprise de partie abandonnée, pas de remplacement de joueur)."
+    },
+    {
+      "id": "ADR-TL-16",
+      "objet": "Chiffrement du transport, alors que le déploiement est hors périmètre",
+      "contexte": "Le nœud S7 n'est pas retenu (ADR-CP-02) : je ne choisis ni hébergement ni chaîne de livraison. Mais huit joueurs partagent un même Wi-Fi dans une même pièce, et le jeton de session vaut accès complet aux secrets de son propriétaire.",
+      "option_a": {"nom": "TLS obligatoire dès le playtest (https + wss) ; le serveur refuse de démarrer en mode production sans certificat", "avantages": ["Ferme le seul chemin de fuite qui contourne entièrement le moteur : l'écoute passive du réseau local", "Le service worker et l'installabilité PWA exigent de toute façon une origine sécurisée : la contrainte serait rencontrée plus tard, en pire", "Un refus de démarrage est une barrière automatique, pas une consigne"]},
+      "option_b": {"nom": "HTTP en clair en développement et en playtest, TLS repoussé à la mise en production", "avantages": ["Rien à provisionner pour commencer", "Aucune mise en garde de certificat auto-signé à expliquer aux joueurs"], "inconvenients": ["En playtest réel — huit personnes, un Wi-Fi partagé — un jeton capturé passivement donne l'accès complet aux secrets d'un joueur. L'exigence qualifiée de non négociable par le GDD serait contournée sans qu'une seule ligne du moteur soit en cause.", "La PWA n'est ni installable ni dotée d'un service worker hors origine sécurisée : la moitié des choix d'ADR-TL-07 seraient invérifiables jusqu'à la production."]},
+      "decision": "Option A. J'impose l'EXIGENCE (TLS, et refus de démarrage en production sans certificat) ; je ne choisis NI l'hébergeur, NI l'autorité de certification, NI la procédure d'obtention — cela reste au nœud S7.",
+      "justification_besoin": "Sécurité rang 1 : sans chiffrement du transport, RG-01 est contournable par écoute réseau, dans le scénario d'usage exact décrit par le GDD (huit joueurs, une pièce, un réseau partagé).",
+      "consequences_acceptees": "Le développement local exige un certificat (localhost est traité comme origine sécurisée par les navigateurs, ce qui couvre le poste ; un playtest multi-appareils exige un vrai certificat). La charge de provisionnement revient au nœud S7."
+    }
+  ],
+
+  "contraintes_perf": {
+    "_statut": "CIBLES, non mesurées. Seule la mesure de node:sqlite reportée dans stack._mesures_faites est réelle. Le QA instrumente et confirme.",
+    "budget_accuse_commande_ms_p95": 120,
+    "_justification_accuse": "RG-31 : déclaration et paiement sont simultanés pour toute la table. Au-delà d'environ 150 ms, un joueur voit la déclaration d'un voisin s'afficher avant la sienne et perd le sentiment de simultanéité. 120 ms en 95e centile sur réseau local laisse une marge.",
+    "budget_projection_complete_ms": 200,
+    "_justification_projection": "Délai entre la décision du moteur et la réception du dernier des 8 destinataires, pour une transition qui projette vers toute la table (publication d'une déclaration, changement de phase, résultat d'exécution).",
+    "budget_premier_rendu_ms": 2500,
+    "_justification_rendu": "US-01 : rassembler la table en quelques secondes. Mesuré sur téléphone de milieu de gamme en partage de connexion, du scan du QR à l'écran d'adhésion utilisable.",
+    "budget_js_initial_ko_gzip": 150,
+    "budget_reconnexion_ms": 1500,
+    "_justification_reconnexion": "US-16 : de la réouverture de l'application à l'affichage de l'état complet projeté, ascenseur compris.",
+    "derive_horloge_affichee_ms": 500,
+    "_justification_horloge": "RG-72 : les minuteurs clients sont décoratifs et dérivés de phase_fin_at. Un écart d'affichage supérieur à une demi-seconde entre deux téléphones de la même table est visible et discrédite l'arbitre.",
+    "volume_attendu": "8 joueurs maximum par session ; de l'ordre de 1500 messages et 1500 lignes de journal par partie de 30 minutes ; 1 à 3 sessions simultanées sur un poste de développement. Aucune exigence de montée en charge n'est portée par la SPEC.",
+    "point_de_mesure_impose": "Le QA mesure l'accusé de commande et la projection complète avec 8 clients simulés, sur une partie complète de 5 manches. Aucune optimisation n'est entreprise avant cette mesure."
+  },
+
+  "dette_assumee": [
+    {"objet": "node:sqlite est un module jeune du runtime ; sa surface d'API peut évoluer d'une version mineure de Node à l'autre", "raison": "Il supprime toute compilation native sous Windows et fonctionne, mesuré, sur Node 24.18.1. L'interface DepotSqlite isole complètement le choix.", "mitigation": "Toute la persistance passe par src/persistance/depot.ts. Le remplacement par better-sqlite3 coûte un fichier d'implémentation.", "revoir_si": "Une mise à jour de Node casse l'API, ou une exigence de concurrence apparaît.", "date": "2026-10-27"},
+    {"objet": "Le jeton de session est conservé en localStorage côté client", "raison": "US-16 exige que la reconnexion survive à une fermeture de l'application ; l'appareil est celui du joueur et n'est pas multi-utilisateur.", "mitigation": "Content-Security-Policy stricte, aucune injection de HTML brut, aucun script tiers, aucune dépendance de rendu non auditée. Une XSS reste le seul vecteur et serait un défaut bloquant.", "revoir_si": "Un script tiers ou un contenu utilisateur rendu en HTML entre dans le client.", "date": "2026-10-27"},
+    {"objet": "Aucune reprise possible pour un joueur ayant perdu son jeton (stockage effacé)", "raison": "Conséquence d'ADR-TL-15 (jetons hachés). Cohérent avec hors_perimetre : pas de remplacement de joueur en cours de partie.", "mitigation": "Le joueur reste dans la partie du point de vue du moteur ; ses actions non soumises valent 0 (RG-32) et la partie continue.", "revoir_si": "Le playtest montre que le cas se produit réellement.", "date": "2026-10-27"},
+    {"objet": "Processus unique, aucune montée en charge horizontale : l'état vivant des sessions est en mémoire d'un seul processus", "raison": "Aucune exigence de volume ni de disponibilité n'est portée par la SPEC. Un second processus imposerait un registre de sessions partagé, pour zéro besoin identifié.", "mitigation": "La reprise par rejeu (ADR-TL-05) couvre le redémarrage, qui est le seul risque réel à ce stade.", "revoir_si": "Plus d'une instance devient nécessaire, ou une exigence de disponibilité apparaît.", "date": "2026-10-27"},
+    {"objet": "La publication du montant d'amende liquidé à l'étape 16 permet de recalculer exactement le montant payé d'un menteur démasqué", "raison": "Exigé par la SPEC (CA-22) et par matrice_visibilite. L'accusé est déjà démasqué publiquement à cet instant.", "mitigation": "Aucune. Signalé au chef de projet pour que l'inférence soit reconnue comme volontaire et non traitée plus tard comme un défaut de fuite.", "revoir_si": "Le chef de projet juge l'inférence indésirable — ce serait alors une modification de la SPEC, pas de l'architecture.", "date": "2026-10-27"},
+    {"objet": "La publication des parts de récompense à l'étape 16, combinée à la révélation de la clause LE_PLUS_GENEREUX, désigne publiquement le plus gros payeur réel", "raison": "Le pipeline (étapes 8 et 16) publie les parts par joueur ET la clause appliquée. Comme la clause double le poids du plus gros payeur réel, la comparaison des parts aux déclarations publiques le révèle. Les deux publications sont exigées par la SPEC.", "mitigation": "Aucune sans modifier la SPEC. Signalé au chef de projet pour que l'inférence soit reconnue comme un effet voulu du design de la clause, et non traitée plus tard comme une fuite.", "revoir_si": "Le chef de projet juge l'inférence indésirable — ce serait une modification de catalogue_clauses, pas de l'architecture.", "date": "2026-10-27"},
+    {"objet": "Les montants de consolation individuels NE SONT PAS publiés, contrairement aux parts de récompense", "raison": "Décision d'architecture : la clause CONSOLATION verse plancher(montant_paye_i / 2). Publier ce montant par joueur révélerait exactement le montant payé de chacun, en violation frontale de RG-01. La SPEC publie « les parts » dans le cas d'un vœu réussi (étape 16) ; elle ne demande nulle part de publier les consolations individuelles.", "mitigation": "EvtExecutionResultat publie l'activation de la clause CONSOLATION et le total consolé, jamais le détail par joueur. Chaque joueur apprend sa consolation par EvtSoldeMisAJour, qui est privé.", "revoir_si": "Jamais : publier ce détail serait un défaut bloquant.", "date": "2026-10-27"},
+    {"objet": "Le certificat TLS n'est pas provisionné : l'exigence est posée (ADR-TL-16), la procédure relève du nœud S7 non retenu", "raison": "ADR-CP-02 exclut le déploiement de ce cycle.", "mitigation": "Le serveur refuse de démarrer en mode production sans certificat ; le développement sur localhost est traité comme origine sécurisée par les navigateurs.", "revoir_si": "Un playtest multi-appareils est programmé — il exige alors un certificat avant la première partie.", "date": "2026-10-27"},
+    {"objet": "Aucune internationalisation : le fichier de contenu client est en français uniquement", "raison": "hors_perimetre de la SPEC.", "mitigation": "Le serveur n'émet que des clés neutres : ajouter une langue est un fichier de contenu de plus, sans toucher au serveur.", "revoir_si": "Une autre langue est demandée.", "date": "2026-10-27"}
+  ],
+
+  "points_tranches_sans_consultation": [
+    {"ref": "ADR-TL-12", "point": "L'événement revelation ne porte pas de champ texte : le client compose la phrase. Écart par rapport à la formulation de besoins_protocole.", "motif": "RG-61 et ESC-01 : l'univers doit rester tranchable sans toucher au serveur.", "impact_si_change": "FAIBLE — ajouter un champ texte côté serveur reste possible, au prix de l'importation de l'éditorial dans le serveur."},
+    {"ref": "ADR-TL-13", "point": "creer_session et rejoindre_session deviennent des routes REST ; se_reconnecter est fusionné dans authentifier.", "motif": "Ces actes précèdent l'existence d'un jeton, donc d'une connexion temps réel authentifiée.", "impact_si_change": "FAIBLE sur le jeu, FORT sur la sécurité du canal si l'on revenait à une connexion anonyme."},
+    {"ref": "ADR-TL-14", "point": "taux_interet_pret représenté [1,2] au lieu de 0.5, fractions en rationnels.", "motif": "Interdiction du flottant dans un moteur dont les entiers sont vérifiés. La valeur de jeu est strictement inchangée.", "impact_si_change": "NUL sur le jeu, FORT sur la reproductibilité si l'on repassait au flottant."},
+    {"ref": "joueurs.score_activite", "point": "Ajout d'une colonne non listée dans modele_conceptuel, classée secrète.", "motif": "RG-24 impose de cumuler le score d'activité ; l'émettre divulguerait les enquêtes lancées, qui sont secrètes (RG-27).", "impact_si_change": "NUL."},
+    {"ref": "journal_commandes", "point": "Ajout d'une entité non listée dans modele_conceptuel.", "motif": "ADR-TL-05 : support de la reprise après redémarrage et de l'audit par rejeu.", "impact_si_change": "FORT — sans elle, un redémarrage détruit la partie en cours."},
+    {"ref": "manches.multiplicateur_applique, manches.facteur_amende, accusations.montant_amende_liquide", "point": "Colonnes ajoutées, classées secrètes jusqu'à l'étape 16.", "motif": "Traçabilité du pipeline pour le QA, sans divulguer la clause avant sa révélation (ADR-CP-06).", "impact_si_change": "FAIBLE."},
+    {"ref": "manches.clause_id renommé clause_cle", "point": "La SPEC nomme l'attribut clause_id, mais l'entité Clause est identifiée par cle.", "motif": "Cohérence de la clé étrangère avec la clé primaire du catalogue.", "impact_si_change": "NUL."}
+  ]
+}

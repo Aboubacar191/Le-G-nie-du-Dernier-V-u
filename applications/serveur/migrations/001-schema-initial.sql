@@ -1,0 +1,25 @@
+-- 001 — schéma initial.
+--
+-- AMORCE : le DDL est écrit par le nœud S4 (dev-backend) à partir de
+-- ARCHI-GDV-001.json / modele_donnees, qui en est la source normative
+-- (attributs, types, clés étrangères, index, unicité, contraintes CHECK).
+--
+-- Treize tables : groupes, sessions, joueurs, manches, contributions, clauses,
+-- revelations, enquetes, accusations, mouvements_pieces, prets,
+-- signatures_dernier_voeu, journal_commandes.
+--
+-- Points à ne pas perdre en route, chacun gravé EN BASE et pas seulement dans
+-- le code :
+--   · PRAGMA journal_mode = WAL ; PRAGMA foreign_keys = ON ;
+--   · CHECK(solde_pieces >= 0) et CHECK(solde_apres >= 0)        -- RG-41
+--   · CHECK(delta <> 0)
+--   · UNIQUE(code_adhesion) WHERE etat_partie NOT IN ('TERMINEE','ABANDONNEE')
+--   · UNIQUE(session_id, clause_cle)                             -- RG-18 / CA-13
+--   · UNIQUE(manche_id, enqueteur_joueur_id, cible_joueur_id)    -- RG-28
+--   · UNIQUE(manche_id, accusateur_joueur_id)                    -- RG-19 / CA-24
+--   · CHECK(verifiee_vraie = 1) sur revelations                  -- RG-20
+--   · CHECK(gabarit = 'ECART_TOTAL' OR suspects_restants_apres >= 2) -- RG-21
+--   · UNIQUE(joueur_id, id_correlation) sur journal_commandes    -- RG-70
+--
+-- Les horodatages sont des INTEGER (ms depuis l'époque Unix, UTC) : aucune date
+-- locale n'est jamais persistée.

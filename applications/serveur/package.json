@@ -1,0 +1,37 @@
+{
+  "name": "@gdv/serveur",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Transport, persistance, horloge, sécurité. Contient ZÉRO règle de jeu.",
+  "exports": {
+    ".": {
+      "gdv-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./http/serveur": {
+      "gdv-source": "./src/http/serveur.ts",
+      "types": "./dist/http/serveur.d.ts",
+      "default": "./dist/http/serveur.js"
+    }
+  },
+  "scripts": {
+    "types": "tsc --noEmit -p tsconfig.json",
+    "construire": "tsc -p tsconfig.construire.json",
+    "dev": "node --conditions=gdv-source --watch src/index.ts",
+    "demarrer": "node --conditions=gdv-source src/index.ts",
+    "migrer": "node --conditions=gdv-source src/index.ts --migrer",
+    "rejouer": "node --conditions=gdv-source src/index.ts --rejouer"
+  },
+  "dependencies": {
+    "@gdv/moteur": "1.0.0",
+    "@gdv/partage": "1.0.0",
+    "fastify": "5.12.7",
+    "ws": "8.22.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/ws": "8.18.2"
+  }
+}

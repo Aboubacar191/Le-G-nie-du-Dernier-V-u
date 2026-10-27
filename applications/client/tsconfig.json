@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "moduleResolution": "Bundler",
+    "module": "ESNext",
+    "types": ["node", "vite/client"],
+    "jsx": "preserve",
+    "allowImportingTsExtensions": true,
+    // Vite résout les imports du client : pas de réécriture d'extension à l'émission
+    // (et un import de .vue n'est pas réécrivable). Le client ne passe jamais par tsc
+    // pour être construit — « npm run construire » appelle vite build.
+    "rewriteRelativeImportExtensions": false
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue", "tests/**/*.ts", "vite.config.ts"]
+}

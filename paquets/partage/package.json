@@ -1,0 +1,23 @@
+{
+  "name": "@gdv/partage",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Contrats partagés — seul paquet importable par tous les autres. Aucune logique de jeu.",
+  "exports": {
+    ".": {
+      "gdv-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contrat": "./src/contrat/api.json",
+    "./config/defauts": "./src/config/defauts.json"
+  },
+  "scripts": {
+    "types": "tsc --noEmit -p tsconfig.json",
+    "construire": "tsc -p tsconfig.construire.json"
+  },
+  "dependencies": {
+    "zod": "3.25.76"
+  }
+}

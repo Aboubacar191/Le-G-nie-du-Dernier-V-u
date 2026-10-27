@@ -1,0 +1,29 @@
+{
+  "name": "@gdv/moteur",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MOTEUR PUR — déterministe, sans E/S, sans horloge ni aléa non injectés. Testable sans serveur.",
+  "exports": {
+    ".": {
+      "gdv-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./projection": {
+      "gdv-source": "./src/projection/index.ts",
+      "types": "./dist/projection/index.d.ts",
+      "default": "./dist/projection/index.js"
+    }
+  },
+  "scripts": {
+    "types": "tsc --noEmit -p tsconfig.json",
+    "construire": "tsc -p tsconfig.construire.json"
+  },
+  "dependencies": {
+    "@gdv/partage": "1.0.0"
+  },
+  "devDependencies": {
+    "fast-check": "3.23.2"
+  }
+}

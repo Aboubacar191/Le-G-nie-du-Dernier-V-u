@@ -1,0 +1,64 @@
+# Le Génie du Dernier Vœu — fichiers non versionnés.
+# Règle : les trois documents sources (PDF, DOCX, HTML du prototype) et tout
+# .claude/orchestration/ SONT versionnés — ils sont la mémoire du projet.
+
+# --- Dépendances -------------------------------------------------------------
+node_modules/
+.npm/
+
+# --- Artefacts de construction ----------------------------------------------
+dist/
+build/
+*.tsbuildinfo
+applications/client/dev-dist/
+applications/client/.vite/
+
+# --- Rapports de qualité et de couverture ------------------------------------
+coverage/
+.nyc_output/
+rapports/
+
+# --- Base SQLite et ses journaux (persistance locale, jamais versionnée) -----
+donnees/
+*.sqlite
+*.sqlite3
+*.db
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db-journal
+*.db-wal
+*.db-shm
+
+# --- Journaux applicatifs ----------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# --- Environnement : AUCUN secret dans le dépôt ------------------------------
+# .env.exemple documente les clés SANS valeur réelle et reste versionné.
+.env
+.env.*
+!.env.exemple
+
+# --- Certificats et clés TLS locaux (ADR-TL-16) ------------------------------
+*.pem
+*.key
+*.crt
+*.cer
+*.pfx
+*.p12
+
+# --- IDE JetBrains (fichiers conservés sur le disque, non versionnés) --------
+.idea/
+*.iml
+*.iws
+
+# --- Divers éditeurs / systèmes ---------------------------------------------
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~

@@ -1,0 +1,33 @@
+{
+  "name": "Le Génie du Dernier Vœu",
+  "short_name": "Dernier Vœu",
+  "description": "Jeu de table en présentiel. Le serveur est l'arbitre ; l'application affiche ce que le joueur a le droit de voir.",
+  "lang": "fr",
+  "dir": "ltr",
+  "display": "standalone",
+  "orientation": "portrait",
+  "start_url": "/",
+  "scope": "/",
+  "theme_color": "#6b7076",
+  "background_color": "#f2f2f3",
+  "icons": [
+    {
+      "src": "/icones/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icones/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icones/icone-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<title>Salle d'attente</title>
+<script src="a21ce643-548f-43ec-996a-dc08619e93b5"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>/* latin-ext */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("4ac7ec3d-18ed-4402-affe-3f8a3f1dd276") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("5e43c7b6-61dd-4a4f-b81d-48a6072d9132") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("4ac7ec3d-18ed-4402-affe-3f8a3f1dd276") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("5e43c7b6-61dd-4a4f-b81d-48a6072d9132") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("ef6326c5-05ea-4f98-966e-9c0595d9bb24") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("732958c3-c1b6-4a7b-b2f8-483cd9e4c895") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("ef6326c5-05ea-4f98-966e-9c0595d9bb24") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("732958c3-c1b6-4a7b-b2f8-483cd9e4c895") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("ef6326c5-05ea-4f98-966e-9c0595d9bb24") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("732958c3-c1b6-4a7b-b2f8-483cd9e4c895") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<style>
+body{margin:0}
+a{color:#E6B95A}a:hover{color:#F4D28A}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #15122A; color: #F4EEDF; font-family: 'DM Sans', system-ui, sans-serif; display: flex; flex-direction: column; padding: 32px 24px 28px; gap: 24px">
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding-top: 8px">
+    <svg width="56" height="56" sc-camel-view-box="0 0 56 56" aria-hidden="true"><path d="M10 38c6 4 30 4 36 0M14 38c0-8 6-14 14-14s14 6 14 14M28 24v-6m0 0c-3-3-1-8 3-9-1 3 1 5 3 6-2 0-4 1-6 3z" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M46 38c3 0 5-2 5-4" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round"></path></svg>
+    <h1 style="margin: 0; font-family: 'Cinzel', serif; font-size: 28px; font-weight: 700; line-height: 1.15; letter-spacing: 0.02em; color: {{accent}}">Le Génie du<br>Dernier Vœu</h1>
+    <p style="margin: 0; font-size: 14px; color: #B9B2D6">Promets, paie en secret, démasque les menteurs.</p>
+  </div>
+  <div style="display: flex; gap: 16px; align-items: center; background: #221E3D; border: 1px solid #3A3463; border-radius: 16px; padding: 16px">
+    <div role="img" aria-label="QR code de la partie" style="width: 88px; height: 88px; flex-shrink: 0; border-radius: 10px; background: #F4EEDF; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 10px; box-sizing: border-box">
+      <span style="background: #15122A; border-radius: 2px"></span><span></span><span style="background: #15122A; border-radius: 2px"></span><span style="background: #15122A; border-radius: 2px"></span>
+      <span></span><span style="background: #15122A; border-radius: 2px"></span><span></span><span style="background: #15122A; border-radius: 2px"></span>
+      <span style="background: #15122A; border-radius: 2px"></span><span style="background: #15122A; border-radius: 2px"></span><span></span><span></span>
+      <span style="background: #15122A; border-radius: 2px"></span><span></span><span style="background: #15122A; border-radius: 2px"></span><span style="background: #15122A; border-radius: 2px"></span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #B9B2D6">Code de la partie</span>
+      <span style="font-family: 'Cinzel', serif; font-size: 26px; font-weight: 700; letter-spacing: 0.08em">ZAF-482</span>
+      <button style="align-self: flex-start; margin-top: 4px; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid #3A3463; background: transparent; color: #F4EEDF; font: 500 13px 'DM Sans', sans-serif">Partager le lien</button>
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 10px; flex-grow: 1">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 700">Marchands autour de la table</h2>
+      <span style="font-size: 13px; color: #B9B2D6">6 / 8</span>
+    </div>
+    <p style="margin: 0; font-size: 12px; color: #B9B2D6">L'ordre des places sert aux révélations du génie. Glisse pour réordonner.</p>
+    <ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+      <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #221E3D; border: 1px solid {{accent}}"><span style="width: 24px; height: 24px; border-radius: 999px; background: {{accent}}; color: #15122A; font-size: 12px; font-weight: 700; display: grid; place-items: center">1</span><span style="font-size: 14px; font-weight: 500">Toi · hôte</span></li>
+      <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #221E3D; border: 1px solid #3A3463"><span style="width: 24px; height: 24px; border-radius: 999px; border: 1px solid #3A3463; font-size: 12px; display: grid; place-items: center">2</span><span style="font-size: 14px">Awa</span></li>
+      <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #221E3D; border: 1px solid #3A3463"><span style="width: 24px; height: 24px; border-radius: 999px; border: 1px solid #3A3463; font-size: 12px; display: grid; place-items: center">3</span><span style="font-size: 14px">Koffi</span></li>
+      <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #221E3D; border: 1px solid #3A3463"><span style="width: 24px; height: 24px; border-radius: 999px; border: 1px solid #3A3463; font-size: 12px; display: grid; place-items: center">4</span><span style="font-size: 14px">Moussa</span></li>
+      <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #221E3D; border: 1px solid #3A3463"><span style="width: 24px; height: 24px; border-radius: 999px; border: 1px solid #3A3463; font-size: 12px; display: grid; place-items: center">5</span><span style="font-size: 14px">Fatou</span></li>
+      <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #221E3D; border: 1px solid #3A3463"><span style="width: 24px; height: 24px; border-radius: 999px; border: 1px solid #3A3463; font-size: 12px; display: grid; place-items: center">6</span><span style="font-size: 14px">Yao</span></li>
+    </ol>
+  </div>
+  <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1px dashed #3A3463">
+    <svg width="20" height="20" sc-camel-view-box="0 0 20 20" aria-hidden="true"><rect x="4" y="9" width="12" height="8" rx="2" fill="none" stroke="#B9B2D6" stroke-width="1.5"></rect><path d="M7 9V6a3 3 0 0 1 6 0v3" fill="none" stroke="#B9B2D6" stroke-width="1.5"></path></svg>
+    <span style="font-size: 13px; color: #B9B2D6">Mode avancé « Dernier Vœu » : débloqué après 3 parties (0 / 3)</span>
+  </div>
+  <a href="Identite.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 16px; background: {{accent}}; color: #15122A; font-weight: 700; font-size: 16px; text-decoration: none">Invoquer le génie</a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#E6B95A&quot;,&quot;options&quot;:[&quot;#E6B95A&quot;,&quot;#7FD6C4&quot;,&quot;#E89A6B&quot;]},&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#E6B95A' };
+  }
+}
+</script>
+
+
+</body></html>

@@ -1,0 +1,19 @@
+{
+  "_regle": "RG-25 : une formulation par couple (gabarit, variante_formulation). Le serveur n'émet que le gabarit, les valeurs et l'index de variante ; le client compose la phrase (ADR-TL-12). Les tableaux sont vides : les formulations sont écrites au nœud S5, après clôture d'ESC-01. Leur NOMBRE est contraint par le contrat : variante_formulation est un index dans ce tableau.",
+  "_gabarits_du_catalogue": [
+    "ECART_TOTAL",
+    "COMPTAGE",
+    "VOISINAGE",
+    "EXONERATION",
+    "COMPARAISON",
+    "PASSE"
+  ],
+  "variantes": {
+    "ECART_TOTAL": [],
+    "COMPTAGE": [],
+    "VOISINAGE": [],
+    "EXONERATION": [],
+    "COMPARAISON": [],
+    "PASSE": []
+  }
+}

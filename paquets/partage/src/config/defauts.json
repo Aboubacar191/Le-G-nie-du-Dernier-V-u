@@ -1,0 +1,33 @@
+{
+  "joueurs_min": 5,
+  "joueurs_max": 8,
+  "pieces_initiales": 12,
+  "nb_manches": 5,
+  "objectif_par_joueur": 3,
+  "multiplicateur_recompense": 2,
+  "multiplicateur_recompense_tresor_honnetes": 3,
+  "multiplicateur_amende": 2,
+  "cout_enquete": 2,
+  "cout_enquete_inspecteur_tresor": 1,
+  "cout_fausse_accusation": 2,
+  "accusations_max_par_joueur_par_manche": 1,
+  "bonus_mission_reussie": 10,
+  "bonus_marchand_epices_par_voeu_reussi": 2,
+  "taux_interet_pret": [1, 2],
+  "fraction_retenue_genie": [1, 3],
+  "fraction_consolation": [1, 2],
+  "recompense_signature_dernier_voeu": 15,
+  "manche_min_revelation_passe": 3,
+  "parties_requises_pour_debloquer_dernier_voeu": 3,
+  "durees_phases_s": {
+    "VOEU": 20,
+    "NEGOCIATION": 120,
+    "DECLARATION_PAIEMENT": 30,
+    "REVELATION": 20,
+    "ENQUETES_ACCUSATIONS": 60,
+    "EXECUTION": 30,
+    "DV_PROPOSITION": 20,
+    "DV_DEBAT": 60,
+    "DV_SIGNATURE": 10
+  }
+}

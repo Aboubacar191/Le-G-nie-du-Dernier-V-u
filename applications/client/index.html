@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!--
+      Content-Security-Policy stricte (ARCHI conventions.securite_operationnelle).
+      Le jeton de session vit en localStorage : une XSS serait son seul vecteur
+      d'exfiltration. 'unsafe-inline' sur style-src est le compromis de Vue pour
+      les styles de composant ; aucun script inline n'est autorisé.
+      En production, cet en-tête doit AUSSI être servi par le serveur : une
+      balise meta ne couvre pas tout.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'self' wss:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icones/icone-192.png" />
+    <!-- Gris neutre placeholder, à remplacer à la clôture d'ESC-01. -->
+    <meta name="theme-color" content="#6b7076" />
+    <title>Le Génie du Dernier Vœu</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

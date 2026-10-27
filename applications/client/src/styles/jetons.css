@@ -1,0 +1,58 @@
+/* Jetons sémantiques NEUTRES (ADR-CP-03, ESC-01 ouverte).
+ *
+ * Aucune couleur signée, aucune police d'identité, aucun univers engagé.
+ * Les noms sont sémantiques et survivront au choix d'univers ; seules les
+ * VALEURS seront remplacées à la clôture d'ESC-01. Changer de thème ne doit
+ * toucher que ce fichier et les deux fichiers de contenu.
+ */
+
+:root {
+  /* Surfaces et texte — échelle de gris strictement neutre. */
+  --gdv-surface-fond: #f2f2f3;
+  --gdv-surface-carte: #ffffff;
+  --gdv-surface-enfoncee: #e7e7e9;
+  --gdv-texte-primaire: #1c1d1f;
+  --gdv-texte-secondaire: #585b60;
+  --gdv-texte-inverse: #ffffff;
+  --gdv-bordure: #c9cacd;
+
+  /* Accent unique, neutre. Remplacé à la clôture d'ESC-01. */
+  --gdv-accent: #6b7076;
+  --gdv-accent-contraste: #ffffff;
+
+  /* États. Teintes retenues pour leur LISIBILITÉ, pas pour un style :
+   * un joueur doit distinguer un refus d'une confirmation en une fraction de
+   * seconde, sur un téléphone, dans une pièce mal éclairée. */
+  --gdv-etat-succes: #1f6b3a;
+  --gdv-etat-alerte: #8a5a00;
+  --gdv-etat-erreur: #9b1c1c;
+  --gdv-etat-neutre: #585b60;
+
+  /* Jetons de sens métier — valeurs neutres, noms définitifs. */
+  --gdv-secret-fond: #e7e7e9;
+  --gdv-secret-bordure: #9b9ea3;
+  --gdv-public-fond: #ffffff;
+  --gdv-minuteur-reste: #585b60;
+  --gdv-minuteur-urgent: #9b1c1c;
+
+  /* Rythme et rayons. */
+  --gdv-espace-1: 4px;
+  --gdv-espace-2: 8px;
+  --gdv-espace-3: 16px;
+  --gdv-espace-4: 24px;
+  --gdv-espace-5: 40px;
+  --gdv-rayon-petit: 6px;
+  --gdv-rayon-grand: 14px;
+
+  /* Typographie : pile système uniquement. Aucune police d'identité n'est
+   * choisie, et aucune police distante n'est chargée (CSP stricte). */
+  --gdv-police-texte: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --gdv-police-chiffres: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+  --gdv-taille-petite: 0.875rem;
+  --gdv-taille-base: 1rem;
+  --gdv-taille-titre: 1.375rem;
+  --gdv-taille-chiffre: 2rem;
+
+  /* Cibles tactiles : 44 px minimum, le jeu se joue debout, à une main. */
+  --gdv-cible-tactile: 44px;
+}

@@ -1,0 +1,3 @@
+# Dossier de tests du nœud S4 : invariants.
+# tests/criteres-acceptation/ reçoit un fichier par CA-xx de la SPEC, nommé
+# d'après le critère, pour que la couverture des CA se lise dans l'arborescence.

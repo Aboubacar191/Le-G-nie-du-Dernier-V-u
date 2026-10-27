@@ -1,0 +1,275 @@
+{
+  "projet": "Le Génie du Dernier Vœu",
+  "api_version": "1.0.0",
+  "spec_version": "1.1.0 — amendée après le contrôle de livraison S3 (ajout de RG-74 et RG-75, affinement de l'étape 16 du pipeline, trois entrées de matrice_visibilite).",
+  "priorites_ordonnees": [
+    {
+      "rang": 1,
+      "axe": "securite",
+      "origine": "GDD — contrainte explicite non négociable : aucun secret ne doit jamais atteindre le téléphone d'un autre joueur. Toute la logique secrète est calculée côté serveur."
+    },
+    {
+      "rang": 2,
+      "axe": "fiabilite",
+      "origine": "GDD section 4 — la matrice de gains est vérifiée et ne doit pas être rééquilibrée. Un moteur de jeu faux rend le jeu injouable en présentiel (aucune possibilité d'arbitrage humain, le génie est l'autorité)."
+    },
+    {
+      "rang": 3,
+      "axe": "performance",
+      "origine": "Phases minutées (20 s à 120 s), 8 clients simultanés, jeu en présentiel : une latence perceptible casse la simultanéité des déclarations."
+    },
+    {
+      "rang": 4,
+      "axe": "delai",
+      "origine": "Prototype v1, pas de date imposée par le client."
+    },
+    {
+      "rang": 5,
+      "axe": "esthetique",
+      "origine": "Le client autorise explicitement des styles placeholder ; le thème visuel est une décision utilisateur ouverte."
+    }
+  ],
+  "stack": {
+    "statut": "TRANCHEE le 2026-10-27 par le tech-lead (noeud S3), contrat ARCHI-GDV-001.json",
+    "runtime": "Node.js 24.18.1",
+    "langage": "TypeScript 5.x strict, ESM, sur les 4 paquets",
+    "backend_http": "Fastify 5.x (sérialisation par schéma : un champ non déclaré ne peut pas sortir)",
+    "backend_temps_reel": "ws 8.x, WebSocket brut — Socket.IO écarté car sa primitive phare io.to(salon).emit est exactement ce que RG-01 interdit",
+    "validation_messages": "Zod 3.x dans le paquet partagé, strict",
+    "persistance": "SQLite via node:sqlite, WAL, + reprise par rejeu du journal de commandes",
+    "frontend": "Vue 3.5 + Vite 6 + vite-plugin-pwa",
+    "tests": "node:test + c8 + fast-check (tests de propriété sur la projection)",
+    "mono_repo": "npm workspaces, 4 paquets : partagé, moteur, serveur, client",
+    "alea": "source injectable sfc32 graine-able ; Math.random, Date et crypto bannis du moteur par ESLint",
+    "seuils": "couverture moteur 95 %, moteur/projection 100 %"
+  },
+  "decisions": [
+    {
+      "id": "ADR-CP-01",
+      "objet": "Ordre de priorité des arbitrages",
+      "decision": "securite > fiabilite > performance > delai > esthetique",
+      "motif": "Ordre non demandé à l'utilisateur car déjà déterminé par le GDD : la contrainte de secret est qualifiée de non négociable et le thème visuel est explicitement reporté. Demander aurait rouvert une ronde de questions que le client interdit.",
+      "auteur": "chef-de-projet"
+    },
+    {
+      "id": "ADR-CP-02",
+      "objet": "Nœud S7 (déploiement)",
+      "decision": "Non retenu dans ce cycle.",
+      "motif": "Hors du périmètre demandé (6 livrables énumérés, aucun déploiement). Économie d'un démarrage à froid.",
+      "auteur": "chef-de-projet"
+    },
+    {
+      "id": "ADR-CP-03",
+      "objet": "Portée du nœud S2 (design) face à la décision d'univers ouverte",
+      "decision": "S2 est conservé mais restreint : parcours, structure d'écrans, états de composants et tokens NEUTRES sémantiques. Aucun choix d'univers, de palette signée ni de police d'identité.",
+      "motif": "Le frontend a besoin d'une structure d'écrans et de tokens pour ne pas improviser ; mais trancher l'univers reviendrait à usurper une décision que le client garde ouverte. Les tokens sémantiques permettront de rethémer sans retoucher les composants.",
+      "auteur": "chef-de-projet"
+    },
+    {
+      "id": "ADR-CP-04",
+      "objet": "Qui produit le contrat de protocole temps réel",
+      "decision": "Le tech-lead, dans le même dispatch que l'ARCHI (API-GDV-001.json).",
+      "motif": "Le protocole EST ici la frontière de sécurité (quelle donnée sort du serveur, vers quel destinataire). C'est une décision d'architecture, pas une conséquence du code. Le produire avant le code évite un contrat rétro-ajusté à l'implémentation et laisse le chef de projet le rejeter à la source.",
+      "auteur": "chef-de-projet"
+    },
+    {
+      "id": "ADR-CP-05",
+      "objet": "Confidentialité du solde de pièces",
+      "decision": "Le solde de pièces de chaque marchand est PRIVÉ (serveur + propriétaire). Seuls les scores finaux sont publics.",
+      "motif": "Conséquence forcée de la contrainte non négociable : un solde public permettrait de déduire le paiement secret par différence (solde_avant − solde_après). Rendre les soldes publics détruirait le cœur jouable. Point non tranché par le GDD, marqué « déduite » dans la SPEC et signalé à l'utilisateur.",
+      "auteur": "chef-de-projet",
+      "axe_prioritaire_invoque": "securite (rang 1)"
+    },
+    {
+      "id": "ADR-CP-06",
+      "objet": "Moment de liquidation des amendes d'accusation",
+      "decision": "Le verdict d'accusation est public immédiatement (phase ENQUETES_ACCUSATIONS) ; le transfert effectif des amendes est différé à la phase EXECUTION, après application de la clause cachée.",
+      "motif": "La clause « Prime au délateur » double les amendes de la manche. Liquider une amende doublée avant la révélation de la clause divulguerait la clause aux deux parties concernées, en violation de la règle de secret. Point non tranché par le GDD, marqué « déduite ».",
+      "auteur": "chef-de-projet",
+      "axe_prioritaire_invoque": "securite (rang 1)"
+    }
+  ],
+  "hierarchie_des_sources": {
+    "_etabli_le": "2026-10-27",
+    "_origine": "Précision apportée par l'utilisateur en cours de cycle : « le concept de base Le_Genie_du_Dernier_Voeu_Concept_du_jeu.docx a été simplifié avec Le Génie du Dernier Vœu — Game Design.pdf ».",
+    "rang_1_source_technique": {
+      "fichier": "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\SPEC-GDV-001.json",
+      "statut": "SOURCE DE VÉRITÉ pour tous les agents. Prime sur tout le reste."
+    },
+    "rang_2_source_metier": {
+      "fichier": "D:\\Le Génie du Dernier Vœu\\Le Génie du Dernier Vœu — Game Design.pdf",
+      "statut": "GDD simplifié et jouable. Base de la SPEC. Identique au fichier du dossier Téléchargements (empreinte MD5 vérifiée : 7b8e468aa178e34706f8a3cc04786abf)."
+    },
+    "rang_3_concept_initial_perime": {
+      "fichier": "D:\\Le Génie du Dernier Vœu\\Le_Genie_du_Dernier_Voeu_Concept_du_jeu.docx",
+      "statut": "PÉRIMÉ — valeur historique uniquement. NE PAS en réintroduire le contenu.",
+      "ce_que_la_simplification_a_volontairement_retire": [
+        "4 à 12 joueurs => 5 à 8",
+        "trois monnaies (bronze, argent, or) => une seule",
+        "6 rôles => 4 (le Collectionneur d'artefacts est supprimé ; le Marchand déjà lié est déplacé vers le seul mode avancé)",
+        "7 missions => 5 (Le Libéré, Le Voleur de vœux, Le Créancier, L'Insatiable sont supprimées ; Le Gardien de la lampe est déplacé vers le mode avancé)",
+        "7 phases => 6, avec des durées chiffrées",
+        "fragments du véritable nom du génie => supprimés",
+        "objets et artefacts rares => supprimés",
+        "jauge de confiance et fins spéciales => supprimées",
+        "dettes fictives et contrats falsifiés comme mécanique => réduits au seul mensonge sur le paiement",
+        "révélations narratives en chaîne (5 types) => 6 gabarits calculés par les règles",
+        "durée 20-35 min => 25-30 min"
+      ],
+      "ce_que_le_concept_initial_confirme": [
+        "le génie est tenu par l'application, pas par un joueur",
+        "le présentiel avec un téléphone par personne et la règle d'or : le téléphone porte le secret, la pièce porte la parole",
+        "le contrôle des droits côté serveur, énoncé dès le concept initial",
+        "l'absence d'élimination précoce",
+        "la fin en cinq manches et le retournement du Dernier Vœu",
+        "l'adhésion par code ou QR code"
+      ]
+    },
+    "rang_4_prototype_visuel": {
+      "dossier": "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\reference-prototype",
+      "statut": "Référence de STRUCTURE et d'INTERACTION seulement. Palette, typographie et lexique thématique interdits d'import.",
+      "voir": "reference-prototype\\INVENTAIRE.json"
+    }
+  },
+
+  "conflits_arbitres": [
+    {
+      "id": "CONF-01",
+      "objet": "Exploiter ou non le prototype visuel des 15 écrans, découvert en local alors que le brief du nœud S2 le déclarait inaccessible.",
+      "parties": [
+        "Exploiter : donne à l'équipe un inventaire d'écrans déjà éprouvé par l'utilisateur et des motifs d'interaction validés.",
+        "Ignorer : évite tout risque de trancher l'univers visuel par imitation."
+      ],
+      "note_valeur": 4,
+      "note_cout": 3,
+      "ratio": 1.33,
+      "decision": "ADOPTÉ EN VERSION DÉGRADÉE (ratio entre 1,0 et 2,0) : le prototype est fourni aux agents comme référence de structure et d'interaction, avec interdiction explicite d'importer palette, typographie et lexique thématique.",
+      "motif": "La valeur de structure est réelle et récupérable sans coût thématique. Le seul coût véritable était le risque d'usurper la décision d'univers ; il est neutralisé par une interdiction explicite et par l'exigence de tokens sémantiques déjà posée en ADR-CP-03.",
+      "axe_prioritaire_invoque": "esthetique (rang 5) ne peut pas préempter une decision utilisateur ouverte"
+    },
+    {
+      "id": "CONF-02",
+      "objet": "Publier ou non le montant d'amende liquidé, qui permet de recalculer le paiement exact d'un menteur démasqué.",
+      "parties": [
+        "Publier (ce que la SPEC prescrit à l'étape 16) : la table peut vérifier l'arithmétique de l'arbitre, le drame de l'accusation est complet, et la formule « amende = double du mensonge » est énoncée par le GDD lui-même.",
+        "Garder le montant privé aux deux parties : préserve l'ampleur exacte du mensonge."
+      ],
+      "note_valeur": 4,
+      "note_cout": 2,
+      "ratio": 2.0,
+      "decision": "ADOPTÉ TEL QUEL (ratio >= 2,0) : le montant reste public en phase EXECUTION. Inférence assumée et documentée, pas corrigée.",
+      "motif": "Le secret en jeu est déjà détruit par le verdict public : le joueur est publiquement un menteur. Le résidu est quantitatif et porte sur une manche close, alors que les paiements de chaque manche sont indépendants — l'avantage stratégique conféré est nul. En face, rendre le montant privé empêcherait la table de vérifier l'arbitre, ce qui est le socle de confiance du dispositif. À l'inverse, l'ampleur du mensonge est RETIRÉE du verdict public (RG-75), car là elle précéderait la révélation de la clause.",
+      "axe_prioritaire_invoque": "securite (rang 1) examiné puis écarté : le secret visé est déjà public à cet instant. Fiabilité (rang 2) tranche en faveur de la vérifiabilité.",
+      "charge_pour_le_QA": "Vérifier qu'aucune AUTRE inférence non sanctionnée n'existe dans les messages de classe tous."
+    },
+    {
+      "id": "CONF-03",
+      "objet": "Trou dans ma propre spécification, relevé par le tech-lead : l'étape 16 publiait « les parts par joueur » sans distinguer le cas d'échec, où la part de consolation vaut plancher(paiement / 2) et révèle donc le paiement secret.",
+      "parties": [
+        "Le tech-lead a refusé de publier les montants de consolation individuels, contre la lettre de ma SPEC.",
+        "Ma SPEC initiale prescrivait une publication indifférenciée."
+      ],
+      "note_valeur": 5,
+      "note_cout": 1,
+      "ratio": 5.0,
+      "decision": "ADOPTÉ TEL QUEL. SPEC corrigée à la source : RG-74 ajoutée, étape 16 affinée, matrice_visibilite complétée. SPEC repassée au validateur : CONFORME.",
+      "motif": "Un agent aval a eu raison contre la spécification. Corriger la source est la seule issue acceptable : laisser la SPEC fausse aurait conduit le QA à sanctionner un backend correct.",
+      "axe_prioritaire_invoque": "securite (rang 1)"
+    },
+    {
+      "id": "CONF-04",
+      "objet": "RG-58 (« à l'écran de scores tout devient public ») contre matrice_visibilite, qui maintient deux secrets permanents : l'identité du porteur de clause et l'existence des enquêtes. Conflit relevé par le designer au nœud S2, qui a fait primer la matrice sans trancher lui-même.",
+      "parties": [
+        "matrice_visibilite : deux exclusions permanentes, même aux scores.",
+        "RG-58 dans sa formulation initiale : tout sort à la fin."
+      ],
+      "note_valeur": 4,
+      "note_cout": 1,
+      "ratio": 4.0,
+      "decision": "LA MATRICE PRIME. RG-58 est réécrite en liste exhaustive et fermée, avec les deux exclusions nommées explicitement.",
+      "motif": "Il n'y avait pas de contradiction de fond — l'énumération de RG-58 ne mentionnait ni le porteur ni les enquêtes — mais une formulation « tout devient public » qui invitait l'aval à divulguer. Sur le fond, révéler les enquêtes a posteriori rétroagirait sur la valeur du chantage, qui est un ressort de jeu voulu par le GDD (« L'enquêteur peut accuser, se taire ou faire chanter »). Le designer a eu raison de ne pas trancher seul et de remonter.",
+      "axe_prioritaire_invoque": "securite (rang 1)"
+    },
+    {
+      "id": "CONF-05",
+      "objet": "Un abandon de partie doit-il révéler les secrets ?",
+      "parties": [
+        "Révéler : satisfait la curiosité de la table quand une partie avorte.",
+        "Ne rien révéler : l'abandon reste sans récompense informationnelle."
+      ],
+      "note_valeur": 5,
+      "note_cout": 1,
+      "ratio": 5.0,
+      "decision": "NE RIEN RÉVÉLER. RG-76 ajoutée à la SPEC.",
+      "motif": "Faille de conception réelle, signalée par le designer comme faille et non comme préférence : si l'abandon déclenchait une révélation, l'hôte disposerait d'un moyen unilatéral de forcer la divulgation des secrets de toute la table au moment qui l'arrange. C'est un contournement complet de la contrainte non négociable, par une porte que personne ne surveillait.",
+      "axe_prioritaire_invoque": "securite (rang 1)"
+    },
+    {
+      "id": "CONF-06",
+      "objet": "Deux demandes du designer adressées au tech-lead : diffuser clause_recue à tous avec charge vide, et ajouter une mesure de décalage d'horloge.",
+      "parties": [
+        "Modifier le contrat API et resynchroniser S3.",
+        "Traiter les deux points au niveau du client, sans toucher au contrat."
+      ],
+      "note_valeur": 2,
+      "note_cout": 4,
+      "ratio": 0.5,
+      "decision": "AUCUNE MODIFICATION DU CONTRAT API. AUCUNE RESYNCHRONISATION DE S3. Les deux points deviennent des exigences du nœud S5, inscrites en RG-77 et RG-79.",
+      "motif": "Vérifié dans le contrat avant de décider, pas supposé. (1) Le décalage d'horloge est DÉJÀ prescrit : x-temps-reel.horloge impose au client une moyenne glissante sur le champ emis_a que porte chaque enveloppe, cible sous 500 ms. La demande était déjà satisfaite. (2) L'uniformité de la carte de clause ne nécessite aucun message : une clause est tirée à CHAQUE manche par RG-18, donc son existence est une règle connue et non une donnée à transmettre. Le client affiche la carte inconditionnellement et révèle soit la clause reçue, soit « aucun pli ». Diffuser un message vide à tous ajouterait une trame dont la seule raison d'être serait de compenser un défaut de rendu.",
+      "axe_prioritaire_invoque": "fiabilite (rang 2) : ne pas rouvrir un contrat validé pour un besoin déjà couvert."
+    }
+  ],
+
+  "routes_modifiees_recemment": [
+    {
+      "element": "Sources documentaires du projet",
+      "nature_du_changement": "Découverte en local du prototype mobile (15 écrans) et du concept initial docx. Le brief S2 affirmait que le prototype n'était accessible qu'en ligne : c'est faux, il est exploitable.",
+      "survenu_le": "2026-10-27",
+      "agents_a_notifier": ["ux-ui-designer (S2)"],
+      "notifies": ["ux-ui-designer (S2)"],
+      "non_notifies_et_pourquoi": [
+        "tech-lead (S3) : le prototype est purement visuel et ne change aucun choix de stack, de transport, de persistance ni de protocole. Aucune interruption justifiée.",
+        "dev-frontend (S5) : pas encore dispatché. L'information lui parviendra par son brief et par DESIGN-GDV-001.json."
+      ],
+      "impact_sur_la_SPEC": "Aucun. Le concept docx est antérieur et plus riche que le GDD simplifié : la SPEC est bâtie sur la bonne source. Les éléments retirés par la simplification figuraient déjà en hors_perimetre."
+    }
+  ],
+  "dette_assumee_produit": [
+    {
+      "id": "DETTE-01",
+      "objet": "Un lecteur d'écran énonce les secrets à voix haute devant la table.",
+      "releve_par": "ux-ui-designer (S2), déclaré plutôt que masqué",
+      "analyse": "Le voile visuel protège le regard du voisin, pas son oreille. Un joueur utilisant un lecteur d'écran ne peut pas consulter son paiement secret, son rôle ni sa clause sans les divulguer à la pièce entière. Aucune solution d'interface n'existe : le canal de sortie EST sonore.",
+      "statut": "ASSUMÉE, non résolue. Aucune règle de jeu n'a été inventée pour la contourner.",
+      "pistes_non_engagees": ["usage d'écouteurs par le joueur concerné", "mode à deux appareils", "arbitre humain pour ce joueur"],
+      "a_poser_a_l_utilisateur": "Au moment du travail d'accessibilité, pas maintenant : la v1 ne vise pas de certification complète (hors_perimetre)."
+    },
+    {
+      "id": "DETTE-02",
+      "objet": "Ratio de contraste de 1,18:1 entre le voile de secret et sa carte support.",
+      "releve_par": "contrôle de livraison S2 du chef de projet (valeur minimale des 132 ratios consignés)",
+      "analyse": "Le designer l'assume comme informatif et compense par une bordure à 5,95:1 et un libellé persistant à 17,77:1, en invoquant WCAG 1.4.11 qui exige UN indicateur à 3:1 et non un écart de 3:1 entre surfaces adjacentes. La lecture est défendable.",
+      "statut": "ACCEPTÉE au stade de la conception.",
+      "charge_pour_le_QA": "Vérifier sur l'implémentation réelle que la bordure et le libellé sont bien présents et mesurés, puisque c'est sur eux seuls que repose l'identification de l'état masqué."
+    },
+    {
+      "id": "DETTE-03",
+      "objet": "Transport non chiffré en développement.",
+      "releve_par": "tech-lead (S3), standards.transport_chiffre",
+      "analyse": "Sans wss://, huit téléphones sur un Wi-Fi partagé rendent la règle de secret contournable par simple écoute passive du réseau, sans qu'une seule ligne du moteur soit en cause. La contrainte de sécurité serait vaincue hors du code.",
+      "statut": "ASSUMÉE tant que le déploiement n'est pas dans le périmètre (ADR-CP-02).",
+      "declencheur_de_resolution": "BLOQUANT avant le premier playtest sur plusieurs appareils réels. Exige un certificat."
+    }
+  ],
+
+  "escalades_humaines_en_attente": [
+    {
+      "id": "ESC-01",
+      "objet": "Univers et thème visuel (nuit de Zafyr / Mille et une nuits VS ancrage ouest-africain)",
+      "statut": "REPORTEE_VOLONTAIREMENT",
+      "declencheur": "À poser via AskUserQuestion quand le travail de contenu/UI thématique devient pertinent — pas avant, sur instruction explicite du client.",
+      "impact_backend": "Nul : purement thématique et copywriting. Le moteur de jeu n'en dépend pas. Les identifiants de rôles, clauses et révélations sont des clés techniques neutres ; les libellés affichés vivent dans un fichier de contenu séparé."
+    }
+  ],
+  "points_metier_deduits_a_confirmer": "Voir SPEC-GDV-001.json, section points_deduits. 24 points non tranchés par le GDD ont été comblés par déduction tracée, aucun par invention silencieuse."
+}

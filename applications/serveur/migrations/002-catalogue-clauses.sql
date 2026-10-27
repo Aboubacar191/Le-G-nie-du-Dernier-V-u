@@ -1,0 +1,14 @@
+-- 002 — catalogue des clauses (données de référence).
+--
+-- AMORCE : le nœud S4 insère les cinq clauses de
+-- SPEC-GDV-001.json / catalogue_clauses :
+--   GENIE_GARDE_UN_TIERS, TRESOR_DES_HONNETES, LE_PLUS_GENEREUX,
+--   CONSOLATION, PRIME_AU_DELATEUR.
+--
+-- Le catalogue est en LECTURE SEULE à l'exécution : les joueurs connaissent les
+-- clauses possibles, c'est l'association clause/manche qui est secrète et elle
+-- vit dans manches.clause_cle.
+--
+-- parametres_json ne contient aucune valeur d'équilibrage codée en dur : les
+-- rationnels et multiplicateurs sont lus dans la configuration de session
+-- (RG-60).

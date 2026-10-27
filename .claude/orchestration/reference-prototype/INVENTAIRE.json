@@ -1,0 +1,52 @@
+{
+  "objet": "Prototype mobile existant — 15 écrans, extraits et décodés depuis l'artefact claude.ai sauvegardé en local.",
+  "source": "C:\\Users\\aboub\\Downloads\\Le Génie du Dernier Vœu — Prototype mobile.html",
+  "extrait_le": "2026-10-27",
+  "methode": "Manifeste gzip+base64 du bundle, puis charge utile HTML imbriquée encodée en JSON. Les polices et le CSS embarqués (environ 215 Ko par écran) ont été retirés : seuls le markup et le script d'écran sont conservés.",
+  "viewport_cible": "390 x 844 (iPhone 14/15)",
+
+  "statut_pour_l_equipe": "RÉFÉRENCE DE STRUCTURE ET D'INTERACTION — PAS DE DIRECTIVE VISUELLE",
+  "ce_qui_est_exploitable": [
+    "l'inventaire et le découpage des écrans, déjà éprouvés par l'utilisateur",
+    "la hiérarchie de l'information sur chaque écran",
+    "les motifs d'interaction, notamment les incrémenteurs moins/plus pour les montants (aucun clavier numérique)",
+    "le marquage explicite « Visible par tous » contre « Secret »",
+    "les indicateurs de progression collective (« 4 marchands sur 6 ont validé ») et le compte à rebours de phase",
+    "la formulation des libellés fonctionnels"
+  ],
+  "ce_qui_est_interdit_d_importer": [
+    "la palette (indigo et or)",
+    "la typographie d'identité (Cinzel)",
+    "le lexique et l'imagerie thématiques (« nuit de Zafyr », registre Mille et une nuits)",
+    "tout élément qui présupposerait l'univers visuel final"
+  ],
+  "raison_de_l_interdiction": "Le choix d'univers est une décision que l'utilisateur garde explicitement ouverte : thème « nuit de Zafyr » existant contre un ancrage ouest-africain recommandé par le GDD. Reprendre la peau du prototype trancherait cette décision par ricochet. Voir registre.json, escalade ESC-01.",
+
+  "ecarts_entre_le_prototype_et_la_SPEC": [
+    "Le prototype fusionne « le vœu » et « la négociation » sur un seul écran (3), là où la SPEC distingue deux phases minutées (VOEU 20 s, NEGOCIATION 120 s).",
+    "Le prototype fusionne déclaration et paiement secret sur un seul écran (4), ce qui est compatible avec la phase DECLARATION_PAIEMENT de la SPEC, simultanée par construction.",
+    "Aucun écran de saisie de l'ordre des places en cercle, pourtant requis par RG-06 et indispensable aux révélations de voisinage.",
+    "Aucun écran dédié à la réception privée de la clause cachée (RG-18) — probablement intégré à l'écran 2 ou 3.",
+    "Aucun écran de résultat privé d'enquête distinct de l'écran 6.",
+    "Aucun état de déconnexion, de reconnexion ni d'erreur.",
+    "L'écran 4 affiche le montant secret en clair, sans aucun traitement du regard du voisin assis à côté — c'est le canal de fuite que la sécurité serveur ne couvre pas. À compléter, pas à reproduire tel quel."
+  ],
+
+  "ecrans": [
+    {"ordre": 1, "titre": "A · Lancement de l'appli", "fichier": "a-lancement-de-l-appli.ecran.html"},
+    {"ordre": 2, "titre": "B · Bienvenue (première ouverture)", "fichier": "b-bienvenue-premiere-ouverture.ecran.html"},
+    {"ordre": 3, "titre": "C · Accueil", "fichier": "c-accueil.ecran.html"},
+    {"ordre": 4, "titre": "D · Créer une partie", "fichier": "d-creer-une-partie.ecran.html"},
+    {"ordre": 5, "titre": "E · Rejoindre une partie", "fichier": "e-rejoindre-une-partie.ecran.html"},
+    {"ordre": 6, "titre": "F · Règles en 3 étapes", "fichier": "f-regles-en-3-etapes.ecran.html"},
+    {"ordre": 7, "titre": "1 · Salle d'attente", "fichier": "1-salle-d-attente.ecran.html"},
+    {"ordre": 8, "titre": "2 · Mon identité", "fichier": "2-mon-identite.ecran.html"},
+    {"ordre": 9, "titre": "3 · Le vœu et la négociation", "fichier": "3-le-v-u-et-la-negociation.ecran.html"},
+    {"ordre": 10, "titre": "4 · Déclaration et paiement secret", "fichier": "4-declaration-et-paiement-secret.ecran.html"},
+    {"ordre": 11, "titre": "5 · Révélation du génie", "fichier": "5-revelation-du-genie.ecran.html"},
+    {"ordre": 12, "titre": "6 · Enquêtes et accusations", "fichier": "6-enquetes-et-accusations.ecran.html"},
+    {"ordre": 13, "titre": "7 · Exécution du vœu", "fichier": "7-execution-du-v-u.ecran.html"},
+    {"ordre": 14, "titre": "8 · Le Dernier Vœu (mode avancé)", "fichier": "8-le-dernier-v-u-mode-avance.ecran.html"},
+    {"ordre": 15, "titre": "9 · Fin de partie", "fichier": "9-fin-de-partie.ecran.html"}
+  ]
+}

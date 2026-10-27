@@ -1,0 +1,18 @@
+# Fins de ligne déterministes, indépendamment du core.autocrlf du poste.
+#
+# Ce fichier n'est pas listé dans l'arborescence normative de l'ARCHI : il est
+# ajouté, et déclaré, pour une raison de reproductibilité. Le poste de
+# développement a core.autocrlf=true ; sans règle explicite, un même fichier
+# aurait des octets différents selon la machine. Or un test du paquet partagé
+# compare src/contrat/api.json à API-GDV-001.json OCTET À OCTET, et le hash du
+# commit est l'identifiant de l'artefact.
+
+* text=auto eol=lf
+
+# Binaires : aucune conversion, jamais.
+*.pdf   binary
+*.docx  binary
+*.png   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
