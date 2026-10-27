@@ -1,0 +1,444 @@
+{
+  "cible": "GDV-001",
+  "iteration": 1,
+  "_auteur": "ingenieur-devops",
+  "_date": "2026-10-27",
+  "_note_schema": "Aucun schéma n'existe pour le type SCAFFOLD : la structure imposée par la mission S3B est respectée telle quelle. valider-contrat.mjs n'a donc pas été invoqué (pas de schéma SCAFFOLD dans ~/.claude/equipe/contrats/).",
+  "depot": {
+    "initialise": true,
+    "branche": "main",
+    "commit": "86899c5c5b3f7944f14470f59a33851eccacb0cd",
+    "commit_court": "86899c5",
+    "fichiers_versionnes": 160,
+    "fichiers_crees_par_s3b": 135,
+    "sources_preservees": [
+      "Le Génie du Dernier Vœu — Game Design.pdf",
+      "Le_Genie_du_Dernier_Voeu_Concept_du_jeu.docx",
+      "Le Génie du Dernier Vœu — Prototype mobile.html",
+      ".claude/orchestration/registre.json",
+      ".claude/orchestration/etat.json",
+      ".claude/orchestration/contrats/SPEC-GDV-001.json",
+      ".claude/orchestration/contrats/ARCHI-GDV-001.json",
+      ".claude/orchestration/contrats/API-GDV-001.json",
+      ".claude/orchestration/contrats/DESIGN-GDV-001.json",
+      ".claude/orchestration/reference-prototype/ (16 fichiers : INVENTAIRE.json + 15 écrans)"
+    ],
+    "_preuve_non_ignores": "git check-ignore sur les trois documents sources et sur .claude/orchestration/ : aucune correspondance. git ls-files les liste tous. Seuls node_modules/, */dist/, rapports/ et .idea/ sont ignorés (git status --porcelain --ignored).",
+    "_note_idea": ".idea/ est conservé sur le disque mais non versionné : réglages de poste, pas de mémoire de projet. Déclaré, pas subi.",
+    "_note_fins_de_ligne": "Le poste a core.autocrlf=true. Un .gitattributes (* text=auto eol=lf, binaires explicites) a été ajouté pour que les octets d’un fichier ne dépendent pas de la machine — un test compare src/contrat/api.json à API-GDV-001.json octet à octet."
+  },
+  "arborescence_creee": [
+    ".dependency-cruiser.cjs",
+    ".editorconfig",
+    ".env.exemple",
+    ".gitattributes",
+    ".gitignore",
+    ".nvmrc",
+    "README.md",
+    "applications/client/index.html",
+    "applications/client/package.json",
+    "applications/client/public/icones/icone-192.png",
+    "applications/client/public/icones/icone-512-maskable.png",
+    "applications/client/public/icones/icone-512.png",
+    "applications/client/public/manifest.webmanifest",
+    "applications/client/src/app.vue",
+    "applications/client/src/composants/.gitkeep",
+    "applications/client/src/contenu/fr.json",
+    "applications/client/src/contenu/revelations.fr.json",
+    "applications/client/src/magasin/session.ts",
+    "applications/client/src/main.ts",
+    "applications/client/src/routeur/index.ts",
+    "applications/client/src/styles/jetons.css",
+    "applications/client/src/transport/client-ws.ts",
+    "applications/client/src/transport/stockage-jeton.ts",
+    "applications/client/src/vues/.gitkeep",
+    "applications/client/tests/manifeste-pwa.test.ts",
+    "applications/client/tsconfig.json",
+    "applications/client/vite.config.ts",
+    "applications/serveur/migrations/001-schema-initial.sql",
+    "applications/serveur/migrations/002-catalogue-clauses.sql",
+    "applications/serveur/package.json",
+    "applications/serveur/src/configuration/index.ts",
+    "applications/serveur/src/http/routes/configuration.ts",
+    "applications/serveur/src/http/routes/groupes.ts",
+    "applications/serveur/src/http/routes/sante.ts",
+    "applications/serveur/src/http/routes/sessions.ts",
+    "applications/serveur/src/http/serveur.ts",
+    "applications/serveur/src/index.ts",
+    "applications/serveur/src/journalisation/redacteur.ts",
+    "applications/serveur/src/orchestration/boucle-session.ts",
+    "applications/serveur/src/orchestration/ordonnanceur-phases.ts",
+    "applications/serveur/src/persistance/depot.ts",
+    "applications/serveur/src/persistance/journal.ts",
+    "applications/serveur/src/persistance/sqlite/index.ts",
+    "applications/serveur/src/securite/jetons.ts",
+    "applications/serveur/src/securite/limitation-debit.ts",
+    "applications/serveur/src/temps-reel/authentification.ts",
+    "applications/serveur/src/temps-reel/battement.ts",
+    "applications/serveur/src/temps-reel/corrélation.ts",
+    "applications/serveur/src/temps-reel/diffuseur.ts",
+    "applications/serveur/src/temps-reel/registre-connexions.ts",
+    "applications/serveur/src/temps-reel/serveur-ws.ts",
+    "applications/serveur/tests/sante.test.ts",
+    "applications/serveur/tsconfig.construire.json",
+    "applications/serveur/tsconfig.json",
+    "eslint.config.mjs",
+    "outils/dev.mjs",
+    "outils/verifier-couches.mjs",
+    "outils/verifier-couverture.mjs",
+    "outils/verifier-secrets.mjs",
+    "outils/verifier-visibilite.mjs",
+    "outils/visibilite/cartographie.mjs",
+    "outils/visibilite/controles.mjs",
+    "outils/visibilite/inventaire.mjs",
+    "package-lock.json",
+    "package.json",
+    "paquets/moteur/package.json",
+    "paquets/moteur/src/alea/interface.ts",
+    "paquets/moteur/src/alea/sfc32.ts",
+    "paquets/moteur/src/commandes/index.ts",
+    "paquets/moteur/src/distribution/clauses.ts",
+    "paquets/moteur/src/distribution/dernier-voeu.ts",
+    "paquets/moteur/src/distribution/missions.ts",
+    "paquets/moteur/src/distribution/porteur.ts",
+    "paquets/moteur/src/distribution/roles.ts",
+    "paquets/moteur/src/etat/index.ts",
+    "paquets/moteur/src/horloge/interface.ts",
+    "paquets/moteur/src/index.ts",
+    "paquets/moteur/src/machine/manche.ts",
+    "paquets/moteur/src/machine/partie.ts",
+    "paquets/moteur/src/monnaie/index.ts",
+    "paquets/moteur/src/pipeline/etape-01.ts",
+    "paquets/moteur/src/pipeline/etape-02.ts",
+    "paquets/moteur/src/pipeline/etape-03.ts",
+    "paquets/moteur/src/pipeline/etape-04.ts",
+    "paquets/moteur/src/pipeline/etape-05.ts",
+    "paquets/moteur/src/pipeline/etape-06.ts",
+    "paquets/moteur/src/pipeline/etape-07.ts",
+    "paquets/moteur/src/pipeline/etape-08.ts",
+    "paquets/moteur/src/pipeline/etape-09.ts",
+    "paquets/moteur/src/pipeline/etape-10.ts",
+    "paquets/moteur/src/pipeline/etape-11.ts",
+    "paquets/moteur/src/pipeline/etape-12.ts",
+    "paquets/moteur/src/pipeline/etape-13.ts",
+    "paquets/moteur/src/pipeline/etape-14.ts",
+    "paquets/moteur/src/pipeline/etape-15.ts",
+    "paquets/moteur/src/pipeline/etape-16.ts",
+    "paquets/moteur/src/pipeline/etape-17.ts",
+    "paquets/moteur/src/pipeline/index.ts",
+    "paquets/moteur/src/projection/evenement.ts",
+    "paquets/moteur/src/projection/index.ts",
+    "paquets/moteur/src/projection/regles-visibilite.ts",
+    "paquets/moteur/src/projection/vue-privee.ts",
+    "paquets/moteur/src/revelations/eligibilite.ts",
+    "paquets/moteur/src/revelations/score-activite.ts",
+    "paquets/moteur/src/revelations/selection.ts",
+    "paquets/moteur/src/revelations/suspects.ts",
+    "paquets/moteur/src/revelations/verification.ts",
+    "paquets/moteur/src/scores/classement.ts",
+    "paquets/moteur/src/scores/dernier-voeu.ts",
+    "paquets/moteur/src/scores/missions.ts",
+    "paquets/moteur/tests/criteres-acceptation/.gitkeep",
+    "paquets/moteur/tests/invariants/.gitkeep",
+    "paquets/moteur/tests/invariants/purete-moteur.test.ts",
+    "paquets/moteur/tests/pipeline/.gitkeep",
+    "paquets/moteur/tests/projection/.gitkeep",
+    "paquets/moteur/tests/revelations/.gitkeep",
+    "paquets/moteur/tsconfig.construire.json",
+    "paquets/moteur/tsconfig.json",
+    "paquets/partage/package.json",
+    "paquets/partage/src/config/defauts.json",
+    "paquets/partage/src/config/schema-config.ts",
+    "paquets/partage/src/contrat/api.json",
+    "paquets/partage/src/domaine/enums.ts",
+    "paquets/partage/src/domaine/identifiants.ts",
+    "paquets/partage/src/index.ts",
+    "paquets/partage/src/protocole/codes-erreur.ts",
+    "paquets/partage/src/protocole/commandes.ts",
+    "paquets/partage/src/protocole/enveloppe.ts",
+    "paquets/partage/src/protocole/evenements.ts",
+    "paquets/partage/src/protocole/visibilite.ts",
+    "paquets/partage/tests/configuration-defauts.test.ts",
+    "paquets/partage/tests/contrat-api.test.ts",
+    "paquets/partage/tsconfig.construire.json",
+    "paquets/partage/tsconfig.json",
+    "tsconfig.base.json"
+  ],
+  "conformite_arborescence_archi": {
+    "verdict": "CONFORME",
+    "_methode": "Les 82 entrées de conventions.arborescence_depot (fichiers_racine, les quatre paquets, outils) ont été confrontées au système de fichiers. 78 correspondent à un chemin unique et existent ; les 4 restantes sont des entrées multiples (« etape-01.ts … etape-17.ts + index.ts », « tests/pipeline/, tests/revelations/, … », « src/http/serveur.ts + src/http/routes/ », « src/vues/ , src/composants/ ») et ont été vérifiées élément par élément : 18/18, 5/5, 6/6, 2/2 présents.",
+    "ecarts": [
+      {
+        "attendu": "paquets/*/tsconfig.json (un seul fichier de configuration TypeScript par paquet)",
+        "obtenu": "tsconfig.json + tsconfig.construire.json pour partage, moteur et serveur",
+        "motif": "tsconfig.json vérifie les types de src ET de tests (noEmit) ; rootDir=src est incompatible avec l'inclusion de tests quand on émet dans dist. Le second fichier n'ajoute aucune option, il restreint include à src et active l'émission. Le client n'en a pas : vite build produit son artefact."
+      },
+      {
+        "attendu": "outils/ : verifier-visibilite.mjs et verifier-couches.mjs",
+        "obtenu": "ces deux outils, plus verifier-couverture.mjs, verifier-secrets.mjs, dev.mjs et le dossier outils/visibilite/ (cartographie.mjs, inventaire.mjs, controles.mjs)",
+        "motif": "seuils_qualite.commandes_de_verification impose sept portes, dont la couverture et le balayage de secrets : il leur faut un exécutable qui ferme la porte, pas un indicateur. outils/visibilite/ est le découpage de verifier-visibilite.mjs, imposé par le seuil taille_fichier_max_lignes = 300 de l'ARCHI lui-même. dev.mjs lance serveur et client ensemble (script « dev » listé par l'ARCHI) sans ajouter de dépendance."
+      },
+      {
+        "attendu": "package.json racine : scripts verifier, lint, types, verifier:couches, test, couverture, dev, dev:serveur, dev:client, construire, migrer, rejouer",
+        "obtenu": "ces douze scripts, plus installer, secrets, verifier:visibilite et audit",
+        "motif": "les trois derniers sont les portes que seuils_qualite.commandes_de_verification exige mais que la liste de scripts ne nommait pas ; « installer » est demandé par la mission S3B (installer depuis un poste vierge)."
+      },
+      {
+        "attendu": "paquets/moteur : « src/etat/ », « src/monnaie/ », « src/commandes/ » (répertoires sans fichiers énumérés)",
+        "obtenu": "un index.ts dans chacun, portant les signatures du répertoire",
+        "motif": "l'ARCHI nomme un répertoire sans énumérer ses fichiers ; un répertoire vide n'est pas versionnable par git et n'a pas de point d'entrée. index.ts est la réalisation la plus littérale."
+      },
+      {
+        "attendu": "paquets/moteur/src/projection/ : vue-privee.ts, evenement.ts, regles-visibilite.ts",
+        "obtenu": "ces trois fichiers, plus index.ts",
+        "motif": "la règle de couches « le transport ne court-circuite pas la projection » exige un sous-chemin d'export @gdv/moteur/projection, donc un point d'entrée. index.ts ne fait que réexporter les trois fichiers."
+      },
+      {
+        "attendu": "applications/client : dependencies { @gdv/partage, vue }",
+        "obtenu": "strictement ces deux dépendances ; le routeur est une TABLE DE ROUTES en données, pas un routeur monté",
+        "motif": "l'ARCHI demande src/routeur/ mais n'autorise pas vue-router dans les dépendances du client. Les sept routes normatives sont déclarées comme données (nom, chemin) ; le montage et les écrans relèvent de S5, qui tranchera la dépendance de routage. Aucun écran n'a été écrit : hors périmètre S3B."
+      },
+      {
+        "attendu": "applications/client : devDependencies { vite, @vitejs/plugin-vue, vite-plugin-pwa }",
+        "obtenu": "ces trois paquets, plus vue-tsc, workbox-build et workbox-window",
+        "motif": "workbox-build et workbox-window sont des peerDependencies NON optionnelles de vite-plugin-pwa 1.3.0 : les omettre laisserait npm les installer implicitement, donc sans version épinglée. vue-tsc est requis pour vérifier les types d'un fichier .vue (tsc seul ne lit pas les SFC)."
+      },
+      {
+        "attendu": "applications/serveur/src/temps-reel/corrélation.ts",
+        "obtenu": "applications/serveur/src/temps-reel/corrélation.ts (nom accentué, tel quel)",
+        "motif": "l'ARCHI écrit ce nom accentué alors que conventions.nommage impose le kebab-case. La lecture littérale a été retenue et le fichier le documente. Signalé parce qu'un nom de fichier non ASCII est une source d'ennuis connue sur les chaînes d'outillage mixtes."
+      },
+      {
+        "attendu": "fichiers_racine : aucun fichier d'intégration continue n'est listé",
+        "obtenu": "aucun fichier d'intégration continue créé",
+        "motif": "l'ARCHI ne prévoit pas de chaîne distante et ADR-CP-02 écarte le nœud déploiement. Les huit portes sont exécutables en local par npm run verifier. Rien n'a été configuré sur un service externe."
+      }
+    ]
+  },
+  "scripts_npm": {
+    "installer": "npm install — installation depuis un poste vierge (Node 24.18.1 requis)",
+    "verifier": "enchaîne les huit portes dans l’ordre secrets, visibilité, types, lint, couches, tests, couverture, audit, et s’arrête à la première fermée",
+    "secrets": "balayage de secrets ; ferme sur EXPOSITION ou A_RISQUE",
+    "verifier:visibilite": "confronte x-visibilite de API-GDV-001.json à matrice_visibilite de SPEC-GDV-001.json",
+    "types": "tsc --noEmit sur les quatre paquets (vue-tsc pour le client), strict + noUncheckedIndexedAccess",
+    "lint": "ESLint 9 plat : interdits mécaniques du moteur et du temps réel, seuils de complexité et de taille",
+    "verifier:couches": "dependency-cruiser : règles de couches de l’ARCHI",
+    "test": "node:test sur les quatre paquets (17 tests)",
+    "couverture": "c8 puis comparaison stricte aux seuils LUS dans ARCHI-GDV-001.json",
+    "audit": "npm audit --audit-level=high — 0 critique, 0 haute",
+    "dev": "serveur et client de développement ensemble ; l’arrêt de l’un arrête l’autre",
+    "dev:serveur": "node --watch sur src/index.ts ; écoute 127.0.0.1:8443, sonde /sante",
+    "dev:client": "vite ; écoute 127.0.0.1:5173",
+    "construire": "tsc pour partage, moteur et serveur (dist/) ; vite build + service worker pour le client",
+    "migrer": "point d’entrée des migrations SQL — échoue explicitement : non implémenté (nœud S4)",
+    "rejouer": "point d’entrée du rejeu du journal — échoue explicitement : non implémenté (nœud S4)"
+  },
+  "portes_qualite": [
+    {
+      "nom": "secrets — aucun secret en dur dans le dépôt ni dans une image",
+      "commande": "npm run secrets  (outils/verifier-secrets.mjs → scanner-secrets.mjs d’équipe)",
+      "bloquante": true,
+      "testee_par_violation_volontaire": true,
+      "preuve": "Violation 1, fichier NON suivi applications/serveur/src/_violation-secret.ts contenant une fausse clé AWS et une fausse clé Stripe : « A_RISQUE serveur\\src\\_violation-secret.ts:2 — Cle AWS — AKIA********ZZ » et « ...:3 — Cle Stripe live — sk_l********ij », « VERDICT PORTE FERMÉE », code de sortie 1. Violation 2, après le commit, secret ajouté au fichier SUIVI applications/serveur/src/temps-reel/battement.ts : « EXPOSITION applications\\serveur\\src\\temps-reel\\battement.ts:13 — Cle Stripe live — sk_l********89 », code 1. Après retrait des deux : « AUCUN SECRET DETECTE », code 0."
+    },
+    {
+      "nom": "visibilité — x-visibilite (API) ↔ matrice_visibilite (SPEC), 8 contrôles P1 à P8",
+      "commande": "npm run verifier:visibilite  (outils/verifier-visibilite.mjs)",
+      "bloquante": true,
+      "testee_par_violation_volontaire": true,
+      "preuve": "Éprouvée sur une COPIE des contrats (option --contrats), les contrats réels n'ayant pas été modifiés. (a) P4 : montant_paye ajouté à EvtDeclarationPubliee, de classe « tous » → « RG-01 : un message de classe tous ne peut contenir que des données visibles de tous... », code 1. (b) P1 : x-visibilite retiré de EvtRevelation → « annotation x-visibilite absente ou vide », code 1. (c) P7 : champ indice_discret ajouté à EvtPhaseChangee → « n’est ni rattaché à une entrée de matrice_visibilite ni déclaré neutre avec son motif », code 1. (d) P3 : entrée « niveau de suspicion du genie » ajoutée à matrice_visibilite → « aucune cartographie vers les champs du protocole », code 1. Sur les contrats réels, inchangés : « VERDICT CONFORME — 0 divergence(s) », code 0, 30 schémas, 21 entrées, 144 occurrences champ×événement, 157 noms de champs tous classés."
+    },
+    {
+      "nom": "types — TypeScript strict, ESM, quatre paquets",
+      "commande": "npm run types",
+      "bloquante": true,
+      "testee_par_violation_volontaire": true,
+      "preuve": "Vue en échec pendant la mise au point, sans violation fabriquée : « src/main.ts(9,17): error TS2876 ... » sur le paquet client, code de sortie npm 2, la chaîne s'est arrêtée. Après correction : les quatre paquets passent, code 0."
+    },
+    {
+      "nom": "lint — interdits mécaniques du moteur (aléa, horloge, crypto, process, E/S, nombres magiques)",
+      "commande": "npm run lint",
+      "bloquante": true,
+      "testee_par_violation_volontaire": true,
+      "preuve": "Fichier temporaire paquets/moteur/src/_violation-temporaire.ts utilisant Math.random, Date.now, new Date, crypto.randomUUID, process.env, import de node:fs et le littéral 7 : 11 erreurs ESLint sur 7 lignes (no-restricted-syntax, no-restricted-globals, no-restricted-imports, no-magic-numbers), code de sortie 1 ; npm run lint également en code 1. Le test paquets/moteur/tests/invariants/purete-moteur.test.ts a échoué sur le même fichier (2 tests rouges, code 1), et la porte couches aussi (« moteur-couche-pure: paquets/moteur/src/_violation-temporaire.ts → fs »). Fichier retiré : lint code 0."
+    },
+    {
+      "nom": "lint — aucune primitive de diffusion dans la couche temps réel (RG-01)",
+      "commande": "npm run lint",
+      "bloquante": true,
+      "testee_par_violation_volontaire": true,
+      "preuve": "Fichier temporaire applications/serveur/src/temps-reel/_violation-temporaire.ts déclarant diffuser (fonction), broadcast (const), emitAll et toAll (membres d’interface) : 4 erreurs « RG-01 : aucune primitive de diffusion ne peut être déclarée dans la couche temps réel », code de sortie 1. Fichier retiré : code 0."
+    },
+    {
+      "nom": "couches — moteur pur, client sans moteur, transport qui ne court-circuite pas la projection",
+      "commande": "npm run verifier:couches  (outils/verifier-couches.mjs → dependency-cruiser)",
+      "bloquante": true,
+      "testee_par_violation_volontaire": true,
+      "preuve": "Trois violations simultanées : « error transport-passe-par-la-projection: applications/serveur/src/temps-reel/_violation-couche.ts → paquets/moteur/src/index.ts », « error partage-ne-depend-que-de-zod: paquets/partage/src/_violation-couche.ts → node_modules/fastify/fastify.js », « error client-sans-moteur-ni-serveur: applications/client/src/_violation-couche.ts → paquets/moteur/src/index.ts » ; « x 3 dependency violations », code 1. Contrôle positif : le même import depuis le temps réel mais via @gdv/moteur/projection ne déclenche RIEN (code 0) — la règle distingue bien « toucher le moteur » de « court-circuiter la projection ». Fichiers retirés : « ✔ no dependency violations found (95 modules, 137 dependencies cruised) », code 0."
+    },
+    {
+      "nom": "tests — node:test sur les quatre paquets",
+      "commande": "npm run test",
+      "bloquante": true,
+      "testee_par_violation_volontaire": true,
+      "preuve": "17 tests, 17 passants, code 0. Vus en échec : les deux tests de pureté du moteur sur la violation d'indéterminisme (code 1)."
+    },
+    {
+      "nom": "couverture — seuils LUS dans l’ARCHI, comparaison numérique stricte",
+      "commande": "npm run couverture  (outils/verifier-couverture.mjs → c8)",
+      "bloquante": true,
+      "testee_par_violation_volontaire": true,
+      "preuve": "Stricte dans les deux sens, sur des résumés fabriqués (--sans-execution --resume) : moteur à 94,98 % → « lignes 94.98 % < seuil 95 % », code 1 ; moteur à exactement 95,00 % → « VERDICT SEUILS TENUS », code 0 ; projection à 99,50 % de branches → « branches 99.50 % < seuil 100 % », code 1 ; périmètre sans aucune instruction mesurée → « AUCUNE instruction mesurée ... Un rapport qui ne mesure rien ne prouve rien », code 1. Sur le dépôt réel : moteur 0,00 %, projection 0,00 %, global 14,74 % → code 1 (voir blocages)."
+    },
+    {
+      "nom": "audit — 0 vulnérabilité critique, 0 haute",
+      "commande": "npm run audit  (npm audit --audit-level=high)",
+      "bloquante": true,
+      "testee_par_violation_volontaire": false,
+      "preuve": "Aucune violation n'a eu besoin d'être fabriquée : la porte est FERMÉE en l'état. « zod <4.6.6 — Severity: high — Zod can exhaust memory while validating oversized constrained collections — GHSA-mrhx-c7xc-m3w5 », code de sortie 1. Zod 3.x est imposé par ARCHI stack.validation_messages ; 0 haute est imposé par seuils_qualite.vulnerabilites_tolerees. Contradiction du contrat, pas du squelette : arbitrage tech-lead requis (voir blocages)."
+    }
+  ],
+  "commandes_verifiees": [
+    {
+      "commande": "npm install",
+      "code_sortie": 0,
+      "extrait_sortie": "added 607 packages, and audited 612 packages in 8m — 1 high severity vulnerability"
+    },
+    {
+      "commande": "npm run types",
+      "code_sortie": 0,
+      "extrait_sortie": "@gdv/moteur tsc --noEmit · @gdv/partage tsc --noEmit · @gdv/client vue-tsc --noEmit · @gdv/serveur tsc --noEmit — aucune erreur"
+    },
+    {
+      "commande": "npm run lint",
+      "code_sortie": 0,
+      "extrait_sortie": "eslint . — aucune sortie, aucun avertissement"
+    },
+    {
+      "commande": "npm run verifier:couches",
+      "code_sortie": 0,
+      "extrait_sortie": "✔ no dependency violations found (95 modules, 137 dependencies cruised)"
+    },
+    {
+      "commande": "npm run verifier:visibilite",
+      "code_sortie": 0,
+      "extrait_sortie": "P1/P2 30 schémas EvtXxx · P3 21 entrées de matrice_visibilite · P4/P5/P6 144 occurrences champ×événement · P7 157 noms de champs (275 occurrences schéma×champ) · P8 30 types ↔ 30 schémas — VERDICT CONFORME, 0 divergence"
+    },
+    {
+      "commande": "npm run test",
+      "code_sortie": 0,
+      "extrait_sortie": "tests 17 · pass 17 · fail 0 · duration_ms 1793"
+    },
+    {
+      "commande": "npm run secrets",
+      "code_sortie": 0,
+      "extrait_sortie": "AUCUN SECRET DETECTE — VERDICT AUCUN SECRET BLOQUANT"
+    },
+    {
+      "commande": "npm run couverture",
+      "code_sortie": 1,
+      "extrait_sortie": "moteur 0.00 % (seuil 95) · moteur/projection 0.00 % (seuil 100) · global 14.74 % (seuil 70) — VERDICT PORTE FERMÉE, 5 seuils non tenus. Attendu : le moteur n’a pas encore de code (nœud S4)."
+    },
+    {
+      "commande": "npm run audit",
+      "code_sortie": 1,
+      "extrait_sortie": "zod <4.6.6 — Severity: high — GHSA-mrhx-c7xc-m3w5 — 1 high severity vulnerability"
+    },
+    {
+      "commande": "npm run verifier",
+      "code_sortie": 1,
+      "extrait_sortie": "secrets ok → visibilité CONFORME → types ok → lint ok → couches RESPECTÉES → tests 17/17 → couverture PORTE FERMÉE. La chaîne s’arrête là, comme elle le doit."
+    },
+    {
+      "commande": "npm run dev:serveur puis GET http://127.0.0.1:8443/sante",
+      "code_sortie": 0,
+      "extrait_sortie": "HTTP 200 · content-type application/json; charset=utf-8 · x-content-type-options nosniff · corps {\"statut\":\"ok\",\"version_protocole\":\"1.0.0\",\"horodatage\":\"2026-10-27T20:19:31.871Z\"} · journal serveur « Server listening at http://127.0.0.1:8443 ». version_protocole est LUE dans info.version du contrat, pas recopiée."
+    },
+    {
+      "commande": "npm run dev:client puis GET http://127.0.0.1:5173/",
+      "code_sortie": 0,
+      "extrait_sortie": "VITE v6.4.5 ready in 1323 ms · HTTP 200, 1361 octets, <title> et <div id=\"app\"> présents · /manifest.webmanifest HTTP 200 (« Le Génie du Dernier Vœu ») · /icones/icone-192.png HTTP 200 image/png · /src/app.vue HTTP 200 compilé par Vite · /src/styles/jetons.css HTTP 200"
+    },
+    {
+      "commande": "npm run construire",
+      "code_sortie": 0,
+      "extrait_sortie": "client : 14 modules transformés, index-H4bfoWst.js 65.99 kB (gzip 26.40 kB — budget ARCHI 150 kB), service worker generateSW, 7 entrées préchargées ; serveur, moteur et partage : tsc vers dist/."
+    },
+    {
+      "commande": "PORT=8444 node applications/serveur/dist/index.js puis GET /sante",
+      "code_sortie": 0,
+      "extrait_sortie": "artefact construit — HTTP 200 {\"statut\":\"ok\",\"version_protocole\":\"1.0.0\",\"horodatage\":\"2026-10-27T20:22:00.996Z\"} : le même code répond depuis les sources et depuis dist/."
+    },
+    {
+      "commande": "git log -1 --format=%H",
+      "code_sortie": 0,
+      "extrait_sortie": "86899c5c5b3f7944f14470f59a33851eccacb0cd — 160 files changed, 25195 insertions(+), branche main"
+    }
+  ],
+  "parametres_configuration": {
+    "fichier": "paquets/partage/src/config/defauts.json",
+    "nombre_parametres": 21,
+    "_controle": "paquets/partage/tests/configuration-defauts.test.ts compare les clés de defauts.json à SPEC parametres_configuration (égalité d’ensembles), vérifie qu’il y en a exactement 21, qu’AUCUNE valeur n’est un flottant (ADR-TL-14) et que durees_phases_s couvre exactement les 9 phases minutées déclarées par ConfigJeuPublique.",
+    "_representation_modifiee": "taux_interet_pret vaut [1, 2] et non 0.5, sur décision du tech-lead (ADR-TL-14, points_tranches_sans_consultation). Valeur numériquement identique, flottant éliminé ; API-GDV-001.json/ConfigJeuPublique déclare bien ce paramètre comme Rationnel.",
+    "_unicite": "Aucune valeur d’équilibrage n’apparaît ailleurs. La règle ESLint no-magic-numbers (0 et 1 exceptés) sur paquets/moteur rend la récidive mécaniquement impossible — vue en échec sur le littéral 7."
+  },
+  "observations_pour_le_tech_lead": [
+    {
+      "objet": "CHAMPS_SECRETS ne peut pas être une liste de noms nus",
+      "constat": "L'union des modele_donnees[].champs_secrets de l'ARCHI contient id, joueur_id, sequence, type_commande, cree_at et manche_numero. Or joueur_id est public dans EvtDeclarationPubliee, sequence est un champ d'enveloppe, cree_at accompagne des objets déjà visibles de leur destinataire. Un registre à plat rendrait le test de propriété sur la projection (interdits_mecaniques) faux dès le premier événement public, ce qui conduit à le désactiver.",
+      "fait": "paquets/partage/src/protocole/visibilite.ts expose CHAMPS_SECRETS_PAR_ENTITE (qualifié, source de vérité) et CHAMPS_SECRETS (union à plat) dont la documentation restreint l'usage au rédacteur de journaux, où la sur-suppression est sans danger.",
+      "a_trancher": "confirmer que le test de propriété de S4 s'appuiera sur la forme qualifiée."
+    },
+    {
+      "objet": "Homonymie de champ dans le protocole : motif",
+      "constat": "MouvementPiece.motif est un MotifMouvement, strictement privé (CA-36). EvtPartieAbandonnee.motif est une énumération publique ABANDON_HOTE | INACTIVITE_DEPASSEE. Même nom, deux niveaux de confidentialité. C'est la première chose que la porte de visibilité a détectée.",
+      "fait": "la porte raisonne sur des couples (schéma porteur, champ) et non sur des noms nus ; l'homonyme est déclaré explicitement dans outils/visibilite/cartographie.mjs.",
+      "a_trancher": "ni un défaut ni un blocage, mais un piège pour quiconque écrira un filtre par nom de champ. À verser dans les consignes de S4."
+    },
+    {
+      "objet": "Zod 3.x contre « 0 vulnérabilité haute »",
+      "constat": "stack.validation_messages impose Zod 3.x ; seuils_qualite.vulnerabilites_tolerees impose 0 haute. GHSA-mrhx-c7xc-m3w5 (haute) touche tout Zod < 4.6.6. Les deux exigences ne peuvent pas être satisfaites ensemble.",
+      "fait": "Zod 3.25.76 épinglé, conformément à l’ARCHI ; la porte audit est fermée et le signale.",
+      "a_trancher": "monter en Zod 4 (API de validation différente, à arbitrer avant que S4 n'écrive les 13 schémas de commandes), ou inscrire la dette dans dette_assumee avec sa date. Élément factuel pour l'arbitrage : l'avis porte sur la validation de collections surdimensionnées, et le protocole plafonne les trames à 4096 octets AVANT toute désérialisation (standards.taille_max_message_octets), ce qui réduit fortement l'exposition sans l'annuler."
+    },
+    {
+      "objet": "Deux entrées de matrice_visibilite annoncent une publication hors de devient_public",
+      "constat": "« montant de consolation individuel » et « ampleur du mensonge » n'ont pas de champ devient_public ; pour la seconde, la publication à l'écran de scores n'est annoncée que dans le texte de justification.",
+      "fait": "lecture la plus littérale appliquée : aucun événement de publication déclaré pour ces deux entrées. Sans effet pratique aujourd'hui, les champs correspondants n'existant dans aucun EvtXxx.",
+      "a_trancher": "si ampleur_mensonge doit apparaître dans EvtScoresFinaux (RG-58 rend tout public à l'écran de scores), ajouter devient_public à l'entrée — sinon la porte fermera légitimement le jour où S4 l'ajoutera au message."
+    },
+    {
+      "objet": "Bogue dans l'outil d'équipe scanner-secrets.mjs",
+      "constat": "Le classement des trouvailles appelle « git ls-files --others --ignored --exclude-standard » par execSync, dont le maxBuffer vaut 1 Mo. Sur ce dépôt après npm install, la commande énumère 20 173 fichiers pour 1,17 Mo : ENOBUFS. L'exception est avalée par un catch qui laisse la liste des ignorés à null alors que celle des suivis est déjà remplie, et le classement plante sur « Cannot read properties of null (reading 'has') ». Conséquence : dès qu'il y a une trouvaille, le scanner s'arrête avant d'imprimer quoi que ce soit. Tout projet Node de l'équipe est concerné.",
+      "fait": "l'outil d'équipe n'a PAS été modifié (il n'appartient pas à ce dépôt). outils/verifier-secrets.mjs documente la limite, ferme la porte dans tous les cas, et relance le scanner répertoire par répertoire quand la passe globale échoue : depuis un sous-répertoire l'énumération git reste bornée et le classement fonctionne. Les deux niveaux, EXPOSITION et A_RISQUE, ont été obtenus et vérifiés par ce chemin.",
+      "a_trancher": "corriger l'outil en amont : maxBuffer explicite, ou « --directory » pour replier node_modules en une ligne, ou deux try distincts pour que l'échec d'une liste n'empoisonne pas l'autre."
+    }
+  ],
+  "statut": "LIVRE",
+  "blocages": [
+    {
+      "objet": "Porte couverture fermée : moteur 0,00 %, projection 0,00 %, global 14,74 %",
+      "nature": "attendu à cette itération, pas un défaut",
+      "detail": "Le paquet moteur ne contient que des signatures : aucune logique de jeu n'a été écrite, c'est le périmètre du nœud S4. La porte compare donc 0 % à 95 % et ferme — c'est exactement son travail. Sa justesse a été vérifiée séparément sur des résumés fabriqués : elle ouvre à 95,00 % et ferme à 94,98 %. En conséquence, « npm run verifier » sort en code 1 et s'arrête à cette porte ; les six portes précédentes passent.",
+      "lever_quand": "S4 livre le moteur et ses tests."
+    },
+    {
+      "objet": "Porte audit fermée : Zod 3.x porte une vulnérabilité haute",
+      "nature": "contradiction interne au contrat ARCHI",
+      "detail": "GHSA-mrhx-c7xc-m3w5, sévérité haute, corrigée en Zod 4.6.6. L'ARCHI impose Zod 3.x ET 0 vulnérabilité haute. Le choix de pile ne m'appartient pas : Zod 3.25.76 est épinglé et la porte le signale au lieu de l'ignorer.",
+      "lever_quand": "arbitrage du tech-lead (montée en Zod 4, ou dette assumée datée)."
+    },
+    {
+      "objet": "Aucun schéma de contrat SCAFFOLD n'existe",
+      "nature": "limite d’outillage",
+      "detail": "node ~/.claude/equipe/outils/valider-contrat.mjs attend un type connu ; ~/.claude/equipe/contrats/ ne contient pas de schéma SCAFFOLD. Le présent fichier suit donc exactement la structure imposée par la mission S3B, sans validation automatique. Dit ici plutôt que présenté comme validé.",
+      "lever_quand": "un schéma SCAFFOLD est ajouté à l'outillage d'équipe."
+    },
+    {
+      "objet": "Deux portes de l’ARCHI non réalisées faute de code à mesurer",
+      "nature": "hors périmètre S3B, signalé pour mémoire",
+      "detail": "interdits_mecaniques prévoit un test de propriété fast-check sur moteur/projection (pour chaque EvtXxx et chaque classe de destinataire, aucune clé secrète ne sort vers un non-propriétaire). fast-check est installé et épinglé (3.23.2) dans les devDependencies du moteur, et tests/projection/ existe, mais le test ne peut pas être écrit avant la fonction projeterEvenement : il relève de S4. De même, les invariants RG-41, RG-42, RG-20, RG-21, déterminisme et rejeu n'ont pas de moteur à éprouver.",
+      "lever_quand": "S4."
+    }
+  ]
+}
