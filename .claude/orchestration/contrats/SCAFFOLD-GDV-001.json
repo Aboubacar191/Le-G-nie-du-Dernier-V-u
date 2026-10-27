@@ -9,7 +9,7 @@
     "branche": "main",
     "commit": "86899c5c5b3f7944f14470f59a33851eccacb0cd",
     "commit_court": "86899c5",
-    "fichiers_versionnes": 160,
+    "fichiers_versionnes": 161,
     "fichiers_crees_par_s3b": 135,
     "sources_preservees": [
       "Le Génie du Dernier Vœu — Game Design.pdf",
@@ -25,7 +25,8 @@
     ],
     "_preuve_non_ignores": "git check-ignore sur les trois documents sources et sur .claude/orchestration/ : aucune correspondance. git ls-files les liste tous. Seuls node_modules/, */dist/, rapports/ et .idea/ sont ignorés (git status --porcelain --ignored).",
     "_note_idea": ".idea/ est conservé sur le disque mais non versionné : réglages de poste, pas de mémoire de projet. Déclaré, pas subi.",
-    "_note_fins_de_ligne": "Le poste a core.autocrlf=true. Un .gitattributes (* text=auto eol=lf, binaires explicites) a été ajouté pour que les octets d’un fichier ne dépendent pas de la machine — un test compare src/contrat/api.json à API-GDV-001.json octet à octet."
+    "_note_fins_de_ligne": "Le poste a core.autocrlf=true. Un .gitattributes (* text=auto eol=lf, binaires explicites) a été ajouté pour que les octets d’un fichier ne dépendent pas de la machine — un test compare src/contrat/api.json à API-GDV-001.json octet à octet.",
+    "_note_commits": "Trois commits : « S3B — squelette du mono-repo et portes de qualité exécutables » (86899c5c5b3f7944f14470f59a33851eccacb0cd, 160 fichiers, 25 195 insertions — c’est l’empreinte reportée dans depot.commit), puis l’ajout du présent contrat, puis le retrait d’espaces en fin de ligne dans sept amorces du pipeline (commentaires uniquement, .editorconfig). fichiers_versionnes compte l’état à HEAD."
   },
   "arborescence_creee": [
     ".dependency-cruiser.cjs",
