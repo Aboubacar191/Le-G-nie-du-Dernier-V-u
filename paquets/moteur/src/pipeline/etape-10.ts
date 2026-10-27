@@ -1,6 +1,6 @@
 // Étape 10 du pipeline d'exécution (RG-40 : 17 étapes ORDONNÉES).
 // Opération normative, SPEC-GDV-001.json / pipeline_execution.etapes[9] :
-//   
+//
 //   pour tout joueur de rôle MARCHAND_EPICES : +bonus_marchand_epices_par_voeu_reussi.
 //
 // Condition : reussi

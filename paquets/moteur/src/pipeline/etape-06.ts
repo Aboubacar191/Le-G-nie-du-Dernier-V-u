@@ -1,6 +1,6 @@
 // Étape 6 du pipeline d'exécution (RG-40 : 17 étapes ORDONNÉES).
 // Opération normative, SPEC-GDV-001.json / pipeline_execution.etapes[5] :
-//   
+//
 //   si clause GENIE_GARDE_UN_TIERS active alors recompense = plancher(recompense * 2 / 3).
 //
 // Condition : reussi
