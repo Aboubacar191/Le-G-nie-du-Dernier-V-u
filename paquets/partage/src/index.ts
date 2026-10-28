@@ -5,6 +5,7 @@
 // le client : c'est ce qui rend la non-fuite vérifiable mécaniquement plutôt
 // qu'entretenue par relecture (ADR-TL-01).
 
+export * from './contrat/lecture.ts';
 export * from './protocole/enveloppe.ts';
 export * from './protocole/commandes.ts';
 export * from './protocole/evenements.ts';

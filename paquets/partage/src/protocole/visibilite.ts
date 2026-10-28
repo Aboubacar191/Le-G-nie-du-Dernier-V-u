@@ -7,7 +7,19 @@
 // Ce fichier ne CALCULE rien : le calcul vit dans paquets/moteur/src/projection
 // (ADR-TL-09), jamais dans le transport. Ici : des valeurs et des types.
 
-import type { TypeEvenement } from './evenements.ts';
+import {
+  MINIMUM_SUSPECTS_PUBLICS,
+  VISIBILITE_BRUTE_PAR_EVENEMENT,
+  NOM_SCHEMA_PAR_EVENEMENT,
+} from '../contrat/lecture.ts';
+import { TYPES_EVENEMENT, type TypeEvenement } from './evenements-types.ts';
+
+export {
+  MINIMUM_SUSPECTS_PUBLICS,
+  CHAMPS_DECLARES_PAR_EVENEMENT,
+  NOM_SCHEMA_PAR_EVENEMENT,
+  VERSION_PROTOCOLE,
+} from '../contrat/lecture.ts';
 
 /**
  * Classes de destinataire admises par x-visibilite
@@ -69,7 +81,12 @@ export const CHAMPS_SECRETS_PAR_ENTITE = {
     'resultat_montant_paye',
     'cree_at',
   ],
-  accusations: ['ampleur_mensonge', 'montant_amende_du'],
+  // montant_amende_liquide est AJOUTÉ par ARCHI v1.1.0 (_correction_v1_1_0 de
+  // l'entité accusations) : il était absent du registre en v1.0.0 alors que le
+  // contrat le déclarait secret jusqu'à l'étape 16. Sa libération est portée
+  // par la classe x-visibilite de EvtExecutionResultat, et par rien d'autre
+  // (registre_champs_secrets.liberation_temporelle).
+  accusations: ['ampleur_mensonge', 'montant_amende_du', 'montant_amende_liquide'],
   mouvements_pieces: [
     'delta',
     'motif',
@@ -105,9 +122,33 @@ export const CHAMPS_SECRETS: readonly string[] = Object.freeze([
 /**
  * Classe de destinataire déclarée par chaque événement sortant.
  *
- * AMORCE — nœud S4 : la table est renseignée depuis l'annotation x-visibilite
- * de API-GDV-001.json, et un test échoue si l'une des deux dérive de l'autre.
+ * La table n'est pas recopiée : elle est LUE dans l'annotation x-visibilite de
+ * API-GDV-001.json (src/contrat/lecture.ts). Une recopie dérive, une
+ * dérivation ne peut pas. Une classe inconnue du protocole ferme la porte au
+ * chargement du module plutôt que de valoir « tous » par défaut : divulguer
+ * par défaut est exactement ce que la construction par ajout interdit.
+ *
  * La cohérence contrat ↔ matrice métier est, elle, vérifiée en porte
  * d'intégration par outils/verifier-visibilite.mjs.
  */
 export type VisibiliteParEvenement = Readonly<Record<TypeEvenement, ClasseDestinataire>>;
+
+function exigerClasse(type: TypeEvenement): ClasseDestinataire {
+  const brute = VISIBILITE_BRUTE_PAR_EVENEMENT[type];
+  const connue = (CLASSES_DESTINATAIRE as readonly string[]).includes(brute);
+  if (!connue) {
+    throw new Error(
+      `API-GDV-001.json : ${NOM_SCHEMA_PAR_EVENEMENT[type]} déclare x-visibilite ` +
+        `« ${brute} », qui n'est pas une classe de destinataire admise ` +
+        `(${CLASSES_DESTINATAIRE.join(', ')}).`,
+    );
+  }
+  return brute as ClasseDestinataire;
+}
+
+export const VISIBILITE_PAR_EVENEMENT: VisibiliteParEvenement = Object.freeze(
+  Object.fromEntries(TYPES_EVENEMENT.map((type) => [type, exigerClasse(type)])),
+) as VisibiliteParEvenement;
+
+/** Nombre minimal de suspects publics après émission d'une révélation (RG-21). */
+export const SUSPECTS_MINIMUM = MINIMUM_SUSPECTS_PUBLICS;
