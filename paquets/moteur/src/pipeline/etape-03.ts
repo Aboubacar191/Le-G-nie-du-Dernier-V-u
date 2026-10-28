@@ -2,10 +2,14 @@
 // Opération normative, SPEC-GDV-001.json / pipeline_execution.etapes[2] :
 //   reussi = (total_paye >= objectif).
 //
-// AMORCE — renseignée par le nœud S4 (dev-backend). Aucune logique de jeu ici.
+// RG-12 : l'égalité stricte est un SUCCÈS. Le cas limite « total payé égal
+// exactement à l'objectif » est donc gagnant, et non perdant.
 
-import type { EtatSession, Effet } from '../etat/index.ts';
+import { manchePipeline, type ContexteExecution } from './contexte.ts';
 
-export type Etape03 = (
-  etat: EtatSession,
-) => { etat: EtatSession; effets: readonly Effet[] };
+export function etape03(contexte: ContexteExecution): ContexteExecution {
+  const manche = manchePipeline(contexte);
+  return { ...contexte, reussi: contexte.total_paye >= manche.objectif };
+}
+
+export type Etape03 = typeof etape03;

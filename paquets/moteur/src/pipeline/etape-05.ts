@@ -3,11 +3,12 @@
 //   recompense = multiplicateur * total_paye.
 //
 // Condition : reussi
-//
-// AMORCE — renseignée par le nœud S4 (dev-backend). Aucune logique de jeu ici.
 
-import type { EtatSession, Effet } from '../etat/index.ts';
+import type { ContexteExecution } from './contexte.ts';
 
-export type Etape05 = (
-  etat: EtatSession,
-) => { etat: EtatSession; effets: readonly Effet[] };
+export function etape05(contexte: ContexteExecution): ContexteExecution {
+  if (!contexte.reussi) return contexte;
+  return { ...contexte, recompense: contexte.multiplicateur * contexte.total_paye };
+}
+
+export type Etape05 = typeof etape05;

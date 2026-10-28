@@ -11,6 +11,13 @@
 // moteur que la couche temps réel du serveur a le droit d'importer : la règle
 // « transport-passe-par-la-projection » de .dependency-cruiser.cjs le vérifie.
 
-export type { AppartientALaClasse } from './regles-visibilite.ts';
-export type { ProjeterVuePrivee } from './vue-privee.ts';
-export type { ProjeterEvenement } from './evenement.ts';
+export { projeterEvenement, type ProjeterEvenement } from './evenement.ts';
+export { projeterVuePrivee, type ProjeterVuePrivee } from './vue-privee.ts';
+export {
+  appartientALaClasse,
+  destinatairesDeLaClause,
+  estDansLaSession,
+  estHoteDeLaSession,
+  type AppartientALaClasse,
+} from './regles-visibilite.ts';
+export type { ProjectionBrute } from './evenements-prives.ts';

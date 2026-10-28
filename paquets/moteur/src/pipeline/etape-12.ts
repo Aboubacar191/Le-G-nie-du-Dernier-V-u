@@ -3,10 +3,17 @@
 //   facteur_amende = 1 ;
 //   si clause PRIME_AU_DELATEUR active alors facteur_amende = 2.
 //
-// AMORCE — renseignée par le nœud S4 (dev-backend). Aucune logique de jeu ici.
+// RG-44 : la clause double AUSSI la pénalité de fausse accusation, considérée
+// comme une amende de la manche. Le facteur appartient à l'énoncé de la clause,
+// il est nommé ici.
 
-import type { EtatSession, Effet } from '../etat/index.ts';
+import { clauseActive, type ContexteExecution } from './contexte.ts';
 
-export type Etape12 = (
-  etat: EtatSession,
-) => { etat: EtatSession; effets: readonly Effet[] };
+const FACTEUR_PRIME_AU_DELATEUR = 2;
+
+export function etape12(contexte: ContexteExecution): ContexteExecution {
+  const prime = clauseActive(contexte, 'PRIME_AU_DELATEUR');
+  return { ...contexte, facteur_amende: prime ? FACTEUR_PRIME_AU_DELATEUR : 1 };
+}
+
+export type Etape12 = typeof etape12;

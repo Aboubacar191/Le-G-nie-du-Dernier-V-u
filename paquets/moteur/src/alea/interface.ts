@@ -10,6 +10,24 @@
 // porteur, variante de formulation. Changer cet ordre invalide le rejeu de tout
 // journal existant : c'est une rupture de compatibilité à déclarer.
 
+/**
+ * Ordre NORMATIF de consommation de l'aléa
+ * (ARCHI conventions.determinisme_et_alea.ordre_de_consommation).
+ *
+ * « Changer cet ordre invalide le rejeu de tout journal existant : c'est une
+ *   rupture de compatibilité à déclarer. » Une règle que l'on peut lire est une
+ * règle que l'on peut tester : la voici en données, et un test la confronte au
+ * contrat d'architecture.
+ */
+export const ORDRE_CONSOMMATION_ALEA: readonly string[] = Object.freeze([
+  'roles',
+  'missions',
+  'mode_avance',
+  'clause',
+  'porteur',
+  'variante_formulation',
+]);
+
 export interface Alea {
   /** Entier dans [min, max] inclus. */
   entier(min: number, max: number): number;

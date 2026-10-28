@@ -5,10 +5,22 @@
 //
 // Condition : reussi
 //
-// AMORCE — renseignée par le nœud S4 (dev-backend). Aucune logique de jeu ici.
+// RG-15 : un joueur démasqué perd sa part de récompense de CETTE manche. Il
+// n'est pas éliminé et conserve tous ses droits (RG-46).
 
-import type { EtatSession, Effet } from '../etat/index.ts';
+import { manchePipeline, type ContexteExecution } from './contexte.ts';
 
-export type Etape07 = (
-  etat: EtatSession,
-) => { etat: EtatSession; effets: readonly Effet[] };
+export function etape07(contexte: ContexteExecution): ContexteExecution {
+  if (!contexte.reussi) return contexte;
+  const manche = manchePipeline(contexte);
+  const exclus = [
+    ...new Set(
+      manche.accusations
+        .filter((accusation) => accusation.verdict === 'MENTEUR')
+        .map((accusation) => accusation.accuse_joueur_id),
+    ),
+  ];
+  return { ...contexte, exclus };
+}
+
+export type Etape07 = typeof etape07;

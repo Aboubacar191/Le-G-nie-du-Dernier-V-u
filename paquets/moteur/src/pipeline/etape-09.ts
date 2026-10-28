@@ -6,10 +6,49 @@
 //
 // Condition : reussi
 //
-// AMORCE — renseignée par le nœud S4 (dev-backend). Aucune logique de jeu ici.
+// Les parts sont VERSÉES ici, et non repoussées à l'étape 17 : le plafonnement
+// des étapes 13 à 15 se calcule sur le solde courant, donc l'ordre de mise en
+// mouvement de l'argent fait partie de l'ordre normatif (RG-40). Repousser tous
+// les mouvements à l'étape 17 changerait les résultats.
 
-import type { EtatSession, Effet } from '../etat/index.ts';
+import { appliquerMouvements } from '../etat/mouvements.ts';
+import { prorata, somme } from '../monnaie/index.ts';
+import type { PartManche } from '../etat/types.ts';
+import { avecJoueursTouches, type ContexteExecution } from './contexte.ts';
 
-export type Etape09 = (
-  etat: EtatSession,
-) => { etat: EtatSession; effets: readonly Effet[] };
+export function etape09(contexte: ContexteExecution): ContexteExecution {
+  if (!contexte.reussi) return contexte;
+  const exclus = new Set(contexte.exclus);
+  const sommePoids = somme([...contexte.poids.values()]);
+
+  const parts: PartManche[] = contexte.etat.joueurs.map((joueur) => ({
+    joueur_id: joueur.id,
+    part: prorata(contexte.recompense, contexte.poids.get(joueur.id) ?? 0, sommePoids),
+    exclu_du_partage: exclus.has(joueur.id),
+  }));
+
+  const versees = parts.filter((part) => part.part > 0);
+  const etat = appliquerMouvements(
+    contexte.etat,
+    versees.map((part) => ({
+      joueur_id: part.joueur_id,
+      delta: part.part,
+      motif: 'part_recompense' as const,
+      manche_numero: contexte.numero,
+    })),
+    contexte.ecriture,
+  );
+
+  const suite = avecJoueursTouches(
+    contexte,
+    etat,
+    versees.map((part) => part.joueur_id),
+  );
+  return {
+    ...suite,
+    parts,
+    reliquat_non_distribue: contexte.recompense - somme(parts.map((part) => part.part)),
+  };
+}
+
+export type Etape09 = typeof etape09;

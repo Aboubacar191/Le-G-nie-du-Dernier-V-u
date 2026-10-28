@@ -3,10 +3,23 @@
 //   menteurs = { joueurs tels que montant_declare - montant_paye > 0 } ;
 //   ampleur_i = montant_declare_i - montant_paye_i.
 //
-// AMORCE — renseignée par le nœud S4 (dev-backend). Aucune logique de jeu ici.
+// L'ampleur n'est JAMAIS émise comme champ, à aucun moment, pas même aux scores
+// (RG-75). Elle vit ici et dans accusations.ampleur_mensonge, et nulle part sur
+// le fil.
 
-import type { EtatSession, Effet } from '../etat/index.ts';
+import { declareDe, payeDe } from '../etat/acces.ts';
+import { manchePipeline, type ContexteExecution } from './contexte.ts';
 
-export type Etape02 = (
-  etat: EtatSession,
-) => { etat: EtatSession; effets: readonly Effet[] };
+export function etape02(contexte: ContexteExecution): ContexteExecution {
+  const manche = manchePipeline(contexte);
+  const ampleurs = new Map<string, number>();
+  const menteurs: string[] = [];
+  for (const joueur of contexte.etat.joueurs) {
+    const ampleur = declareDe(manche, joueur.id) - payeDe(manche, joueur.id);
+    ampleurs.set(joueur.id, ampleur);
+    if (ampleur > 0) menteurs.push(joueur.id);
+  }
+  return { ...contexte, menteurs, ampleurs };
+}
+
+export type Etape02 = typeof etape02;
