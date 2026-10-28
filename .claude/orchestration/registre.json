@@ -264,6 +264,37 @@
 
   "escalades_humaines_en_attente": [
     {
+      "id": "ESC-02",
+      "objet": "Vulnérabilité haute GHSA-mrhx-c7xc-m3w5 dans Zod, bibliothèque de validation de TOUS les messages entrants du serveur.",
+      "statut": "TRANCHÉE PAR LE TECH-LEAD (ADR-TL-17) — migration vers Zod 4.6.7 en version exacte épinglée, bornage amont CONSERVÉ en défense en profondeur, option « abaisser le seuil » explicitement refusée. Droit de veto de l'utilisateur maintenu ouvert tant qu'il ne s'est pas exprimé.",
+    "fait_qui_a_rendu_la_decision_peu_couteuse": "Le tech-lead a MESURÉ zéro site d'import de zod dans tout src : la migration coûte 2 lignes de dépendance et un verrou. Exécution confiée au nœud S4 en étape 0.",
+      "faits_verifies_par_le_chef_de_projet": [
+        "npm audit sur le dépôt réel : exactement 1 vulnérabilité, sévérité haute, 0 critique.",
+        "Avis : « Zod can exhaust memory while validating oversized constrained collections ». Portée : tout Zod < 4.6.6.",
+        "Correctif disponible : zod 4.6.7, signalé isSemVerMajor true (changement de version majeure).",
+        "L'ARCHI se contredit : stack impose Zod 3.x, seuils_qualite impose 0 vulnérabilité haute tolérée."
+      ],
+      "pourquoi_c_est_materiel_ici": "Ce n'est pas une vulnérabilité théorique dans une dépendance dormante. Zod valide chaque trame entrante du canal temps réel, et la commande definir_ordre_places transporte précisément une COLLECTION CONTRAINTE (la liste ordonnée des joueurs). Un client modifié qui envoie une collection surdimensionnée atteint directement le défaut et peut épuiser la mémoire du serveur — donc tuer une partie de 30 minutes en présentiel, voire toutes les parties du processus, puisque l'ARCHI assume un processus unique.",
+      "fenetre_de_correction": "MAINTENANT est le moment le moins coûteux de tout le projet : aucun schéma Zod n'est encore écrit. S4 doit en écrire 13. Chaque heure de retard augmente le coût de la migration.",
+      "options": [
+        {"option": "A — migrer vers Zod 4.6.7 avant S4", "cout": "quasi nul aujourd'hui (aucun schéma écrit, seules des amorces de types)", "risque_residuel": "aucun sur cet avis ; Zod 4 est un changement majeur dont l'équipe n'a pas d'historique"},
+        {"option": "B — rester en Zod 3 et borner la taille des trames et des collections en amont de la validation", "cout": "faible, mais la mitigation devient une garantie à maintenir et à tester", "risque_residuel": "la porte d'audit reste fermée en permanence, ou le seuil doit être abaissé — ce qui désarme la porte pour toutes les vulnérabilités futures"},
+        {"option": "C — abaisser le seuil seuils_qualite pour tolérer une vulnérabilité haute", "cout": "nul immédiatement", "risque_residuel": "INACCEPTABLE à mon sens : désarme définitivement la seule porte qui surveille les dépendances, sur un projet dont la priorité 1 est la sécurité"}
+      ],
+      "recommandation_du_chef_de_projet": "Option A. Le coût est au plancher aujourd'hui et ne fera que croître, le défaut est directement atteignable par le protocole, et l'option C sacrifierait un garde-fou permanent pour un confort temporaire.",
+      "qui_decide": "La décision de stack appartient au tech-lead (nœud S3, itération 2), avec ADR obligatoire. L'utilisateur garde un droit de veto puisque c'est un sujet de sécurité.",
+      "note_procedurale": "Je n'ai pas d'outil de question structurée dans ce contexte : l'escalade est portée dans ma réponse à l'utilisateur et consignée ici. Je n'ai pas tranché à sa place ; j'ai confié la décision à son propriétaire légitime en lui imposant de la motiver."
+    },
+    {
+      "id": "ESC-03",
+      "objet": "Bogue dans l'outillage PARTAGÉ de l'équipe, hors de ce dépôt : C:\\Users\\aboub\\.claude\\equipe\\outils\\scanner-secrets.mjs",
+      "statut": "SIGNALÉ, NON CORRIGÉ — je ne modifie pas l'outillage global de l'utilisateur sans son accord",
+      "description": "Relevé par l'ingénieur DevOps au nœud S3B. Le classement des fichiers appelle git ls-files --others --ignored via execSync avec un maxBuffer de 1 Mo. Sur ce projet, 20 173 fichiers pour 1,17 Mo provoquent ENOBUFS, avalé par un catch, puis un plantage sur null.has.",
+      "portee": "Tout projet Node de l'équipe est concerné dès la première trouvaille, puisque node_modules fait exploser le volume de sortie.",
+      "contournement_en_place": "L'enveloppe locale de la porte documente la limite et relance par répertoire pour retrouver un classement exploitable. Le projet n'est pas bloqué.",
+      "action_attendue": "Décision de l'utilisateur : corriger l'outil partagé, ou conserver le contournement local."
+    },
+    {
       "id": "ESC-01",
       "objet": "Univers et thème visuel (nuit de Zafyr / Mille et une nuits VS ancrage ouest-africain)",
       "statut": "REPORTEE_VOLONTAIREMENT",

@@ -1,0 +1,625 @@
+{
+  "cible": "GDV-001",
+  "iteration": 1,
+  "migration_zod": {
+    "version_installee": "4.6.7",
+    "audit_passe": true,
+    "objet_strict_verifie": true,
+    "preuve": "paquets/partage/package.json et applications/serveur/package.json portent \"zod\": \"4.6.7\" (version EXACTE, sans ^ ni ~, comme l’impose stack._prescription_migration_zod). npm run audit sort en code 0 : la porte d’audit, FERMÉE au nœud S3B pour la vulnérabilité GHSA-mrhx-c7xc-m3w5 (sévérité haute, tout Zod < 4.6.6), est ouverte. Subsistent 4 vulnérabilités BASSES, toutes dans la chaîne vite-plugin-pwa → workbox-build → @rollup/plugin-node-resolve → deepmerge : hors du seuil --audit-level=high, hors du périmètre backend, et signalées au rapport. Objet strict : les 13 commandes utilisent z.strictObject, et paquets/partage/tests/commandes-strictes.test.ts le vérifie PAR COMMANDE (47 tests) — dont la démonstration mesurée du piège : sur Zod 4.6.7, z.object({montant}).safeParse({montant:4,injecte:\"x\"}) REND un succès avec {montant:4}, la clé inconnue ayant disparu sans un mot, là où z.strictObject rend unrecognized_keys. L’enveloppe entrante est stricte aussi, et l’usurpation est contrôlée AVANT la validation stricte pour que CA-44 sorte bien en USURPATION_IDENTITE et non en MESSAGE_MALFORME."
+  },
+  "couverture": {
+    "moteur": 99.33,
+    "moteur_branches": 96.39,
+    "projection": 100,
+    "projection_branches": 100,
+    "globale": 89,
+    "seuils_tenus": true,
+    "seuils_lus_dans_le_contrat": {
+      "couverture_couche_metier": 95,
+      "couverture_projection_lignes": 100,
+      "couverture_projection_branches": 100,
+      "couverture_globale_plancher": 70
+    }
+  },
+  "criteres_acceptation": [
+    {
+      "id": "CA-01",
+      "statut": "COUVERT",
+      "test": "applications/serveur/tests/criteres-acceptation/CA-01.test.ts::CA-01 : la création émet un code d’adhésion sans caractère ambigu",
+      "nb_assertions_nommees": 7,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-02",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-02.test.ts::CA-02 : démarrage refusé à 4 joueurs, la session reste en salle d’attente",
+      "nb_assertions_nommees": 2,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-03",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-03.test.ts::CA-03 : le 9e joueur est refusé avec SESSION_PLEINE",
+      "nb_assertions_nommees": 2,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-04",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-04.test.ts::CA-04 : un ordre qui OMET un joueur est refusé",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-05",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-05.test.ts::CA-05 : A reçoit SON attribution, et une seule",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-06",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-06.test.ts::CA-06 : distribution conforme à 5 joueurs",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-07",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-07.test.ts::CA-07 : déclarer plus que son solde est refusé, et rien n’est publié",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-08",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-08.test.ts::CA-08 : la déclaration est publiée à TOUTE la table, auteur compris",
+      "nb_assertions_nommees": 2,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-09",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-09.test.ts::CA-09 : payer plus que déclaré est refusé",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-10",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-10.test.ts::CA-10 : le montant payé de J0 ne sort vers aucun autre joueur, à aucune profondeur",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-11",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-11.test.ts::CA-11 : une non-soumission vaut 0 déclaré / 0 payé, sans autre sanction",
+      "nb_assertions_nommees": 2,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-12",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-12.test.ts::CA-12 : seuls le porteur et les FAISEUR_CONTRATS reçoivent la clause",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-13",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-13.test.ts::CA-13 : les 5 clauses d’une partie sont toutes distinctes",
+      "nb_assertions_nommees": 2,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-14",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-14.test.ts::CA-14 : l’écart total est publié à tous, avec exactement 26 et 19",
+      "nb_assertions_nommees": 2,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-15",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-15.test.ts::CA-15 : COMPTAGE n’est pas éligible quand personne n’a menti",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-16",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-16.test.ts::CA-16 : toute révélation émise est vraie et laisse au moins 2 suspects",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-17",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-17.test.ts::CA-17 : PASSE est indisponible en manche 1 et en manche 2",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-18",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-18.test.ts::CA-18 : le cercle est cyclique — le dernier est voisin du premier",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-19",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-19.test.ts::CA-19 : l’enquête coûte 2, le solde tombe à 0, le résultat est le paiement réel",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-20",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-20.test.ts::CA-20 : l’Inspecteur du Trésor enquête pour 1 pièce, et aboutit",
+      "nb_assertions_nommees": 2,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-21",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-21.test.ts::CA-21 : enquête refusée faute de solde, solde inchangé, aucune enquête écrite",
+      "nb_assertions_nommees": 2,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-22",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-22.test.ts::CA-22 : le verdict MENTEUR est public immédiatement, sans ampleur ni montant",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-23",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-23.test.ts::CA-23 : verdict HONNETE public, puis 2 pièces de l’accusateur vers l’accusé",
+      "nb_assertions_nommees": 2,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-24",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-24.test.ts::CA-24 : la seconde accusation de la manche est refusée avec QUOTA_DEPASSE",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-25",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-25.test.ts::CA-25 : l’amende est plafonnée au solde, aucun solde ne devient négatif",
+      "nb_assertions_nommees": 2,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-26",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-26.test.ts::CA-26 : récompense 40, parts [6,6,6,6,6,9], reliquat 1 non distribué",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-27",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-27.test.ts::CA-27 : le vœu échoue à 17 pour 18, et aucune part n’est versée",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-28",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-28.test.ts::CA-28 : la récompense partagée vaut plancher",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-29",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-29.test.ts::CA-29 : sans aucun menteur, le multiplicateur est 3 et la récompense 60",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-30",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-30.test.ts::CA-30 : le poids du plus gros payeur réel est doublé",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-31",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-31.test.ts::CA-31 : l’amende vaut 12 — multiplicateur 2 × ampleur 3 × facteur 2",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-32",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-32.test.ts::CA-32 : les invariants tiennent après CHAQUE transition d’une partie complète",
+      "nb_assertions_nommees": 3,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-33",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-33.test.ts::CA-33 : un non-Prêteur ne peut pas émettre de prêt",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-34",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-34.test.ts::CA-34 : le du_total vaut plafond",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-35",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-35.test.ts::CA-35 : un joueur à 0 pièce n’est pas éliminé et reste dans la session",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-36",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-36.test.ts::CA-36 : solde_mis_a_jour ne porte que le solde et les mouvements du destinataire",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-37",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-37.test.ts::CA-37 : le mode avancé s’ouvre après la manche 5, en phase DV_PROPOSITION",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-38",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-38.test.ts::CA-38 : contrat contesté — chaque signataire perd la moitié de ses pièces",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-39",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-39.test.ts::CA-39 : une signature ne produce AUCUNE trame, pas même vers son auteur",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-40",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-40.test.ts::CA-40 : la partie se termine en TERMINEE, avec un classement calculé",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-41",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-41.test.ts::CA-41 : menti aux manches 1 et 4, jamais démasqué → LE_FAUSSAIRE réussie",
+      "nb_assertions_nommees": 6,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-42",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-42.test.ts::CA-42 : l’état projeté complet rend au joueur TOUT ce qui lui appartient",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-43",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-43.test.ts::CA-43 : toute commande reçue hors de sa phase est rejetée avec ACTION_HORS_PHASE",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-44",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-44.test.ts::CA-44 : une charge qui prétend désigner un autre auteur est rejetée",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-45",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-45.test.ts::CA-45 : objectif_par_joueur 4 à 6 joueurs donne un objectif de 24",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-46",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-46.test.ts::CA-46 : aucun des littéraux 12, 3, 2, 15, 10 n’est anonyme dans le moteur",
+      "nb_assertions_nommees": 2,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-47",
+      "statut": "COUVERT",
+      "test": "applications/serveur/tests/criteres-acceptation/CA-47.test.ts::CA-47 : le mode avancé se débloque à la 3e partie TERMINÉE, pas avant",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-48",
+      "statut": "COUVERT",
+      "test": "applications/serveur/tests/criteres-acceptation/CA-48.test.ts::CA-48 : un abandon n’incrémente pas le compteur du groupe",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-49",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-49.test.ts::CA-49 : la phase passe à REVELATION dès le dernier paiement",
+      "nb_assertions_nommees": 4,
+      "motif_si_non": ""
+    },
+    {
+      "id": "CA-50",
+      "statut": "COUVERT",
+      "test": "paquets/moteur/tests/criteres-acceptation/CA-50.test.ts::CA-50 : le contrat n’énumère aucune commande d’exécution, de révélation ou de distribution",
+      "nb_assertions_nommees": 5,
+      "motif_si_non": ""
+    }
+  ],
+  "cas_limites_couverts": [
+    "total payé égal exactement à l’objectif (succès)",
+    "total payé nul et objectif non atteint",
+    "tous les joueurs mentent",
+    "aucun joueur ne mente (interaction avec TRESOR_DES_HONNETES et interdiction de COMPTAGE)",
+    "somme des poids de partage nulle parce que tous les contributeurs ont été démasqués",
+    "amende supérieure au solde de l’accusé",
+    "pénalité de fausse accusation supérieure au solde de l’accusateur",
+    "remboursement de prêt supérieur au solde de l’emprunteur",
+    "deux joueurs portant simultanément le rôle Faiseur de contrats",
+    "le porteur de la clause est lui-même Faiseur de contrats",
+    "deux joueurs portant le rôle Inspecteur du Trésor",
+    "égalité stricte sur le plus gros paiement réel avec clause LE_PLUS_GENEREUX",
+    "égalité de score final entre plusieurs joueurs",
+    "mission LE_MAGNAT attribuée en doublon à deux joueurs",
+    "aucun gabarit de révélation éligible sur une manche",
+    "déconnexion pendant la phase de paiement puis reconnexion après l’expiration",
+    "déconnexion définitive d’un joueur en cours de partie (la partie continue, actions par défaut)",
+    "double soumission d’une déclaration, puis d’un paiement",
+    "accusation ou enquête sur soi-même",
+    "enquête répétée sur la même cible dans la même manche",
+    "ordre des places avec cercle de 5 (voisinage minimal) et de 8",
+    "mode avancé activé alors que le Marchand déjà lié se déconnecte",
+    "aucun signataire au Dernier Vœu",
+    "session abandonnée en pleine manche 3",
+    "deux sessions actives avec le même pseudo de joueur",
+    "code d’adhésion collisionnant avec une session encore active"
+  ],
+  "matrice_gains": {
+    "esperance_mensonge": "E[Mensonge] = 6(1-p) - 7p = 6 - 13p",
+    "esperance_verite": "E[Verite] = 3",
+    "seuil_indifference": "p = 3/13 ≈ 23,08 %",
+    "accusation_juste": 6,
+    "fausse_accusation": 2,
+    "concorde_avec_le_GDD": true,
+    "preuve": "Reproduite par le MOTEUR RÉEL dans paquets/moteur/tests/invariants/matrice-gains.test.ts (7 tests). Cadre de référence, explicité parce que la SPEC ne le fixe pas et que trois chiffres sur quatre en dépendent : 6 joueurs, objectif 18 (objectif_par_joueur 3 × 6), TOUS déclarent 4 ; les honnêtes paient 4, le menteur paie 1 — soit l’ampleur de 3 dont parle la dérivation de la SPEC. Total réellement payé 21, récompense 2 × 21 = 42, poids de partage 4 chacun (somme 24), part = plancher(42 × 4 / 24) = 7. Les pouvoirs de rôle sont neutralisés (le bonus du MARCHAND_EPICES décalerait chaque chiffre). Mesures du moteur, par différence de solde sur la manche : honnête -4 payé + 7 de part = +3 → E[Verite] = 3 ; menteur impuni -1 payé + 7 de part = +6 ; menteur démasqué -1 payé + 0 de part (RG-15) - 6 d’amende (multiplicateur_amende 2 × ampleur 3) = -7. D’où E[Mensonge](p) = 6(1-p) - 7p = 6 - 13p, et l’indifférence E[Mensonge] = E[Verite] à p = (6-3)/(6-(-7)) = 3/13 = 23,08 %. Vérifié aussi : une accusation juste rapporte exactement +6 à l’accusateur (un mouvement de motif amende_recue, delta +6) et une fausse accusation lui coûte exactement 2 (motif penalite_fausse_accusation_payee, delta -2). Les quatre chiffres du GDD sortent du moteur sans qu’aucune règle n’ait été ajustée pour eux."
+  },
+  "commandes_verifiees": [
+    {
+      "commande": "npm run types",
+      "code_sortie": 0,
+      "extrait": "tsc --noEmit -p tsconfig.json"
+    },
+    {
+      "commande": "npm run lint",
+      "code_sortie": 0,
+      "extrait": "eslint ."
+    },
+    {
+      "commande": "npm run verifier:couches",
+      "code_sortie": 0,
+      "extrait": "no dependency violations found (209 modules, 742 dependencies cruised)"
+    },
+    {
+      "commande": "npm run test",
+      "code_sortie": 0,
+      "extrait": "ℹ pass 414"
+    },
+    {
+      "commande": "npm run couverture",
+      "code_sortie": 0,
+      "extrait": "VERDICT SEUILS TENUS"
+    },
+    {
+      "commande": "npm run verifier:visibilite",
+      "code_sortie": 0,
+      "extrait": "VERDICT CONFORME — 0 divergence(s)"
+    },
+    {
+      "commande": "npm run secrets",
+      "code_sortie": 0,
+      "extrait": "VERDICT AUCUN SECRET BLOQUANT"
+    },
+    {
+      "commande": "npm run audit",
+      "code_sortie": 0,
+      "extrait": "4 low severity vulnerabilities"
+    },
+    {
+      "commande": "npm run construire",
+      "code_sortie": 0,
+      "extrait": "tsc -p tsconfig.construire.json"
+    }
+  ],
+  "partie_complete": {
+    "jouee": true,
+    "graine": "GDV-S4-partie-complete-graine-fixee",
+    "manches": 5,
+    "joueurs": 6,
+    "extrait_scores": "rang 1 : 31 pièces, score 31, mission échouée | rang 2 : 16 pièces, score 26, mission réussie | rang 3 : 13 pièces, score 13, mission échouée | rang 3 : 13 pièces, score 13, mission échouée | rang 3 : 13 pièces, score 13, mission échouée | rang 6 : 6 pièces, score 6, mission échouée",
+    "deroule_par_manche": [
+      {
+        "manche": 1,
+        "clause": "PRIME_AU_DELATEUR",
+        "total_declare": 20,
+        "total_paye": 18,
+        "objectif": 18,
+        "reussi": true,
+        "recompense": 36,
+        "parts": [
+          7,
+          7,
+          5,
+          5,
+          5,
+          5
+        ],
+        "revelation": "COMPTAGE",
+        "suspects_restants": 6
+      },
+      {
+        "manche": 2,
+        "clause": "GENIE_GARDE_UN_TIERS",
+        "total_declare": 18,
+        "total_paye": 13,
+        "objectif": 18,
+        "reussi": false,
+        "recompense": 0,
+        "parts": [],
+        "revelation": "VOISINAGE",
+        "suspects_restants": 6
+      },
+      {
+        "manche": 3,
+        "clause": "TRESOR_DES_HONNETES",
+        "total_declare": 18,
+        "total_paye": 18,
+        "objectif": 18,
+        "reussi": true,
+        "recompense": 54,
+        "parts": [
+          9,
+          9,
+          9,
+          9,
+          9,
+          9
+        ],
+        "revelation": "EXONERATION",
+        "suspects_restants": 5
+      },
+      {
+        "manche": 4,
+        "clause": "LE_PLUS_GENEREUX",
+        "total_declare": 21,
+        "total_paye": 15,
+        "objectif": 18,
+        "reussi": false,
+        "recompense": 0,
+        "parts": [],
+        "revelation": "VOISINAGE",
+        "suspects_restants": 6
+      },
+      {
+        "manche": 5,
+        "clause": "CONSOLATION",
+        "total_declare": 12,
+        "total_paye": 12,
+        "objectif": 18,
+        "reussi": false,
+        "recompense": 0,
+        "parts": [],
+        "revelation": "EXONERATION",
+        "suspects_restants": 5
+      }
+    ],
+    "verifie_en_plus": "Les 5 clauses de la partie sont distinctes (CA-13) ; toute révélation émise laisse au moins 2 suspects (CA-16) ; les invariants RG-41/RG-42 tiennent après CHAQUE transition ; le compteur du groupe passe à 1 au seul passage en TERMINEE ; et l’état se reconstruit bit-à-bit par rejeu du journal. Le scénario est joué à travers la pile réelle — routes REST, boucle de session, moteur, projection, journal, SQLite — et il est strictement reproductible : deux exécutions donnent les mêmes clauses, totaux, parts et scores."
+  },
+  "ecarts_au_contrat_api": [
+    {
+      "objet": "Aucun écart de FORME sur les 13 commandes et les 30 événements.",
+      "verification": "La propriété (P-a) confronte chaque charge réellement projetée au schéma du contrat, récursivement et en suivant les $ref : aucune clé surnuméraire, aucune clé requise absente, à aucune profondeur. Elle tourne sur 60 parties générées ET sur les 30 types d’événement construits un par un. npm run verifier:visibilite sort CONFORME, 0 divergence."
+    },
+    {
+      "objet": "Les trois événements de PRÉSENCE sont projetés vers « tous les AUTRES », et non vers tous.",
+      "lecture_retenue": "x-visibilite vaut « tous » pour EvtJoueurRejoint, EvtJoueurQuitte et EvtJoueurReconnecte, mais x-destinataires restreint : « Tous les autres joueurs. Le reconnecté reçoit, lui, un EvtEtatCompletPrive. » J’ai suivi x-destinataires : le sujet de l’événement ne reçoit pas l’annonce le concernant. Motif concret, pas de principe : lui envoyer les deux lui livrait joueur_reconnecte en séquence 1 puis etat_complet_prive qui REMET la séquence à 1 — deux trames de séquence 1, ce qu’un client qui surveille les trous de séquence a tort de voir. Mesuré avant correction : « sequences J1 : 1,1,2,3,4,5 » ; après : « 1,2,3,4,5 ». À signaler au tech-lead si le frontend attend l’autre lecture."
+    },
+    {
+      "objet": "Trame d’erreur ÉMISE AVANT AUTHENTIFICATION : la séquence vaut 1 à chaque refus.",
+      "lecture_retenue": "Le champ sequence est « monotone PAR DESTINATAIRE » — or avant authentifier il n’y a pas encore de destinataire, donc pas de compteur. Le contrat ne dit rien de ce cas. J’émets une enveloppe conforme (type, sequence, emis_a, charge) avec sequence = 1 et un emis_a réel, et non un nul, pour qu’un client qui calcule son décalage d’horloge sur emis_a (RG-79) n’ait pas de cas particulier dès sa première trame. Deux refus successifs avant authentification portent donc tous deux la séquence 1. Point à trancher par le tech-lead si le client doit y voir autre chose qu’un doublon bénin."
+    }
+  ],
+  "defauts_spec_releves": [
+    {
+      "id": "DEF-S4-01",
+      "gravite": "MOYENNE",
+      "ou": "RG-51 et RG-52 contre RG-04 et CA-06",
+      "constat": "En mode avancé, RG-51 donne au joueur tiré le rôle secret MARCHAND_DEJA_LIE « À LA PLACE de sa mission secrète ». Or le protocole ne porte qu’UN champ role_secret, et MARCHAND_DEJA_LIE est une valeur de CleRole, avec mission_secrete nulle (EvtAttributionPrivee). Le joueur tiré perd donc son rôle de base, et les 4 rôles de RG-04 peuvent ne plus être tous présents. CA-06 devient par ailleurs faux à la lettre pour lui : il n’a plus « 1 rôle ET 1 mission ».",
+      "lecture_appliquee": "Lecture littérale du protocole : role_secret = MARCHAND_DEJA_LIE, mission_secrete = null. AUCUNE contrainte de tirage n’a été inventée pour préserver les 4 rôles — ce serait ajouter une règle que la SPEC ne porte pas. CA-06 est donc vérifié HORS mode avancé, ce que son énoncé décrit, et le mode avancé est couvert par CA-37 (un MARCHAND_DEJA_LIE, un GARDIEN_DE_LA_LAMPE, deux joueurs distincts)."
+    },
+    {
+      "id": "DEF-S4-02",
+      "gravite": "MOYENNE",
+      "ou": "catalogue_revelations.gabarits.COMPARAISON.eligibilite",
+      "constat": "« Interdit si l’énoncé combiné aux déclarations publiques suffit à désigner un menteur unique » n’est pas décidable tel quel : décider ce que « l’information publique implique » demande d’énumérer les répartitions de paiements compatibles avec le total.",
+      "lecture_appliquee": "Formalisation explicite, écrite dans paquets/moteur/src/revelations/eligibilite.ts : l’énoncé désigne un menteur unique exactement quand l’ensemble des suspects publics après émission se réduit à la paire {a, b} ET qu’un seul des deux a menti. Dès qu’un troisième suspect subsiste, ou que les deux ont menti, ou qu’aucun n’a menti, aucune désignation unique n’est possible. La formalisation est strictement plus prudente qu’une absence de contrôle, et elle est testable — ce que la phrase d’origine n’est pas."
+    },
+    {
+      "id": "DEF-S4-03",
+      "gravite": "MOYENNE",
+      "ou": "verification_matrice_gains.derivation_attendue",
+      "constat": "La section fige quatre chiffres mais ne fixe PAS le cadre de référence, dont trois dépendent. Le cadre qu’une lecture naïve suggère — tous déclarent 3 et paient 3, total exactement égal à l’objectif — ne permet PAS de retrouver la matrice : toute défection fait échouer le vœu, la récompense tombe à 0, et ni +6 ni -7 ne sortent.",
+      "lecture_appliquee": "Cadre explicité et TESTÉ : 6 joueurs, objectif 18, tous déclarent 4 ; les honnêtes paient 4, le menteur paie 1 (ampleur 3, celle de la dérivation). Total payé 21, récompense 42, part = plancher(42 × 4 / 24) = 7. Alors le moteur rend exactement -4+7 = +3 pour l’honnête, -1+7 = +6 pour le menteur impuni, -1+0-6 = -7 pour le démasqué, d’où 6 - 13p et p = 3/13. Les quatre chiffres du GDD sortent du moteur sans qu’aucune règle n’ait été ajustée. Je recommande d’inscrire ce cadre dans la SPEC : sans lui, un QA honnête conclura que le moteur est faux."
+    },
+    {
+      "id": "DEF-S4-04",
+      "gravite": "FAIBLE",
+      "ou": "RG-05 contre RG-04",
+      "constat": "RG-04 plafonne les rôles à 2 exemplaires ; RG-05 ne plafonne PAS les missions. À 8 joueurs, trois doublons sont tirés parmi 5 missions, et la même mission peut donc être attribuée jusqu’à trois fois.",
+      "lecture_appliquee": "Lecture littérale : tirage uniforme parmi les 5 missions de base, sans plafond. Aucun plafond n’a été inventé. Le cas limite « mission LE_MAGNAT attribuée en doublon à deux joueurs » que la SPEC liste est bien couvert, et il confirme que les doublons sont voulus."
+    },
+    {
+      "id": "DEF-S4-05",
+      "gravite": "FAIBLE",
+      "ou": "ARCHI-GDV-001.json / modele_donnees.contributions.montant_declare",
+      "constat": "L’ARCHI déclare montant_declare « nullable tant que non déclaré ». Dans le moteur, une contribution n’EXISTE qu’à partir de la déclaration : « non déclaré » se dit par l’ABSENCE d’enregistrement.",
+      "lecture_appliquee": "Le type du moteur rend montant_declare NON nullable ; la colonne SQL reste nullable, conforme au contrat. Motif : un état impossible en moins est une branche invérifiable en moins sur la frontière de sécurité — la garde « ?? 0 » placée après un filtre était inatteignable, et c’est exactement le genre de branche derrière laquelle une fuite se cache sans qu’aucun test ne la voie. La matérialisation à 0 de l’expiration (RG-32) crée la ligne, et montant_paye reste nullable (déclaré mais non payé est un état réel)."
+    },
+    {
+      "id": "DEF-S4-06",
+      "gravite": "FAIBLE",
+      "ou": "ARCHI-GDV-001.json / modele_donnees.journal_commandes.type_commande",
+      "constat": "L’ARCHI définit type_commande comme « la valeur du champ type de l’enveloppe ». Or le rejeu exige de journaliser aussi les EXPIRATIONS DE MINUTEUR et la clôture automatique : le temps fait avancer le jeu autant que les commandes, et aucune table ne porte la position du générateur d’aléa.",
+      "lecture_appliquee": "Deux valeurs RÉSERVÉES ont été ajoutées, sous un préfixe qui interdit la confusion avec une commande client : systeme:expiration_phase et systeme:cloture_partie, avec joueur_id NUL. Aucune n’est un type du protocole, aucune n’est atteignable depuis un client (CA-50), et le journal n’est exposé par aucune route ni aucun événement. Sans elles, ADR-TL-05 serait inapplicable : le test de rejeu le démontre."
+    },
+    {
+      "id": "DEF-S4-07",
+      "gravite": "FAIBLE",
+      "ou": "ADR-TL-10 contre ADR-TL-05",
+      "constat": "ADR-TL-10 impose crypto.randomUUID pour TOUTES les clés primaires ; ADR-TL-05 impose que le rejeu reconstruise un état IDENTIQUE. Les deux sont incompatibles pour les lignes créées PAR LE MOTEUR : rejouer produirait d’autres identifiants, donc un autre état.",
+      "lecture_appliquee": "Les identifiants créés par le moteur (mouvements, accusations, enquêtes, prêts, révélations) sont dérivés de la graine de session par un générateur SÉPARÉ de celui du jeu — sel distinct, pour ne pas décaler l’ordre normatif des tirages — et gardent le FORMAT UUIDv4 exigé (version 4, bits de variante RFC 4122 ; vérifié par test). Les identifiants créés par le transport (session, joueur, groupe) restent tirés par crypto.randomUUID : ils sont persistés en propre, pas rejoués."
+    },
+    {
+      "id": "DEF-S4-08",
+      "gravite": "FAIBLE",
+      "ou": "Chaîne de dépendances du client — hors périmètre backend",
+      "constat": "npm run audit sort en code 0 (seuil --audit-level=high) mais signale 4 vulnérabilités BASSES : deepmerge (GHSA-gcqx-w48m-w2h4, pollution de prototype) via @rollup/plugin-node-resolve → workbox-build → vite-plugin-pwa.",
+      "lecture_appliquee": "Non corrigé : la correction exige workbox-build@5.1.4, un changement de version majeure de la chaîne PWA, qui relève du nœud S5 et de l’ingenieur-devops. Aucune de ces dépendances n’entre dans le serveur ni dans le moteur. Signalé pour que la décision soit prise, pas contournée."
+    }
+  ],
+  "statut": "LIVRE",
+  "blocages": [],
+  "livrables": {
+    "moteur": "paquets/moteur — 45 modules. Machines à états de partie et de manche, 17 étapes de pipeline dans des fichiers numérotés, 5 clauses, 6 gabarits de révélation avec les trois lois du génie, 4 rôles, 5 missions, Dernier Vœu, scores. Aucune E/S, aucun module node:, aucune dépendance hors @gdv/partage : vérifié par ESLint, par dependency-cruiser ET par un test qui relit les sources (une règle de lint se désactive d’un commentaire, un test se lit dans un rapport d’échec).",
+    "projection": "paquets/moteur/src/projection — 8 modules, 100 % des lignes ET des branches. Une fonction par destinataire, construite par AJOUT. La CLASSE de destinataire n’est jamais décidée par le code : elle est LUE dans l’annotation x-visibilite du contrat, et une classe inconnue fait échouer le chargement du module plutôt que de valoir « tous » par défaut.",
+    "serveur": "applications/serveur — Fastify pour les 6 routes REST, ws brut pour le temps réel, SQLite via node:sqlite avec 13 tables, contraintes CHECK et index uniques partiels. Le diffuseur n’expose que envoyerA(joueurId, evenement) ; un événement « public » est une BOUCLE de projections individuelles. Reprise par rejeu du journal au démarrage, minuteries reconstruites depuis phase_fin_at.",
+    "configuration": "Les 21 paramètres vivent dans paquets/partage/src/config/defauts.json et nulle part ailleurs, surchargeables par session avec bornes validées (US-17). CA-46 le vérifie mécaniquement sur les SOURCES du moteur : aucun des littéraux 12, 3, 2, 15, 10 n’y est anonyme.",
+    "tests": "414 tests, 0 échec. Un fichier par critère d’acceptation (CA-01 à CA-50), les 26 cas limites, deux tests de propriété fast-check sur la projection, la matrice de gains reproduite par le moteur réel, le déterminisme et le rejeu, et une partie complète de 5 manches à 6 joueurs jouée à travers la pile réelle avec une graine fixée."
+  }
+}

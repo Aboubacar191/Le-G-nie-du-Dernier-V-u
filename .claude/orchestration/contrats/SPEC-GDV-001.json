@@ -1,7 +1,14 @@
 {
   "id": "GDV-001",
   "titre": "Le Génie du Dernier Vœu — moteur de jeu serveur et application PWA (v1 prototype)",
-  "version": "1.0.0",
+  "version": "1.3.0",
+  "_historique_versions": [
+    {"version": "1.0.0", "evenement": "Rédaction initiale (nœud S1)."},
+    {"version": "1.1.0", "evenement": "Après contrôle de livraison S3 : RG-74 et RG-75 ajoutées, étape 16 du pipeline affinée, 3 entrées de matrice_visibilite. Défaut relevé par le tech-lead."},
+    {"version": "1.2.0", "evenement": "Après contrôle de livraison S2 : RG-58 réécrite, RG-76 à RG-79 ajoutées. Défauts relevés par le designer."},
+    {"version": "1.2.1", "evenement": "Après resynchronisation S3 itération 2 : champ version corrigé (il indiquait encore 1.0.0 alors que le contenu était à jour — tout agent aval aurait cru la SPEC périmée), énoncé de RG-58 dans regles_gestion aligné sur CONF-04 (la réécriture n'avait été appliquée qu'à score_final, or c'est regles_gestion que lisent les développeurs), et devient_public ajouté à l'entrée « ampleur du mensonge » de matrice_visibilite. Les trois défauts ont été relevés par le tech-lead."},
+    {"version": "1.3.0", "evenement": "Après contrôle de livraison S4 : ajout du CADRE DE RÉFÉRENCE NORMATIF de la matrice de gains (DEF-S4-03 — sans lui, un QA rigoureux concluait à tort que le moteur était faux) ; formalisation décidable de l'éligibilité du gabarit COMPARAISON (DEF-S4-02) ; clarification de l'intention de RG-51 sur le Marchand déjà lié avec déclaration de l'écart d'implémentation ECART-S4-01 (DEF-S4-01) ; explicitation de l'absence de plafond sur les doublons de missions (DEF-S4-04). Les quatre défauts ont été relevés par le dev-backend."}
+  ],
   "source_metier": "GDD transmis verbatim par le client le 2026-10-27. PDF de référence secondaire : D:\\Le Génie du Dernier Vœu\\Le Génie du Dernier Vœu — Game Design.pdf. En cas de divergence, CETTE SPEC prime.",
 
   "objectif_metier": "Permettre à un groupe de 5 à 8 joueurs réunis dans la même pièce de jouer une partie de bluff et de déduction sociale de 25-30 minutes, où chacun déclare publiquement sa contribution mais paie en secret, et où l'application tient seule le rôle d'arbitre omniscient (le « génie ») : elle est la seule à connaître les paiements réels, les rôles, les missions et les clauses cachées, et elle produit des révélations toujours vraies mais jamais complètes. Le problème à résoudre n'est pas « afficher un jeu » mais « garantir qu'aucun joueur ne puisse obtenir par son téléphone une information que les règles lui refusent » — sans cette garantie, le jeu n'a aucun intérêt.",
@@ -281,7 +288,8 @@
       {
         "cle": "COMPARAISON",
         "enonce_type": "{a} a payé plus que {b}.",
-        "eligibilite": "montant_paye(a) > montant_paye(b) strictement, a != b, ET |ensemble_suspects_publics après émission| >= 2. Interdit si l'énoncé combiné aux déclarations publiques suffit à désigner un menteur unique.",
+        "eligibilite": "montant_paye(a) > montant_paye(b) strictement, a != b, ET |ensemble_suspects_publics après émission| >= 2. Interdit si l'énoncé désigne un menteur unique, au sens FORMEL suivant, et pas au sens d'une appréciation : la désignation est unique exactement quand l'ensemble des suspects publics après émission se réduit à la paire {a, b} ET qu'un seul des deux a menti. Dès qu'un troisième suspect subsiste, ou que les deux ont menti, ou qu'aucun des deux n'a menti, aucune désignation unique n'est possible et le gabarit reste éligible.",
+        "_historique": "DEF-S4-02, relevé au nœud S4 : la formulation d'origine (« interdit si l'énoncé combiné aux déclarations publiques suffit à désigner un menteur unique ») n'était pas décidable — elle aurait exigé d'énumérer toutes les répartitions de paiements compatibles avec le total. La formalisation retenue est strictement plus prudente qu'une absence de contrôle, et elle est testable, ce que la phrase d'origine n'était pas. Implémentée dans paquets/moteur/src/revelations/eligibilite.ts.",
         "usage_prefere": "pour départager deux joueurs déjà soupçonnés sans trancher"
       },
       {
@@ -357,7 +365,7 @@
       {"donnee": "accusation et son verdict", "visible_par": ["tous"], "a_partir_de": "soumission (verdict immédiat)"},
       {"donnee": "montant d'amende liquidé", "visible_par": ["tous"], "a_partir_de": "phase EXECUTION", "justification": "ADR-CP-06 : liquider avant la révélation de la clause PRIME_AU_DELATEUR divulguerait la clause.", "inference_sanctionnee": "Le montant permet de recalculer l'ampleur du mensonge, donc le paiement exact de l'accusé. C'est une conséquence directe de la règle du GDD elle-même (« une amende égale au double de son mensonge »), et elle ne porte que sur un joueur DÉJÀ publiquement démasqué, pour une manche DÉJÀ close. Arbitrage CONF-02 : assumée et documentée, pas corrigée. Le QA doit vérifier qu'aucune AUTRE inférence de ce type n'existe."},
       {"donnee": "montant de consolation individuel", "visible_par": ["serveur", "proprietaire"], "justification": "RG-74 : plancher(montant_paye / 2) est une fonction directe du paiement secret. Seuls l'activation de la clause et le total consolé sont publics."},
-      {"donnee": "ampleur du mensonge", "visible_par": ["serveur", "proprietaire"], "justification": "RG-75 : exclue du verdict public d'accusation. Devient inférable à l'exécution via le montant d'amende (voir ci-dessus), et publique à l'écran de scores."},
+      {"donnee": "ampleur du mensonge", "visible_par": ["serveur", "proprietaire"], "devient_public": null, "jamais_emise_comme_champ": true, "justification": "RG-75 : exclue du verdict public d'accusation. ATTENTION, consigne destinée au backend : cette donnée n'est JAMAIS émise comme champ dans aucun message sortant, à aucun moment, pas même à l'écran de scores. Elle est seulement DÉRIVABLE par le lecteur — dès la phase EXECUTION via le montant d'amende publié (inférence sanctionnée, CONF-02), et aux scores par différence entre le déclaré public et le payé publié. N'ajoute pas de champ d'ampleur à EvtScoresFinaux : la porte de visibilité fermerait, à juste titre. Ambiguïté relevée par le tech-lead en itération 2, puis par la porte elle-même quand j'ai tenté de la lever dans le mauvais sens."},
       {"donnee": "transfert de pièces (émetteur, destinataire, montant)", "visible_par": ["serveur", "emetteur", "destinataire"], "justification": "publier les transferts permettrait de recouper les soldes et de remonter aux paiements (déduite)."},
       {"donnee": "pret (preteur, emprunteur, montant)", "visible_par": ["serveur", "preteur", "emprunteur"]},
       {"donnee": "total_paye de la manche", "visible_par": ["serveur"], "devient_public": "phase REVELATION (écart total)"},
@@ -443,7 +451,7 @@
     {"id": "RG-02", "enonce": "Une session démarre uniquement avec un nombre de joueurs connectés compris entre 5 et 8 inclus.", "source": "métier"},
     {"id": "RG-03", "enonce": "Chaque joueur reçoit pieces_initiales (12) pièces à la distribution, via un mouvement de motif dotation_initiale.", "source": "métier"},
     {"id": "RG-04", "enonce": "Les 4 rôles sont attribués en un exemplaire chacun, puis les joueurs surnuméraires reçoivent un doublon tiré au sort, sans qu'un rôle dépasse 2 exemplaires.", "source": "déduite"},
-    {"id": "RG-05", "enonce": "Les 5 missions sont attribuées distinctes tant que l'effectif le permet, puis par doublons tirés au sort.", "source": "déduite"},
+    {"id": "RG-05", "enonce": "Les 5 missions sont attribuées distinctes tant que l'effectif le permet, puis par doublons tirés uniformément au sort, SANS PLAFOND d'exemplaires — contrairement aux rôles, que RG-04 plafonne à 2. À 8 joueurs, une même mission peut donc être attribuée jusqu'à trois fois. L'absence de plafond est VOLONTAIRE et confirmée par le cas limite « mission LE_MAGNAT attribuée en doublon à deux joueurs » que la SPEC liste déjà.", "source": "déduite", "_historique": "DEF-S4-04 : l'asymétrie avec RG-04 était involontairement muette. Aucun plafond n'a été inventé par le nœud S4, qui a appliqué la lecture littérale. Asymétrie désormais explicite plutôt que subie."},
     {"id": "RG-06", "enonce": "L'ordre des places est une permutation complète et unique des joueurs, saisie avant la distribution et immuable ensuite ; le cercle est cyclique.", "source": "métier"},
     {"id": "RG-07", "enonce": "L'objectif d'un vœu vaut objectif_par_joueur × nb_joueurs et est annoncé publiquement en phase VOEU.", "source": "métier"},
     {"id": "RG-08", "enonce": "Le montant déclaré est un entier compris entre 0 et le solde du joueur au moment de la déclaration.", "source": "déduite", "justification": "Le GDD ne borne pas la déclaration. Or le partage se fait au prorata du déclaré : une déclaration non bornée serait un exploit trivial (déclarer 999, payer 0, capter toute la récompense).", "axe_prioritaire": "fiabilite"},
@@ -480,14 +488,14 @@
     {"id": "RG-45", "enonce": "Le gabarit Passé n'est disponible qu'à partir de la manche manche_min_revelation_passe (3).", "source": "métier"},
     {"id": "RG-46", "enonce": "Aucun joueur n'est jamais éliminé. Un joueur à 0 pièce conserve le droit de négocier, d'accuser, d'emprunter et de recevoir des transferts.", "source": "métier"},
     {"id": "RG-50", "enonce": "Le mode Dernier Vœu est actif si le groupe a terminé au moins parties_requises_pour_debloquer_dernier_voeu (3) parties, ou si l'hôte l'active explicitement.", "source": "métier"},
-    {"id": "RG-51", "enonce": "En mode avancé, un joueur tiré au sort reçoit le rôle Marchand déjà lié à la place de sa mission, et un autre joueur distinct reçoit la mission Gardien de la lampe.", "source": "métier"},
+    {"id": "RG-51", "enonce": "En mode avancé, un joueur tiré au sort voit sa MISSION remplacée par la condition de victoire « Marchand déjà lié » (il gagne seul si le génie est libéré), et un autre joueur distinct voit la sienne remplacée par la mission « Gardien de la lampe ». INTENTION NORMATIVE : ces deux joueurs CONSERVENT leur rôle de base et son pouvoir ; seul l'emplacement de mission est remplacé. Les 4 rôles de base restent donc tous présents en mode avancé, conformément à RG-04.", "source": "métier", "ecart_implementation_declare": "ECART-S4-01 : l'implémentation du nœud S4 place MARCHAND_DEJA_LIE dans le champ role_secret et met mission_secrete à nul, parce que le contrat API ne porte qu'un seul champ de rôle et classe MARCHAND_DEJA_LIE parmi les clés de rôle. Conséquence : le joueur tiré PERD son rôle de base et son pouvoir, et l'un des 4 pouvoirs peut disparaître de la partie en mode avancé. Écart CONNU, TESTÉ (CA-37) et ACCEPTÉ pour le prototype — voir registre.json, CONF-07. Il n'est pas atteignable avant 3 parties terminées par le groupe (RG-50), donc hors de portée des premiers playtests."},
     {"id": "RG-52", "enonce": "Le Vœu de liberté est proposé en privé à chaque marchand, pour recompense_signature_dernier_voeu (15) pièces.", "source": "métier"},
     {"id": "RG-53", "enonce": "La résolution du Dernier Vœu suit la table : 0 signataire = rien ; 1 = il reçoit 15 pièces et le génie est libéré ; 2 ou plus = contrat contesté, chaque signataire perd la moitié de ses pièces (arrondi inférieur) et le génie n'est pas libéré.", "source": "métier"},
     {"id": "RG-54", "enonce": "Le nombre de signataires et la conséquence sont publics à la résolution ; les identités ne sont révélées qu'à l'écran de scores.", "source": "déduite"},
     {"id": "RG-55", "enonce": "Le score final vaut pieces_restantes + bonus_mission_reussie si la mission est réussie. Le plus haut score gagne.", "source": "métier"},
     {"id": "RG-56", "enonce": "Si le génie est libéré, le Marchand déjà lié est vainqueur unique, indépendamment du classement par points.", "source": "métier"},
     {"id": "RG-57", "enonce": "En cas d'égalité de score, départage par pièces restantes, puis ex aequo déclaré.", "source": "déduite"},
-    {"id": "RG-58", "enonce": "L'écran de scores finaux est le seul moment où tous les secrets deviennent publics : rôles, missions, paiements réels de chaque manche, signataires.", "source": "déduite"},
+    {"id": "RG-58", "enonce": "L'écran de scores finaux publie une liste EXHAUSTIVE ET FERMÉE de quatre secrets, et rien d'autre : les rôles, les missions et leur réussite, les paiements réels de chaque manche, et l'identité des signataires du Dernier Vœu. DEUX SECRETS NE SORTENT JAMAIS, pas même là : l'identité du porteur de chaque clause, et l'existence des enquêtes (qui a enquêté sur qui). En cas de doute, matrice_visibilite fait foi, jamais une formulation en prose.", "source": "déduite", "justification": "La formulation initiale — « le seul moment où tous les secrets deviennent publics » — invitait l'aval à divulguer davantage que prévu. Corrigée par CONF-04, d'abord dans score_final seulement ; l'énoncé de regles_gestion était resté fautif, ce que le tech-lead a relevé en itération 2. C'est regles_gestion que lisent les développeurs.", "axe_prioritaire": "securite (rang 1)"},
     {"id": "RG-59", "enonce": "Le compteur de parties du groupe n'est incrémenté qu'au passage en état TERMINEE, jamais sur un abandon.", "source": "déduite"},
     {"id": "RG-60", "enonce": "Toutes les valeurs de parametres_configuration sont lues depuis une configuration unique surchargeable par session ; aucune n'apparaît en littéral dans le code du moteur.", "source": "métier"},
     {"id": "RG-61", "enonce": "Les libellés affichés (nom du génie, noms de rôles, de clauses, formulations de révélations) vivent dans un fichier de contenu séparé du moteur, indexé par clés techniques neutres, afin que le choix d'univers visuel reste possible sans toucher au moteur.", "source": "métier"},
@@ -629,7 +637,25 @@
     "esperance_mensonge": "E[Mensonge] = 6(1-p) - 7p = 6 - 13p",
     "esperance_verite": "E[Verite] = 3",
     "seuil_indifference": "p = 3/13 ≈ 23,08 %",
-    "derivation_attendue": "Avec objectif_par_joueur = 3, multiplicateur_recompense = 2, multiplicateur_amende = 2 : déclarer 3 et payer 0 économise 3 et conserve une part équivalente (+6 par rapport au joueur honnête de référence) ; être démasqué coûte l'amende 2×3 = 6 plus la part perdue, soit -7. Le QA doit retrouver ces deux espérances à partir du moteur réel, et vérifier qu'une accusation juste rapporte +6 et une fausse coûte 2.",
+    "cadre_de_reference_normatif": {
+      "_pourquoi": "DEF-S4-03, relevé au nœud S4 : cette section figeait quatre chiffres sans fixer le cadre dont trois dépendent. Le cadre qu'une lecture naïve suggère — tous déclarent 3 et paient 3, total exactement égal à l'objectif — ne permet PAS de retrouver la matrice : toute défection fait échouer le vœu, la récompense tombe à 0, et ni +6 ni −7 n'apparaissent. Sans ce cadre, un QA rigoureux conclut que le moteur est faux. Le cadre ci-dessous est désormais NORMATIF pour la vérification de la matrice.",
+      "nb_joueurs": 6,
+      "objectif": 18,
+      "declaration_de_chacun": 4,
+      "paiement_honnete": 4,
+      "paiement_menteur": 1,
+      "ampleur_du_mensonge": 3,
+      "pouvoirs_de_role": "neutralisés pour la mesure — le bonus du MARCHAND_EPICES décalerait chaque chiffre",
+      "calcul_attendu": "total payé = 5×4 + 1 = 21 ; récompense = 2 × 21 = 42 ; poids de partage = 4 par joueur, somme 24 ; part = plancher(42 × 4 / 24) = 7.",
+      "resultats_attendus_par_difference_de_solde": {
+        "joueur_honnete": "−4 payé + 7 de part = +3, donc E[Vérité] = 3",
+        "menteur_impuni": "−1 payé + 7 de part = +6",
+        "menteur_demasque": "−1 payé + 0 de part (RG-15) − 6 d'amende (multiplicateur_amende 2 × ampleur 3) = −7"
+      },
+      "derivation": "E[Mensonge](p) = 6(1−p) − 7p = 6 − 13p ; indifférence quand 6 − 13p = 3, soit p = 3/13 ≈ 23,08 %."
+    },
+    "derivation_attendue": "Dans le cadre de référence normatif ci-dessus : le QA doit retrouver ces deux espérances à partir du moteur réel, et vérifier qu'une accusation juste rapporte +6 à l'accusateur et qu'une fausse lui coûte 2.",
+    "statut_verification": "REPRODUITE PAR LE MOTEUR RÉEL au nœud S4, 7 tests dans paquets/moteur/tests/invariants/matrice-gains.test.ts. Arithmétique revérifiée indépendamment par le chef de projet. Les quatre chiffres du GDD sortent du moteur sans qu'aucune règle n'ait été ajustée pour eux.",
     "critere": "Si le moteur ne reproduit pas ces valeurs, c'est le moteur qui est faux, jamais les chiffres du GDD."
   }
 }

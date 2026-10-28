@@ -37,8 +37,11 @@
       "agent": "tech-lead",
       "dependances": ["S1"],
       "statut": "VALIDE",
-      "iteration": 1,
-      "validation": "Contrôle de livraison indépendant du chef de projet (script de contrôle, sans se fier au rapport de l'agent) : validateur ARCHI CONFORME, validateur API CONFORME ; 12/12 entités de modele_conceptuel au schéma de données (+1 ajoutée : journal_commandes) ; 30 schémas d'événement, 30/30 porteurs de x-visibilite, 5 classes de destinataire ; 13 commandes client, aucune n'expose exécution/révélation/distribution (CA-50 tenu) ; extension x-temps-reel présente ; 6 routes REST ; 16 ADR ; balayage de non-fuite sur les 16 événements de classe tous : aucune fuite réelle, 3 faux positifs de mes motifs tous justifiés (RG-20, RG-54, RG-58).",
+      "iteration": 2,
+      "validation_iteration_2": "Vérifiée par moi : ARCHI 1.1.0 CONFORME, API inchangé en 1.0.0 (donc S3B reste valide et S4 s'y conforme sans resynchronisation), porte verifier:visibilite toujours CONFORME 0 divergence, 19 ADR, 12 dettes, registre_champs_secrets présent. Les trois défauts sont tranchés : ADR-TL-17 migration Zod 4.6.7 épinglée + bornage conservé en défense en profondeur (option « abaisser le seuil » explicitement refusée) ; ADR-TL-18 registre de champs secrets QUALIFIÉ par entité, union à plat réservée au seul rédacteur de journaux avec interdiction d'import mécanique ; ADR-TL-19 règle de nommage opposable sans renommage, liste d'homonymes fermée à une entrée.",
+      "fait_decisif_mesure": "Zéro site d'import de zod dans tout src : la migration coûte 2 lignes de dépendance et un verrou. C'est ce qui rend la décision de sécurité quasi gratuite au lieu de coûteuse.",
+      "motif_resynchronisation": "Trois défauts de l'ARCHI révélés par son exécution au nœud S3B, tous dans le périmètre de décision du tech-lead et non du chef de projet : (1) CONTRADICTION INTERNE BLOQUANTE — stack impose Zod 3.x, seuils_qualite tolère 0 vulnérabilité haute, et l'avis GHSA-mrhx-c7xc-m3w5 (haute, épuisement mémoire sur collections contraintes surdimensionnées) touche tout Zod < 4.6.6. Vérifié par moi : npm audit remonte exactement 1 vulnérabilité haute, correctif en zod 4.6.7, changement majeur. (2) champs_secrets livré comme liste de noms nus alors que joueur_id, sequence, cree_at et id y figurent et sont publics ailleurs : un registre à plat rendrait faux le test de propriété de la projection. (3) Homonymie du champ motif, secret dans MouvementPiece et public dans EvtPartieAbandonnee.",
+      "validation_iteration_1": "Contrôle de livraison indépendant du chef de projet (script de contrôle, sans se fier au rapport de l'agent) : validateur ARCHI CONFORME, validateur API CONFORME ; 12/12 entités de modele_conceptuel au schéma de données (+1 ajoutée : journal_commandes) ; 30 schémas d'événement, 30/30 porteurs de x-visibilite, 5 classes de destinataire ; 13 commandes client, aucune n'expose exécution/révélation/distribution (CA-50 tenu) ; extension x-temps-reel présente ; 6 routes REST ; 16 ADR ; balayage de non-fuite sur les 16 événements de classe tous : aucune fuite réelle, 3 faux positifs de mes motifs tous justifiés (RG-20, RG-54, RG-58).",
       "apport_non_demande": "Le tech-lead a relevé un trou dans la SPEC (consolation individuelle) et a refusé de publier la donnée. SPEC corrigée à la source, conflits CONF-02 et CONF-03 journalisés.",
       "perimetre": "Stack, transport temps réel, persistance, structure mono-repo, schéma de données, ET contrat de protocole client/serveur (frontière de secret).",
       "livrables": [
@@ -51,8 +54,14 @@
       "nom": "SCAFFOLD",
       "agent": "ingenieur-devops",
       "dependances": ["S3"],
-      "statut": "EN_COURS",
+      "statut": "VALIDE",
       "iteration": 1,
+      "validation": "Contrôle de livraison indépendant du chef de projet, commandes rejouées moi-même : dépôt git 4 commits, 161 fichiers suivis, arbre propre ; les 3 documents sources ET les 23 fichiers d'orchestration versionnés, aucun ignoré ; npm run types = 0 sur les 4 paquets ; npm run lint = propre ; npm run test = 17/17 ; npm run verifier:visibilite = VERDICT CONFORME, 0 divergence, sur les contrats RÉELS (30 schémas annotés, 21 entrées de matrice cartographiées, 144 occurrences champ×événement confrontées, 157 noms de champs tous classés). 16 scripts npm, workspaces paquets/* et applications/*.",
+      "qualite_remarquee": "Les 9 portes ont été vues en échec sur violation volontaire, y compris un contrôle positif (le même import via le chemin autorisé ne déclenche rien) et un test de seuil exact (94,98 % ferme, 95,00 % ouvre). Une porte non testée ne protège rien : celles-ci l'ont été.",
+      "portes_fermees_a_la_livraison": [
+        {"porte": "couverture", "cause": "le moteur n'a pas de code — c'est S4", "statut": "ATTENDU, s'ouvrira en S4"},
+        {"porte": "audit", "cause": "contradiction interne à l'ARCHI sur Zod — escaladée, voir S3 itération 2", "statut": "BLOQUANT POUR S4"}
+      ],
       "perimetre": "git init, squelette mono-repo, outillage (TS, lint, tests), paquet partagé de types/config, portes de qualité dont outils/verifier-visibilite.mjs. Aucune logique de jeu.",
       "livrables": [
         "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\SCAFFOLD-GDV-001.json"
@@ -63,8 +72,34 @@
       "nom": "BACKEND",
       "agent": "dev-backend",
       "dependances": ["S3", "S3B"],
-      "statut": "EN_ATTENTE",
-      "iteration": 0,
+      "statut": "EN_COURS",
+      "iteration": 2,
+      "incident_iteration_1": {
+        "cause": "Interruption externe — limite de session de l'API, puis blocage sans progression pendant 600 s. AUCUN rapport livré, aucun commit effectué.",
+        "imputabilite": "NON IMPUTABLE au contenu du travail ni à la qualité du brief. La règle du signal d'alerte (« si l'itération 2 échoue pour une raison DIFFÉRENTE de la 1, geler ») ne s'applique donc pas : l'itération 1 n'a produit aucun échec de diagnostic à comparer.",
+        "decision": "RÉCUPÉRATION, pas reprise à zéro. Arbitrage ci-dessous."
+      },
+      "arbitrage_recuperation": {
+        "objet": "Garder le travail non commité de 4093 lignes, ou repartir du dernier état cohérent (commit db95196) ?",
+        "mesures_faites_par_le_chef_de_projet": [
+          "66 fichiers TypeScript dans paquets/moteur/src, 4093 lignes hors commentaires et lignes vides",
+          "les 17 étapes du pipeline TOUTES présentes (etape-01 à etape-17), plus contexte.ts, liquidation.ts, index.ts",
+          "12 répertoires de moteur en place : alea, commandes, distribution, etat, horloge, machine, monnaie, pipeline, projection, revelations, scores",
+          "npm run lint : propre",
+          "npm run verifier:couches : VERDICT COUCHES RESPECTÉES, 125 modules et 373 dépendances (contre 95 et 137 au scaffolding — croissance réelle, sans violation de couche)",
+          "npm run verifier:visibilite : CONFORME, 0 divergence",
+          "npm run audit : PASSE, 4 vulnérabilités basses, 0 haute — la migration Zod 4.6.7 épinglée est FAITE, l'étape 0 est acquise et l'escalade ESC-02 est résolue en pratique",
+          "npm run types : UNE SEULE erreur — sqlite/index.ts importe DepotSqlite alors que depot.ts exporte Depot",
+          "npm run test : 17 tests, ceux du squelette uniquement. ZÉRO test de jeu écrit."
+        ],
+        "note_valeur": 5,
+        "note_cout": 1,
+        "ratio": 5.0,
+        "decision": "RÉCUPÉRER. Un chantier dont le lint est propre, les couches respectées, la porte de visibilité conforme et qui ne casse que sur un symbole mal nommé n'est pas un chantier incohérent : c'est un chantier interrompu. Jeter 4093 lignes et la migration de sécurité déjà exécutée pour repartir de zéro serait une destruction de valeur sans aucun bénéfice de propreté.",
+        "etat_reel_du_travail": "Moitié avant solide (moteur, pipeline, projection, couches). Moitié arrière absente : finition de la couche persistance du serveur, et la TOTALITÉ de la suite de tests — 50 critères d'acceptation, 26 cas limites, tests de propriété sur la projection, et la matrice de gains du GDD.",
+        "lecon_integree_au_brief": "Le travail n'a pas été perdu parce qu'il était sur disque, mais il n'était protégé par aucun commit. La reprise impose des commits progressifs."
+      },
+      "note_dispatch": "Dépendances S3 (itération 2) et S3B toutes deux VALIDE. La migration Zod prescrite par ADR-TL-17 est confiée à S4 en étape 0 plutôt qu'à un dispatch DevOps dédié : zéro site d'import, donc 2 lignes de dépendance, et S4 est l'unique consommateur des 13 schémas Zod ainsi que le seul concerné par la prescription d'objet strict. Écart assumé à la prescription du tech-lead, qui désignait l'ingénieur DevOps : c'est une décision d'économie de dispatch, qui relève de moi, pas un contournement technique.",
       "perimetre": "Moteur de jeu complet + serveur temps réel + projections par destinataire. Secrets strictement serveur.",
       "livrables": [
         "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\RAPPORT-BACKEND-001.json"
@@ -160,6 +195,36 @@
       "correction_amont": "Deuxième tour de corrections de MA spécification, portée en 1.2.0 : RG-58 réécrite en liste fermée (la formulation « tout devient public » invitait l'aval à divulguer), RG-76 (un abandon ne révèle rien), RG-77 (états masqués indiscernables entre joueurs), RG-78 (aucun clavier numérique), RG-79 (décalage d'horloge). Revalidée CONFORME. Conflits CONF-04, CONF-05, CONF-06 journalisés ; dettes DETTE-01 et DETTE-02 inscrites.",
       "arbitrage_de_refus": "CONF-06 : j'ai REFUSÉ les deux modifications de contrat demandées par le designer au tech-lead, après vérification dans le contrat API et non par supposition. Le décalage d'horloge y était déjà prescrit ; l'uniformité de la carte de clause ne nécessite aucune trame puisqu'une clause est tirée à chaque manche par règle. Ratio 0,5 : refusé, motif écrit. S3 n'est pas resynchronisé.",
       "consequence_graphe": "S2 et S3 VALIDE. S4 reste bloqué par S3B, seule dépendance manquante."
+    },
+    {
+      "horodatage": "2026-10-27T02:10:00Z",
+      "evenement": "S3B livré puis VALIDE après contrôle de livraison indépendant, commandes rejouées par le chef de projet. Dépôt git initialisé, squelette fonctionnel, 9 portes de qualité toutes vues en échec sur violation volontaire.",
+      "escalade_ouverte": "ESC-02 — vulnérabilité haute GHSA-mrhx-c7xc-m3w5 dans Zod, qui valide toutes les trames entrantes. Vérifiée par moi : npm audit remonte exactement 1 vulnérabilité haute, correctif en zod 4.6.7 (version majeure). Matérielle ici parce que la commande definir_ordre_places transporte une collection contrainte, précisément le vecteur du défaut, sur un serveur à processus unique. Règle appliquée : un conflit de sécurité ne s'arbitre jamais seul.",
+      "escalade_ouverte_2": "ESC-03 — bogue dans l'outillage PARTAGÉ de l'équipe (scanner-secrets.mjs, ENOBUFS sur les gros dépôts Node). Signalé, non corrigé : je ne modifie pas l'outillage global de l'utilisateur sans son accord. Contournement local en place, projet non bloqué."
+    },
+    {
+      "horodatage": "2026-10-27T02:15:00Z",
+      "evenement": "S3 repassé en A_RESYNCHRONISER, itération 2/3, et redispatché au tech-lead avec le DIAGNOSTIC PRÉCIS des trois défauts — pas une consigne « corrige ». Périmètre volontairement restreint aux trois défauts et à l'impact de la SPEC 1.2.0 ; un remaniement global aurait été un hors-sujet coûteux.",
+      "note_methode": "Les trois défauts n'ont pas été trouvés par relecture mais par EXÉCUTION de l'architecture au nœud S3B. C'est l'argument qui justifie d'avoir fait scaffolder par un agent distinct de celui qui a décidé : un architecte qui exécute sa propre architecture ne la met pas à l'épreuve."
+    },
+    {
+      "horodatage": "2026-10-27T02:50:00Z",
+      "evenement": "S3 itération 2 livrée et VALIDE. ADR-TL-17 (Zod 4.6.7), ADR-TL-18 (registre de secrets qualifié), ADR-TL-19 (règle de nommage sans renommage). API inchangé : S3B reste valide.",
+      "troisieme_tour_de_corrections_de_ma_spec": "Le tech-lead m'a renvoyé trois défauts, tous justes, et le plus grave était silencieux : le champ version de la SPEC indiquait encore 1.0.0 alors que le contenu était en 1.2.0 — tout agent aval l'aurait crue périmée. Deuxième défaut : CONF-04 n'avait été appliqué qu'à score_final, l'énoncé de RG-58 dans regles_gestion portait encore la formulation trompeuse, et c'est regles_gestion que lisent les développeurs. Troisième : une ambiguïté sur « ampleur du mensonge ». SPEC portée en 1.2.1.",
+      "incident_revelateur": "En corrigeant le troisième défaut, j'ai ajouté devient_public à « ampleur du mensonge » — et la porte verifier:visibilite a FERMÉ sur ma propre correction. Elle avait raison : cette donnée n'est jamais émise comme champ, elle est seulement dérivable du déclaré public et du payé publié. Déclarer une publication aurait invité le backend à créer un champ qui ne doit pas exister. Corrigé en devient_public null + jamais_emise_comme_champ true, avec consigne explicite au backend. Porte revenue à CONFORME.",
+      "lecon": "La porte de qualité a arbitré contre le chef de projet. C'est la preuve qu'elle ne sert pas seulement à surveiller les agents d'exécution."
+    },
+    {
+      "horodatage": "2026-10-27T02:55:00Z",
+      "evenement": "S4 dispatché (moteur de jeu complet + serveur temps réel), avec la migration Zod en étape 0 et la matrice de gains du GDD comme condition de livraison non négociable."
+    },
+    {
+      "horodatage": "2026-10-28T00:30:00Z",
+      "evenement": "S4 itération 1 ÉCHOUÉE sur interruption externe (limite de session API, puis 600 s sans progression). Aucun rapport, aucun commit. Environ 4093 lignes de moteur laissées non commitées sur le disque.",
+      "verification_independante": "Je n'ai rien cru sur parole. J'ai rejoué moi-même les portes : lint propre, couches RESPECTÉES (125 modules, 373 dépendances), visibilité CONFORME, audit PASSE avec 0 vulnérabilité haute (donc la migration Zod 4.6.7 est acquise et ESC-02 résolue en pratique), types en UNE seule erreur localisée, 17 tests seulement — tous ceux du squelette.",
+      "arbitrage": "RÉCUPÉRATION (ratio 5,0). Un chantier au lint propre, aux couches respectées et ne cassant que sur un symbole mal nommé est un chantier interrompu, pas un chantier incohérent. Jeter 4093 lignes et une migration de sécurité déjà exécutée aurait détruit de la valeur sans gain de propreté.",
+      "iteration_comptee": "2/3, avec mention explicite que l'échec n'est pas imputable au contenu : la règle du signal d'alerte sur divergence des causes d'échec ne s'applique pas, faute d'un premier échec de diagnostic à comparer.",
+      "lecon_integree": "Le brief de reprise impose des commits progressifs par palier. Le travail n'a survécu que parce qu'il était sur disque ; aucun commit ne le protégeait."
     }
   ],
   "controles_de_livraison_programmes": [
