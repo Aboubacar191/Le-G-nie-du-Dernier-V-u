@@ -1,60 +1,100 @@
-// Amorçage du serveur : lecture de la configuration, démarrage HTTP, arrêt propre.
+// Amorçage du serveur : migrations, rejeu des sessions vivantes, démarrage
+// HTTP et temps réel, arrêt propre.
 //
-// Deux responsabilités encore à écrire (nœud S4) et volontairement visibles ici
-// plutôt que silencieuses : le rejeu des sessions vivantes au démarrage
-// (ADR-TL-05) et la reconstruction des minuteries de phase depuis phase_fin_at
-// (RG-72).
-//
-// Un service n'est démarré que s'il a répondu : la sonde /sante existe dès ce
-// squelette, et le script `npm run dev:serveur` doit la voir répondre.
+// Deux responsabilités qui n'en ont pas l'air mais qui comptent au rang 2 :
+//   · le REJEU au démarrage (ADR-TL-05) : un serveur qui redémarre en pleine
+//     partie ne doit pas ruiner trente minutes de jeu ;
+//   · la RECONSTRUCTION DES MINUTERIES depuis phase_fin_at (RG-72) : une phase
+//     dont l'échéance est passée pendant l'arrêt expire immédiatement, une
+//     phase encore en cours reprend avec le temps qu'il lui restait.
 
 import { pathToFileURL } from 'node:url';
 
-import { creerServeur } from './http/serveur.ts';
 import { lireConfiguration } from './configuration/index.ts';
+import { creerServeur } from './http/serveur.ts';
+import { ouvrirDepot } from './persistance/sqlite/index.ts';
+import { creerService, reprendre, type Service } from './service.ts';
+import { ServeurTempsReel } from './temps-reel/serveur-ws.ts';
+import { rediger } from './journalisation/redacteur.ts';
 
-const SOUS_COMMANDES = new Map<string, string>([
-  [
-    '--migrer',
-    'Application des migrations SQL (migrations/001-schema-initial.sql, ' +
-      'migrations/002-catalogue-clauses.sql) — nœud S4.',
-  ],
-  ['--rejouer', 'Rejeu du journal de commandes des sessions vivantes (ADR-TL-05) — nœud S4.'],
-]);
+export interface ServiceDemarre {
+  readonly service: Service;
+  readonly adresse: string;
+  arreter(): Promise<void>;
+}
+
+export async function demarrerService(): Promise<ServiceDemarre> {
+  const configuration = lireConfiguration();
+  const depot = ouvrirDepot(configuration.cheminBdd);
+  const service = creerService(depot);
+  reprendre(service);
+
+  const serveur = await creerServeur({
+    versionProtocole: configuration.versionProtocole,
+    journalisation: false,
+    service,
+  });
+  await serveur.listen({ port: configuration.port, host: configuration.hote });
+
+  const tempsReel = new ServeurTempsReel(service, configuration.origineAutorisee);
+  tempsReel.brancher(serveur.server);
+
+  return {
+    service,
+    adresse: `${configuration.hote}:${configuration.port}`,
+    arreter: async () => {
+      service.ordonnanceur.arreter();
+      tempsReel.arreter();
+      await serveur.close();
+      depot.fermer();
+    },
+  };
+}
+
+function appliquerMigrations(): void {
+  const configuration = lireConfiguration();
+  const depot = ouvrirDepot(configuration.cheminBdd);
+  depot.fermer();
+  console.log(`[serveur] migrations appliquées sur ${configuration.cheminBdd}`);
+}
+
+function rejouer(): void {
+  const configuration = lireConfiguration();
+  const depot = ouvrirDepot(configuration.cheminBdd);
+  const service = creerService(depot);
+  reprendre(service);
+  console.log(
+    `[serveur] rejeu terminé — ${service.boucle.sessions().length} session(s) vivante(s) ` +
+      `reconstruite(s) depuis le journal de commandes.`,
+  );
+  depot.fermer();
+}
 
 export async function demarrer(): Promise<void> {
-  const sousCommande = process.argv.slice(2).find((argument) => SOUS_COMMANDES.has(argument));
-  if (sousCommande) {
-    console.error(
-      `${sousCommande} : non implémenté.\n  ${SOUS_COMMANDES.get(sousCommande) ?? ''}\n` +
-        '  Le script existe, la mécanique n’existe pas encore : échec explicite plutôt ' +
-        'que succès trompeur.',
-    );
-    process.exitCode = 1;
+  const arguments_ = process.argv.slice(2);
+  if (arguments_.includes('--migrer')) {
+    appliquerMigrations();
+    return;
+  }
+  if (arguments_.includes('--rejouer')) {
+    rejouer();
     return;
   }
 
-  const configuration = lireConfiguration();
-  const serveur = await creerServeur({
-    versionProtocole: configuration.versionProtocole,
-    journalisation: true,
-  });
-
+  const demarre = await demarrerService();
   const arreter = async (signal: string): Promise<void> => {
     console.log(`\n[serveur] ${signal} reçu — arrêt propre.`);
-    await serveur.close();
+    await demarre.arreter();
     process.exit(0);
   };
   process.once('SIGINT', () => void arreter('SIGINT'));
   process.once('SIGTERM', () => void arreter('SIGTERM'));
 
-  await serveur.listen({ port: configuration.port, host: configuration.hote });
-
+  const configuration = lireConfiguration();
   console.log(
     `[serveur] mode=${configuration.mode} protocole=${configuration.versionProtocole}\n` +
-      `[serveur] sonde de santé : http://${configuration.hote}:${configuration.port}/sante\n` +
-      `[serveur] TODO S4 : rejeu des sessions vivantes, reconstruction des minuteries, ` +
-      `montée en charge du canal temps réel (/tr).`,
+      `[serveur] sonde de santé : http://${demarre.adresse}/sante\n` +
+      `[serveur] canal temps réel : ws://${demarre.adresse}/tr`,
   );
 }
 
@@ -64,7 +104,7 @@ const chemin = process.argv[1];
 const estPointDEntree = chemin !== undefined && import.meta.url === pathToFileURL(chemin).href;
 if (estPointDEntree) {
   demarrer().catch((erreur: unknown) => {
-    console.error('[serveur] démarrage impossible :', erreur instanceof Error ? erreur.message : erreur);
+    console.error('[serveur] démarrage impossible :', rediger({ erreur: String(erreur) }));
     process.exit(1);
   });
 }

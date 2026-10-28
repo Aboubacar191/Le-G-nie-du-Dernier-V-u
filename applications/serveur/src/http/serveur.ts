@@ -10,6 +10,9 @@
 
 import Fastify, { type FastifyInstance } from 'fastify';
 
+import { TAILLE_MAX_TRAME_OCTETS } from '@gdv/partage';
+
+import type { Service } from '../service.ts';
 import { enregistrerRouteSante } from './routes/sante.ts';
 import { enregistrerRoutesSessions } from './routes/sessions.ts';
 import { enregistrerRoutesGroupes } from './routes/groupes.ts';
@@ -19,6 +22,7 @@ export interface OptionsServeurHttp {
   readonly versionProtocole: string;
   readonly maintenant?: () => number;
   readonly journalisation?: boolean;
+  readonly service?: Service;
 }
 
 /**
@@ -35,7 +39,9 @@ const ENTETES_SECURITE: Readonly<Record<string, string>> = {
 export async function creerServeur(options: OptionsServeurHttp): Promise<FastifyInstance> {
   const serveur = Fastify({
     logger: options.journalisation ?? false,
-    bodyLimit: 4096,
+    // Le plafond coupe l'inondation mémoire par un client modifié AVANT toute
+    // désérialisation (ARCHI standards.taille_max_message_octets).
+    bodyLimit: TAILLE_MAX_TRAME_OCTETS,
   });
 
   serveur.addHook('onSend', async (_requete, reponse, charge) => {
@@ -47,8 +53,8 @@ export async function creerServeur(options: OptionsServeurHttp): Promise<Fastify
     versionProtocole: options.versionProtocole,
     maintenant: options.maintenant ?? (() => Date.now()),
   });
-  await enregistrerRoutesSessions(serveur);
-  await enregistrerRoutesGroupes(serveur);
+  await enregistrerRoutesSessions(serveur, options.service);
+  await enregistrerRoutesGroupes(serveur, options.service);
   await enregistrerRoutesConfiguration(serveur);
 
   return serveur;

@@ -1,13 +1,28 @@
-// Route de configuration : GET /configuration/defauts.
+// GET /configuration/defauts — valeurs d'équilibrage par défaut et bornes.
 //
-// Expose les valeurs par défaut et leurs bornes (RG-60, US-17). Les valeurs viennent
-// de @gdv/partage/config/defauts.json et de nulle part ailleurs : aucune constante
-// d’équilibrage n’est écrite dans le serveur.
-//
-// AMORCE — renseignée par le nœud S4 (dev-backend). Aucune règle de jeu ici.
+// Alimente l'écran de réglage de l'hôte avant le lancement (US-17, CA-45).
+// RG-60 : ces valeurs viennent d'une configuration UNIQUE ; aucune n'est codée
+// en dur dans le moteur. Les bornes permettent au client de refuser une saisie
+// absurde sans attendre le serveur — qui revalide de toute façon (RG-71).
 
 import type { FastifyInstance } from 'fastify';
 
-export async function enregistrerRoutesConfiguration(_serveur: FastifyInstance): Promise<void> {
+import { BORNES_CONFIGURATION, CONFIG_DEFAUT } from '@gdv/partage';
+
+const SCHEMA_REPONSE = {
+  type: 'object',
+  required: ['config_par_defaut', 'bornes'],
+  properties: {
+    config_par_defaut: { type: 'object', additionalProperties: true },
+    bornes: { type: 'object', additionalProperties: true },
+  },
+} as const;
+
+export async function enregistrerRoutesConfiguration(serveur: FastifyInstance): Promise<void> {
+  serveur.get(
+    '/configuration/defauts',
+    { schema: { response: { 200: SCHEMA_REPONSE } } },
+    async () => ({ config_par_defaut: CONFIG_DEFAUT, bornes: BORNES_CONFIGURATION }),
+  );
   await Promise.resolve();
 }
