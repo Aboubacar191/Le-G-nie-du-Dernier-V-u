@@ -134,8 +134,14 @@
       "nom": "QA",
       "agent": "ingenieur-qa",
       "dependances": ["S4", "S5"],
-      "statut": "EN_ATTENTE",
-      "iteration": 0,
+      "statut": "EN_COURS",
+      "iteration": 1,
+      "charges_specifiques_transmises": [
+        "CONF-02 : vérifier qu'aucune AUTRE inférence non sanctionnée que celle du montant d'amende n'existe dans les messages de classe tous.",
+        "CONF-11 : confirmer l'écart de préfixe /api entre le contrat et le serveur, pour groupage de la correction.",
+        "DETTE-02 : vérifier sur l'implémentation réelle que la bordure et le libellé de l'état masqué sont présents et mesurés, puisque c'est sur eux seuls que repose l'identification du voile.",
+        "ECART-S4-01 : constater l'écart du Marchand déjà lié comme ÉCART ACCEPTÉ et non comme défaut (CONF-07)."
+      ],
       "perimetre": "Non-fuite des secrets, matrice de gains, machine à états de la manche.",
       "livrables": [
         "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\QA-GDV-001.json"
