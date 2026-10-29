@@ -1041,6 +1041,199 @@
       "decision": "OPTION A, SANS RENOMMAGE. La règle est inscrite en standards.regle_nommage_confidentialite (trois clauses : qualification obligatoire, interdiction prospective de l'homonymie secret/public, liste fermée) et l'homonymie existante est nommée, datée et gelée dans registre_champs_secrets.homonymes_declares, avec le motif de sa neutralisation. API-GDV-001.json n'est PAS modifié : info.version reste 1.0.0, aucune entrée n'est ajoutée à x-ruptures-de-compatibilite.",
       "justification_besoin": "RG-01, rang 1, et la règle « un standard non vérifiable par une commande n'est pas un standard » : la règle retenue EST vérifiable par npm run verifier:visibilite (contrôle P7) sans modification d'outillage, ce qui en fait un standard et pas un vœu. Moindre complexité et fiabilité rang 2 ensuite : rouvrir un contrat API validé et déjà exécuté, pour un gain de sécurité net nul, coûterait une resynchronisation à S3B et un risque de divergence à S4, exactement le motif pour lequel CONF-06 a refusé deux autres modifications de ce même contrat. Je m'applique l'arbitrage que le chef de projet a appliqué au designer.",
       "consequences_acceptees": "L'homonymie reste dans le protocole : elle est une dette NOMMÉE et datée, pas un accident. Le filet mécanique couvre la frontière du protocole, pas une structure interne du serveur : la règle 1 reste donc une consigne de relecture sur ce périmètre résiduel, et c'est le point faible assumé de cette décision. Si un deuxième homonyme devenait nécessaire, la liste fermée oblige à un ADR — c'est-à-dire à rouvrir ce débat plutôt qu'à l'étendre en silence."
+    },
+
+    {
+      "id": "ADR-TL-20",
+      "objet": "Uniformité de la FORME du trafic : règle sans exception, ou liste d'événements à uniformiser",
+      "_declencheur": "Audit QA du nœud S6. ANO-01 et ANO-02, bloquantes et MESURÉES, plus l'arbitrage CONF-13 du chef de projet qui rouvre et corrige CONF-06. Fait structurant : les neuf portes de qualité étaient VERTES — dont la porte de visibilité à 0 divergence sur 144 occurrences champ par événement, et 531 tests au vert — et six canaux fuyaient. Aucune des six fuites ne passait par un champ.",
+      "contexte": "La projection par destinataire (ADR-TL-09) garantit qu'une trame ne CONTIENT aucun secret dont le destinataire n'est pas propriétaire. Elle ne garantit rien sur le fait qu'une trame EXISTE. Or huit joueurs sont assis dans la même pièce, sur le même réseau local ; sous TLS, le nombre et la taille des trames d'une connexion restent observables. Mesures du QA : les trames clause_recue réparties en {J0:0, J1:0, J2:0, J3:1, J4:0, J5:1} livrent la liste « porteur ∪ FAISEUR_CONTRATS » par simple dénombrement ; les trames resultat_enquete réparties en {J3:1, autres 0} désignent l'enquêteur par son seul volume, contre RG-27. La contrainte non négociable du GDD est contournée sans qu'une ligne du moteur soit en cause. Il faut donc gouverner la FORME du trafic — à qui, quand, en quelle taille — et décider de la PORTÉE de cette nouvelle obligation.",
+      "option_a": {
+        "nom": "Liste fermée d'événements à uniformiser : les deux types mesurés en fuite, plus ceux qu'une revue identifie",
+        "avantages": [
+          "Coût d'implémentation minimal et strictement proportionnel au défaut constaté : deux types à corriger, mesure de recette immédiate sur la sonde existante.",
+          "Aucun surcoût de bande passante sur les 28 autres types d'événements.",
+          "Ne touche pas aux types déjà de classe tous, donc aucune régression possible sur le chemin nominal du jeu.",
+          "Respecte littéralement CONF-13, qui n'exige que « au minimum clause_recue et resultat_enquete »."
+        ],
+        "inconvenients": [
+          "RÉDHIBITOIRE, et démontré par les faits de cet audit : une liste d'événements à uniformiser est une liste à MAINTENIR, donc une liste qui OUBLIE. Les six fuites sont nées d'une énumération incomplète — neuf portes vertes et six canaux ouverts. L'option reproduit exactement le mode de défaillance qu'elle prétend corriger.",
+          "Chiffré : la revue des 30 types a trouvé DEUX fuites mesurées et SEPT fuites déduites du même raisonnement. Une liste bâtie sur les seules mesures aurait couvert 2 cas sur 9. En particulier, uniformiser resultat_enquete seul n'aurait PAS fermé ANO-02, le profil global 28 contre 25 se décomposant en accuse_reception, resultat_enquete ET solde_mis_a_jour.",
+          "Impose un contrôle de conformité par ÉNUMÉRATION, qui ne peut rien dire des événements non encore écrits : tout ajout futur est une fuite potentielle que la porte ne verra pas.",
+          "L'adressage sélectif reste dans le code, donc le mécanisme de la fuite reste disponible et sera réemployé."
+        ]
+      },
+      "option_b": {
+        "nom": "Règle unique sans exception : TOUTE trame est émise à TOUS les joueurs, charge neutre pour les non-destinataires, taille complétée par paliers, lot émis dans le même tour de boucle",
+        "avantages": [
+          "Plus simple à IMPLÉMENTER : l'adressage sélectif DISPARAÎT du code au lieu de s'y compliquer. Il n'y a plus de décision de destinataire à prendre, donc plus de décision à prendre de travers.",
+          "Plus simple à VÉRIFIER : un seul invariant d'égalité remplace une matrice de cas. L'égalité des numéros de séquence entre destinataires devient le contrôle le moins coûteux de la porte (U1), conséquence directe de RUP-01.",
+          "VRAIE PAR AVANCE pour tout événement ajouté plus tard, y compris par un développeur qui n'aura pas lu cet ADR. C'est la seule des deux options qui ait cette propriété, et c'est la raison décisive.",
+          "Ferme les 2 fuites mesurées ET les 7 déduites d'un seul geste, sans avoir à trancher lesquelles des 7 sont réelles — question que je n'ai pas les moyens de résoudre et qui n'a pas besoin de l'être.",
+          "Rend la liste des EXCEPTIONS explicite, courte et opposable : deux entrées, dont l'ajout d'une troisième exige un ADR."
+        ],
+        "inconvenients": [
+          "Coût de bande passante multiplié par l'effectif : de l'ordre de 12 Mo par partie de 30 minutes à 8 joueurs dans le pire cas, contre environ 1,5 Mo sans la règle. Confrontation aux budgets faite dans contraintes_perf._confrontation_cout_remplissage ; aucun budget n'est menacé, mais le surcoût est réel et ce n'est pas rien sur un partage de connexion mobile.",
+          "RUPTURE DE COMPATIBILITÉ MAJEURE sur un contrat API déjà exécuté au nœud S3B : RUP-01 à RUP-03. Coût de resynchronisation pour le backend ET le frontend, et c'est le coût que CONF-06 avait précisément cherché à éviter.",
+          "Piège d'implémentation NOUVEAU et sérieux : si un développeur sérialise UNE charge et l'écrit N fois — ce qui est la façon naturelle d'« émettre à tous » — le premier événement de classe proprietaire fuite vers les sept autres joueurs. La règle rend donc possible une fuite de CONTENU bien pire que celles qu'elle corrige. Mitigation : l'interdit mécanique sur les fonctions diffuser/broadcast/emitAll/toAll est MAINTENU et non assoupli, la primitive unitaire reste envoyerA(joueurId, evenement), et le test P-a de clôture reste exigé par destinataire.",
+          "Le client doit accepter et IGNORER des charges neutres sur tous les types : une charge neutre prise pour une charge malformée, ou pour un état à vider, casse l'affichage.",
+          "N'apporte RIEN pour groupe_mis_a_jour, dont la sélectivité ne révélait que l'identité de l'hôte, déjà publique. Une exception y serait gratuite ; je ne la prends pas, et c'est un coût payé pour la seule discipline de règle."
+        ]
+      },
+      "decision": "OPTION B. Règle unique, sans exception, inscrite normativement dans API-GDV-001.json / x-temps-reel.uniformite_de_forme, avec une liste FERMÉE de deux exceptions — EvtEtatCompletPrive, dont le déclencheur (une reconnexion) est déjà public, et cinq codes d'erreur de protocole, dont l'émission à tous transformerait la limitation de débit en amplificateur d'inondation. Le champ x-emission est créé et rendu OBLIGATOIRE sur les 30 schémas EvtXxx : il gouverne à QUI, QUAND et en QUELLE TAILLE une trame part, là où x-visibilite gouverne ce qu'elle CONTIENT. Les deux sont normatifs et vérifiés par DEUX portes distinctes, verifier:visibilite et verifier:uniformite, car la première raisonne par champ et c'est son angle mort exact : elle ne doit pas être étendue au-delà de ce qu'elle sait faire.",
+      "justification_besoin": "RG-80, rang 1 du registre (sécurité), énoncée par le chef de projet en SPEC 1.4.0 au vu de l'audit, et CONF-13 qui en confie la forme contractuelle au tech-lead. L'exigence n'est pas une préférence d'architecture : la contrainte non négociable du GDD est que les paiements restent secrets, et deux mesures de la sonde QA établissent qu'ils ne le sont pas. Entre A et B, la priorité sécurité (rang 1) l'emporte sur délai (rang 4), ce qui écarte A sur le coût ; mais A est écartée d'abord sur le FOND, parce que son mode de défaillance est celui qui a produit le défaut. Note sur la grille d'adéquation : B répond au besoin précis — rendre la forme non informative — et non au besoin général, ce qui serait une cadence d'émission indépendante des actes, explicitement REFUSÉE ci-dessous.",
+      "consequences_acceptees": "(1) Volume multiplié par l'effectif, borné à environ 12 Mo par partie de 30 minutes à 8 joueurs dans le pire cas ; aucun budget de contraintes_perf menacé, démonstration chiffrée en contraintes_perf._confrontation_cout_remplissage. (2) Ruptures RUP-01, RUP-02 et RUP-03, opposables au backend et au frontend. (3) La compression passe du statut « sans gain » au statut d'INTERDICTION DE SÉCURITÉ : appliquée après remplissage, elle rendrait la taille compressée fonction du contenu et annulerait le correctif. L'ordre est imposé : remplissage en dernier, juste avant l'écriture sur le socket. Ce point échappe en partie au dépôt — une compression réintroduite par un proxy inverse annulerait le correctif sans qu'aucun test ne le voie ; c'est une charge explicite pour l'ingenieur-devops. (4) L'INSTANT d'une trame reste informatif : un observateur apprend qu'UN acte a eu lieu à l'instant t, jamais lequel ni de qui, l'ensemble de confusion étant les N joueurs et tous les types d'acte de la phase. La cadence indépendante des actes est REFUSÉE en v1 parce qu'elle interdirait l'accusé sous 120 ms et la publication immédiate d'une déclaration exigée par RG-31 et CA-08 — c'est-à-dire l'exigence de performance de rang 3. Inscrit en dette assumée avec sa condition de reprise. (5) Le remplissage par palier ne rend indiscernables que les trames d'un même palier : résidu sur EvtEtatCompletPrive, 3593 octets mesurés à 6 joueurs, inscrit en dette assumée. (6) Une exception gratuite n'est pas prise sur groupe_mis_a_jour : coût assumé au nom de la règle sans exception."
+    },
+
+    {
+      "id": "ADR-TL-21",
+      "objet": "Agrégats publics inversibles : prouver la non-inversibilité de chaque publication, ou restreindre les seuls cas mesurés",
+      "_declencheur": "ANO-05 et ANO-06, bloquantes et MESURÉES par qa/sondes/sonde-fuite-agregats.ts, puis RG-81 et la réduction de l'étape 16 à une liste fermée en SPEC 1.4.0.",
+      "contexte": "Deux publications dont chaque élément était individuellement anodin se sont révélées inversibles par recoupement avec d'autres données publiques. (1) Le total consolé : nb_impairs = total_paye − 2 × total_consolation donne le nombre exact de paiements impairs ; mesure réelle total_paye 16 et total_consolation 5, donc 6 déduits et 6 réels. Les six déclarations publiques valant toutes 4, un nombre pair, tout joueur de paiement impair avait nécessairement menti : les SIX joueurs étaient prouvés menteurs par le seul public. (2) Les parts : sous clause LE_PLUS_GENEREUX, les parts [J0:10, cinq autres:5] désignent J0 comme argmax des paiements secrets (déduit [J0], réel [J0]), et la conjonction avec des déclarations égales prouve que les cinq autres ont menti, par payé(i) < payé(argmax) <= déclaré(i). Un seul agrégat public démasquait cinq joueurs sur six. Les deux fuites contournent la deuxième loi du génie — au moins deux suspects — parce que RG-21 ne gouverne QUE les révélations du catalogue, et que l'événement d'exécution n'en est pas une.",
+      "option_a": {
+        "nom": "Corriger les deux cas mesurés : retirer total_consolation et parts, et s'arrêter là",
+        "avantages": [
+          "Ferme les deux anomalies bloquantes, qui sont les seules mesurées. Mesure de recette immédiate sur la sonde existante.",
+          "Coût minimal au contrat et à l'implémentation : deux champs retirés d'un seul schéma.",
+          "Ne retire aucune information de jeu dont la perte n'ait été démontrée nécessaire."
+        ],
+        "inconvenients": [
+          "RÉDHIBITOIRE et vérifié par les faits : cette option ne ferme même pas les deux cas qu'elle vise. reliquat_non_distribue restitue la somme des parts par recompense − reliquat, donc ANO-06 reste ouverte par soustraction ; et ResumeManchePublique.parts, porté par EvtEtatCompletPrive, rediffuse les parts de TOUS les joueurs pour TOUTES les manches closes à chaque reconnexion. Le second vecteur n'avait été relevé ni par l'audit ni par ma propre itération précédente ; je ne l'ai trouvé qu'en appliquant le retrait et en cherchant les autres porteurs du schéma.",
+          "Ne produit aucune règle : le prochain agrégat publié repassera par le même raisonnement individuel, qui est celui qui a échoué deux fois — y compris de ma part en RG-74, « juste au niveau individuel et faux au niveau de l'agrégat ».",
+          "Laisse la charge de la preuve du mauvais côté : un champ est publié par défaut et retiré s'il est démontré fuyant, ce qui suppose un audit exhaustif à chaque ajout."
+        ]
+      },
+      "option_b": {
+        "nom": "Renverser la charge de la preuve : registre_agregats_publies, une entrée par donnée publiée avec sa preuve de non-inversibilité, et alignement strict sur la liste fermée de l'étape 16",
+        "avantages": [
+          "Renverse la charge de la preuve, qui est l'exigence littérale de RG-81 : « une donnée dont l'inversibilité n'est pas étudiée est réputée inversible et reste privée ». Le défaut passe de « publié par oubli » à « privé par défaut ».",
+          "Produit un artefact RELISIBLE et opposable : chaque publication porte son argument, donc le prochain lecteur peut le réfuter — ce qui est précisément ce qui a manqué à RG-74 pendant deux versions.",
+          "Force la revue de TOUTES les publications, pas des deux dénoncées. C'est ce qui a fait trouver le second vecteur de ANO-06 et le caractère redondant de reliquat_non_distribue.",
+          "Donne un critère positif réutilisable, déjà employé par la SPEC pour conserver recompense : une donnée DÉRIVABLE du public n'ajoute rien, donc sa publication est sans risque. Appliqué à bonus_epices_verse, il montre que ce booléen vaut identiquement reussi."
+        ],
+        "inconvenients": [
+          "Coût de rédaction non trivial et récurrent : chaque nouvelle publication exige une preuve écrite, donc un passage par le tech-lead. C'est un goulot que j'assume mais qui ralentira le nœud S4.",
+          "Une preuve de non-inversibilité n'est PAS une démonstration formelle : c'est un argument de degrés de liberté, faillible exactement comme l'a été RG-74. Le registre réduit la probabilité d'erreur, il ne l'annule pas — et il peut donner un faux sentiment de rigueur.",
+          "PERTE FONCTIONNELLE RÉELLE, visible à l'écran : la table ne voit plus la répartition de la récompense ni la vérification « somme des parts + reliquat = récompense ». Ce n'est pas une perte cosmétique.",
+          "Le registre est une recopie manuelle du contrat, donc une source de divergence de plus, tant qu'aucun test ne compare les deux. Mitigation partielle seulement : le contrôle U3 et le test P-c portent sur les clés émises, pas sur l'existence d'une entrée de registre."
+        ]
+      },
+      "decision": "OPTION B. Création de registre_agregats_publies, une entrée par donnée publiée — agrégée OU individuelle — avec sa preuve de non-inversibilité. EvtExecutionResultat est aligné sur la liste fermée de l'étape 16 de SPEC 1.4.0, qui se termine par « RIEN D'AUTRE » : QUATRE champs retirés, parts, reliquat_non_distribue, total_consolation et bonus_epices_verse. Le schéma PartRecompense est SUPPRIMÉ, et parts est retiré de ResumeManchePublique, fermant le second vecteur découvert. Chaque joueur apprend sa part et sa consolation par EvtSoldeMisAJour, privé, aux motifs part_recompense et consolation ; après reconnexion, par son journal privé de mouvements déjà porté par EvtEtatCompletPrive. Rupture RUP-05.",
+      "justification_besoin": "RG-81, rang 1 du registre (sécurité), et la liste fermée de l'étape 16 de SPEC 1.4.0, toutes deux écrites par le chef de projet au vu de l'audit. Deux anomalies BLOQUANTES et MESURÉES les portent : un seul agrégat public démasquait cinq joueurs sur six, ce qui annule la contrainte non négociable du GDD. L'option A est écartée non pas sur son coût, qui est plus faible, mais parce que la mesure montre qu'elle ne ferme pas le défaut : elle en laisse deux vecteurs ouverts.",
+      "consequences_acceptees": "(1) Perte fonctionnelle assumée et visible : la table ne voit plus la répartition de la récompense. Le dev-frontend ne doit PAS la reconstituer par un calcul local depuis les soldes ou les mouvements — ce qui recréerait la fuite côté client, pour tout joueur un peu curieux. (2) exclu_du_partage disparaît avec PartRecompense : il indiquait qu'un joueur démasqué recevait un poids nul (RG-15) et, croisé avec la clause révélée, portait une information de même nature que celle que RUP-05 retire. (3) Tout nouveau champ public passe désormais par une entrée de registre, donc par moi : goulot assumé. (4) Le registre reste une recopie manuelle du contrat : divergence possible tant qu'aucun test ne les compare. Dette nommée, voir dette_assumee. (5) bonus_epices_verse est retiré alors qu'il ne fuite RIEN : son omission de la liste fermée de la SPEC est probablement involontaire, et je le signale au chef de projet sans corriger la SPEC. S'il le réintègre, le champ entre avec sa preuve — il vaut identiquement reussi — et non par défaut."
+    },
+
+    {
+      "id": "ADR-TL-22",
+      "objet": "ANO-07 — deux champs licites forment un oracle de solde dans la trame de prélèvement de prêt",
+      "_declencheur": "ANO-07, MAJEURE, mesurée par qa/sondes/sonde-fuite-prets-et-erreurs.ts, assignée au tech-lead.",
+      "contexte": "Étape 15 du pipeline. Le prélèvement d'un prêt est plafonné au solde de l'emprunteur, le reliquat restant dû (RG-29, CA-34). La trame pret_preleve portait montant_preleve 3 ET reliquat_du 6. Comme reliquat_du > 0, le prélèvement a NÉCESSAIREMENT été plafonné par le solde, donc montant_preleve EST le solde exact de l'emprunteur à cet instant : déduit 3, réel 3. Or le solde est secret (matrice_visibilite : serveur et propriétaire). Deux champs individuellement licites, dont chacun passe la porte de visibilité, forment par conjonction un oracle de solde. C'est le cas d'école de RG-81 appliqué non pas à un agrégat mais à une CONJONCTION DE CHAMPS. Point à dire d'emblée : l'uniformité de forme décidée en ADR-TL-20 ne règle RIEN ici — elle ferme le canal de la PRÉSENCE de la trame, pas celui de son CONTENU.",
+      "option_a": {
+        "nom": "Correctif proposé par le QA : retirer montant_preleve de la trame du prêteur et n'y conserver que reliquat_du",
+        "avantages": [
+          "Conserve au prêteur l'information contractuellement utile : ce qu'il lui reste dû.",
+          "Correctif d'un seul champ, coût minimal, mesure de recette immédiate.",
+          "Supprime la conjonction littérale qui a été mesurée."
+        ],
+        "inconvenients": [
+          "NE FERME PAS LE CANAL, et c'est vérifiable sur le contrat : la trame porte aussi pret, de type PretVuPartie, qui expose du_total et rembourse. Le prêteur recalcule l'incrément par rembourse_nouveau − rembourse_ancien et retrouve montant_preleve, donc le solde. Le correctif du QA est insuffisant parce qu'il raisonne sur les deux champs nommés dans la mesure et non sur l'ensemble des champs de la trame.",
+          "Laisse reliquat_du, qui est lui-même la moitié de l'oracle : du_total − reliquat_du donne le cumul remboursé, dont la variation redonne l'incrément.",
+          "Illustre le mode de défaillance de l'audit par champ : corriger les champs CITÉS dans une mesure, et non la propriété visée."
+        ]
+      },
+      "option_b": {
+        "nom": "Réduire la charge du prêteur au strict nécessaire — identifiant et statut du prêt — et déclarer explicitement la fuite résiduelle qui subsiste hors du protocole",
+        "avantages": [
+          "Ferme TOUS les chemins protocolaires d'un coup, parce que la décision porte sur l'ENSEMBLE des clés émises et non sur les champs dénoncés : la charge du prêteur est une liste blanche de trois clés, déclarée dans x-charge-par-destinataire et contrôlée mécaniquement par le test P-c.",
+          "Préserve l'information de jeu qui compte pour le prêteur : son prêt est-il encore ACTIF ou SOLDE. Il apprend l'état de sa créance sans apprendre POURQUOI.",
+          "Rend la variante vérifiable : P-c exige que l'ensemble des clés émises soit égal exactement à une variante déclarée, un ensemble intermédiaire étant un défaut bloquant. Une régression qui réintroduirait pret dans la charge du prêteur ferme la porte.",
+          "Nomme honnêtement ce qui N'EST PAS fermé, au lieu de laisser croire à une correction complète."
+        ],
+        "inconvenients": [
+          "NE FERME PAS ANO-07 NON PLUS, et il faut le dire : le prêteur reçoit de toute façon un EvtSoldeMisAJour portant un mouvement de motif remboursement_pret et de delta égal au montant encaissé. L'incrément lui est donc connu par son PROPRE journal de pièces, que RG-42 rend non supprimable puisque solde = somme des mouvements est un invariant testé. L'oracle n'est pas dans le protocole, il est dans la RÈGLE DE JEU.",
+          "Introduit une troisième variante de charge sur un même schéma (emprunteur, prêteur, autres), donc une complexité de projection et un schéma dont required ne gouverne plus qu'un noyau commun — ce qui rend le contrat moins lisible par un validateur générique.",
+          "Retire au prêteur une information qu'il pourrait légitimement attendre : combien a-t-il été remboursé cette manche. Il l'obtient par son solde, donc par un détour."
+        ]
+      },
+      "decision": "OPTION B, avec fuite résiduelle DÉCLARÉE. La charge du prêteur est réduite à {numero_manche, pret_id, statut}. Les champs pret, montant_preleve et reliquat_du deviennent des variantes EMPRUNTEUR exclusivement. Le retrait de pret est le point qui distingue cette décision du correctif du QA, et il est délibéré : du_total et rembourse rendent le même oracle que montant_preleve. Le résidu est inscrit en x-fuite-residuelle-declaree au contrat, en dette_assumee ici, et le seul correctif structurel possible est ESCALADÉ au chef de projet.",
+      "justification_besoin": "RG-81, rang 1 (sécurité) : « aucune donnée publiée, agrégée ou individuelle, sans preuve de non-inversibilité ». Ici la preuve échoue, donc la donnée sort de la charge. Le choix de B sur A n'est pas un choix de rigueur supplémentaire, c'est une nécessité : la mesure du contrat montre que A laisse le canal ouvert par un second chemin. Et le refus d'aller plus loin est motivé par le périmètre de mon mandat, non par le coût : le seul correctif qui fermerait réellement ANO-07 — mettre le prélèvement en séquestre et ne créditer le prêteur qu'à la clôture du prêt — MODIFIE RG-29 et INVALIDE CA-34 tel que mesuré. Il change une règle de jeu ; il n'appartient pas au tech-lead.",
+      "consequences_acceptees": "(1) ANO-07 reste OUVERTE au sens strict, à un niveau résiduel : le prêteur peut toujours inférer le solde plafonné de son emprunteur par son propre journal de pièces. Le périmètre d'inférence passe de « le prêteur, avec certitude et précision » à « le prêteur, avec certitude et précision », soit un gain NUL sur ce canal — ce que je refuse de présenter autrement. Ce qui est réellement gagné est la fermeture du chemin protocolaire, donc l'impossibilité qu'un tiers ou qu'un client modifié l'exploite, et la suppression de l'oracle pour quiconque n'est pas le prêteur. (2) Le motif est déjà assumé par CONF-02 pour les amendes, où montant_liquide et montant_du sont tous deux PUBLICS et où l'inférence porte sur les N joueurs au lieu de deux : la cohérence d'arbitrage est donc préservée, le cas du prêt étant strictement moins grave que celui, déjà accepté, des amendes. (3) Escalade ouverte vers le chef de projet, voir escalades_vers_le_chef_de_projet. (4) Trois variantes de charge sur un même schéma : complexité acceptée parce que P-c la rend mécaniquement vérifiable."
+    },
+
+    {
+      "id": "ADR-TL-23",
+      "objet": "ANO-11 — les six routes REST sont servies à la racine alors que le contrat les déclare sous /api : préfixer le serveur, ou amender le contrat",
+      "_declencheur": "ANO-11, MAJEURE. Mesure QA chiffrée : 0 route sur 6 porte le préfixe. CONF-11 avait groupé la correction avec le nœud S6 et chargé le QA de confirmer l'écart ; confirmation faite.",
+      "contexte": "Le contrat déclare servers = https://{hote}/api depuis la version 1.0.0 et six chemins sous ce préfixe. Le serveur enregistre /sante, /configuration/defauts, /sessions, /sessions/:code_adhesion/apercu, /sessions/:code_adhesion/joueurs, /groupes/moi — à la racine. L'écart porte sur la TOTALITÉ des six chemins. Il est masqué en développement par une réécriture du proxy Vite (/^\\/api/u → ''), mesurée présente : l'écart serait donc invisible en développement et total en production. Le client, lui, attend déjà /api et le QA a vérifié que les six chemins du contrat et les six chemins attendus par le client coïncident.",
+      "option_a": {
+        "nom": "Amender le contrat : retirer le préfixe de servers et aligner les six chemins sur ce que le serveur sert déjà",
+        "avantages": [
+          "Zéro modification du serveur, donc zéro risque de régression sur les routes existantes.",
+          "Supprime l'écart par le chemin le moins coûteux en lignes de code.",
+          "Chemins plus courts."
+        ],
+        "inconvenients": [
+          "Oblige le FRONTEND à changer, alors qu'il est le seul des deux à être CONFORME au contrat. CONF-11 avait déjà constaté que le frontend avait eu raison de rester conforme ; le pénaliser inverse la hiérarchie des sources et apprend à l'équipe que le code prime sur le contrat.",
+          "DÉTRUIT un engagement de sécurité : l'engagement « aucune réponse de /api n'est mise en cache » (ANO-10, motif de l'arbitrage CONF-10) s'exprime aujourd'hui par un prédicat UNIQUE et auditable, url.pathname.startsWith('/api/'). Sans préfixe, il devient une ÉNUMÉRATION de quatre familles de chemins, qui dérive au premier ajout de route.",
+          "Fait partager aux routes d'API l'espace de noms des routes de NAVIGATION du client, servi sur la même origine : /sessions est alors à la fois une route d'API et une route d'écran. Toute règle de cache, de sécurité ou de journalisation doit distinguer les deux sans marqueur pour le faire.",
+          "Ne réglerait pas la réécriture du proxy, qui resterait une seconde source de vérité."
+        ]
+      },
+      "option_b": {
+        "nom": "Conformer le serveur au contrat : enregistrer les six routes sous /api, et RETIRER la réécriture du proxy de développement",
+        "avantages": [
+          "Le contrat prime — c'est la hiérarchie des sources inscrite dans registre.json, et la tenir est ce qui rend tous les autres contrats crédibles.",
+          "Rend l'engagement de non-mise-en-cache exprimable par UNE ligne vérifiable : url.pathname.startsWith('/api/'). Ce n'est pas une préférence de style, c'est la condition pour que la garantie soit auditable.",
+          "Sépare l'espace de noms de l'API de celui de la navigation client, sur une origine partagée.",
+          "Aucun changement côté frontend, qui est déjà conforme : la rupture est à sens unique.",
+          "Supprime la seconde source de vérité que constitue la réécriture du proxy."
+        ],
+        "inconvenients": [
+          "Modifie l'enregistrement des six routes du serveur : risque de régression non nul, et les tests d'intégration existants qui appellent les chemins racine doivent être mis à jour.",
+          "PIÈGE DE LIVRAISON RÉEL : si le backend préfixe et que le frontend garde la réécriture, les appels partent vers /sante alors que le serveur ne sert plus que /api/sante. Tout casse en développement alors que la production serait correcte. Les deux corrections doivent être livrées ENSEMBLE.",
+          "Dépend d'une coordination entre deux agents, donc d'un ordonnancement que je ne contrôle pas."
+        ]
+      },
+      "decision": "OPTION B. Les six opérations sont servies sous /api et NULLE PART AILLEURS. La réécriture du proxy de développement est INTERDITE et doit être retirée AVEC le correctif. Inscrit normativement dans API-GDV-001.json / x-prefixe-rest, et rupture RUP-04. Groupage imposé avec ANO-10, dont le prédicat de filtrage dépend du préfixe réellement servi : corriger l'un sans l'autre laisse le prédicat faux.",
+      "justification_besoin": "Sécurité, rang 1 — et pas par invocation rituelle : l'exigence précise est l'engagement de non-mise-en-caches des réponses d'API pris en CONF-10 au titre de la confidentialité des données de session. Cet engagement doit être vérifiable par un prédicat unique, ce que seule l'option B permet. Fiabilité, rang 2, en second : la hiérarchie des sources veut que le contrat prime, et le frontend est déjà conforme. Le délai, rang 4, est le seul axe qui plaidait pour A.",
+      "consequences_acceptees": "(1) Le dev-backend modifie l'enregistrement des six routes et les tests qui les appellent. (2) Le dev-frontend ne change AUCUN appel mais doit SUPPRIMER la réécriture du proxy ; tant qu'elle est en place, le dépôt a deux sources de vérité pour le préfixe. (3) Les deux corrections doivent être livrées ensemble, dans le même commit ou dans deux commits consécutifs non séparés par une livraison — le piège est nommé en RUP-04. (4) Une porte npm run verifier:routes est exigée pour que l'écart ne puisse pas se reformer : attendu 6 sur 6, et aucune réécriture de préfixe dans la configuration du client. Sans elle, cette décision est un vœu — l'écart a déjà survécu à deux nœuds et à un arbitrage."
+    },
+
+    {
+      "id": "ADR-TL-24",
+      "objet": "Tests qui comparent une valeur calculée à sa propre source : les supprimer, ou les remplacer par un contrôle différentiel",
+      "_declencheur": "QA-GDV-001.json / constat_structurel_majeur, assigné au tech-lead : « c'est le même angle mort que celui d'un test de couleur qui compare une valeur calculée à un token : il valide le cas qu'il prétend exclure ». Le QA l'emploie comme ANALOGIE ; j'ai cherché l'instance littérale et je l'ai trouvée.",
+      "contexte": "Un test est VAIN quand ses deux opérandes descendent de la même source : il mesure la cohérence interne d'un contrat et la présente comme une propriété de sûreté. L'instance littérale est applications/client/tests/jetons-generes.test.ts, test « la fenêtre de lecture du secret tient sous le plafond de surface » : il lit largeur-fenetre-lecture et hauteur-fenetre-lecture dans les jetons, calcule un ratio contre un écran littéral de 360 × 640, et le compare au jeton surface-lisible-max-ratio. Les deux côtés de l'inégalité viennent de DESIGN-GDV-001.json. Mesure faite : 96 × 64 / (360 × 640) = 2,67 % contre un plafond de 9 %, soit un facteur 3,4 de marge — le test ne peut échouer que si le designer écrit lui-même un couple incohérent. AGGRAVATION MESURÉE, et c'est elle qui tranche : grep sur applications/client/src montre que largeur-fenetre-lecture et hauteur-fenetre-lecture ne sont consommés par AUCUN composant, et ne sont même pas émis en variables CSS dans jetons.css — ils n'existent que dans l'objet TypeScript. Le dispositif anti-regard-du-voisin que ce test prétend garantir n'est pas seulement non vérifié : il n'est PAS IMPLÉMENTÉ, et le test est vert. La même structure gouverne la porte de visibilité, qui vérifie la présence de champs déclarés secrets dans des trames projetées par la même cartographie — son verdict CONFORME est exact et ne signifie pas « aucune fuite ».",
+      "option_a": {
+        "nom": "Supprimer le test tautologique et s'en tenir là",
+        "avantages": [
+          "Supprime une fausse assurance, qui est pire qu'une absence d'assurance : un test vert sur une propriété de sûreté dissuade de la vérifier autrement.",
+          "Coût nul, effet immédiat, aucun outillage à introduire.",
+          "Réduit le nombre de tests qui mesurent la cohérence d'un contrat avec lui-même."
+        ],
+        "inconvenients": [
+          "Laisse la propriété SANS AUCUN filet : la fenêtre de lecture du secret est la contrainte anti-regard-du-voisin, qui est au rang 1. Passer de « mal vérifié » à « non vérifié » n'est pas un progrès.",
+          "Ne traite que l'instance et laisse la CLASSE : rien n'empêche le prochain test de même structure, et la porte de visibilité reste le cas majeur de cette classe.",
+          "Fait baisser la couverture sans rien apprendre."
+        ]
+      },
+      "option_b": {
+        "nom": "Remplacer par deux contrôles dont les opérandes sont INDÉPENDANTS : un contrôle de consommation effective du jeton, et un contrôle différentiel sur le flux",
+        "avantages": [
+          "Traite la CLASSE et pas l'instance, en donnant le critère d'admission d'un test de sûreté : ses deux opérandes ne descendent pas de la même source.",
+          "Le contrôle de consommation aurait détecté le défaut réel que j'ai mesuré — un jeton déclaré, un plafond vérifié, et aucun composant qui les applique. Il est réalisable AVEC le harnais existant, sans navigateur : applications/client/tests/etat-masque-indiscernable.test.ts lit déjà le source des fichiers .vue pour prouver une propriété de rendu (contrôle M7-a).",
+          "Le contrôle différentiel comble l'angle mort de la porte de visibilité, qui est la demande explicite du QA, et le harnais est PRÊT : qa/sondes/sonde-differentielle-secrets.ts et la section (I) de qa/sondes/sonde-canaux-indirects.ts.",
+          "Un test différentiel n'a pas besoin de connaître la liste des secrets à ne pas divulguer : il exige que le flux vers un tiers soit invariant quand le secret change. C'est la même supériorité structurelle que la règle sans exception de ADR-TL-20."
+        ],
+        "inconvenients": [
+          "Le contrôle de consommation reste STATIQUE : il prouve que le composant lit la variable CSS, pas que l'élément rendu mesure effectivement 96 × 64 à l'écran. La seule vérification complète exigerait un navigateur sans tête, donc une brique que RIEN dans la SPEC ne porte et que je refuse d'introduire pour un prototype v1.",
+          "Le contrôle différentiel est le test le plus COÛTEUX du dépôt : deux parties complètes par secret, à graine fixée. Impact sur la durée d'intégration, déjà de 39,7 secondes pour 531 tests.",
+          "Un différentiel ne prouve l'invariance que pour les secrets ÉNUMÉRÉS dans sa liste d'actes : c'est une énumération, donc le mode de défaillance que ADR-TL-20 dénonce. Atténué, non supprimé, par U1 qui est un invariant total."
+        ]
+      },
+      "decision": "OPTION B. Le test « la fenêtre de lecture du secret tient sous le plafond de surface » est SUPPRIMÉ sous sa forme actuelle et remplacé par deux contrôles à opérandes indépendants, prescrits à l'ingenieur-qa et au dev-frontend : (1) un contrôle de CONSOMMATION — le composant qui rend la fenêtre de lecture du secret référence var(--gdv-largeur-fenetre-lecture) et var(--gdv-hauteur-fenetre-lecture), ces variables sont effectivement émises dans jetons.css, et aucune dimension littérale concurrente n'est déclarée sur cet élément ; le test échoue tant qu'aucun composant ne les consomme, ce qui est l'état MESURÉ aujourd'hui ; (2) le contrôle DIFFÉRENTIEL U2 de la porte d'uniformité, qui est la réponse à la demande du QA sur la porte de visibilité. L'arithmétique de cohérence 96 × 64 contre 9 % n'est pas perdue mais RECLASSÉE : elle devient un contrôle de cohérence du contrat de design, nommé comme tel, et ne compte plus comme une preuve de confidentialité. L'écran littéral 360 × 640 est remplacé par le jeton rupture.mobile, une dimension codée en dur n'ayant rien à faire dans le calcul.",
+      "justification_besoin": "Règle d'architecture que j'ai moi-même posée — « un standard non vérifiable par une commande n'est pas un standard » — et son corollaire, qu'un standard vérifié par une commande TAUTOLOGIQUE n'est pas davantage un standard. L'exigence de fond est la contrainte anti-regard-du-voisin du GDD, rang 1, dont la mesure montre qu'elle n'est pas implémentée alors qu'un test vert le laissait croire. C'est la découverte la plus coûteuse de cet ADR et elle vient du harnais du QA, pas de moi.",
+      "consequences_acceptees": "(1) Le contrôle de consommation ÉCHOUERA à son écriture, puisque aucun composant ne consomme les deux jetons aujourd'hui. C'est l'effet VOULU : une porte rouge sur une fonction manquante vaut mieux qu'une porte verte sur une fonction absente. Le dev-frontend doit implémenter la fenêtre de lecture, ou le chef de projet doit retirer l'exigence ; aucun des deux ne peut être décidé par un test. (2) La vérification reste STATIQUE : aucune garantie que l'élément rendu mesure effectivement 96 × 64. Dette nommée, et aucune brique de navigateur sans tête n'est introduite — rien dans la SPEC ne la porte. (3) La durée d'intégration augmente du coût du différentiel. (4) Je NE propose PAS d'étendre la porte de visibilité : elle raisonne par champ, c'est son angle mort exact, et elle ne doit pas être étendue au-delà de ce qu'elle sait faire. Le différentiel est une porte SÉPARÉE."
     }
   ],
 
