@@ -1,0 +1,631 @@
+{
+  "cible": "GDV-001",
+  "iteration": 2,
+  "avertissement_iteration": "Itération 2 sur un plafond de 3. Un quatrième cycle est interdit : si l'itération 3 ne solde pas les anomalies bloquantes de l'axe de non-fuite, la tâche sera gelée. Les six anomalies bloquantes relèvent pour quatre d'entre elles d'une décision de contrat ou de SPEC, non d'un correctif de code : elles doivent être arbitrées avant d'être développées, sans quoi l'itération 3 sera consommée en pure perte.",
+
+  "methode": {
+    "principe": "Aucune affirmation n'est reprise des rapports des développeurs. Toutes les mesures proviennent d'un banc d'audit écrit par le QA (qa/sondes/banc.ts, 255 lignes), indépendant de tests/aide/table.ts, qui pilote le moteur par ses seules portes publiques (appliquer, expirerPhase, cloturer) et enregistre chaque trame réellement projetée, destinataire par destinataire, comme le fait la boucle de session du serveur.",
+    "sondes": 13,
+    "lignes_de_sonde": 2285,
+    "commande_de_rejeu": "node --conditions=gdv-source --experimental-strip-types qa/sondes/<sonde>.ts",
+    "sorties_archivees": "qa/rapports/<sonde>.txt — une ligne MESURE par valeur relevée, une ligne CONFORME/NON_CONFORME par contrôle",
+    "bilans_observes": {
+      "sonde-matrice-gains": "aucun écart",
+      "sonde-machine-etats": "aucun écart",
+      "sonde-cas-limites": "aucun écart",
+      "sonde-criteres-a": "aucun écart",
+      "sonde-criteres-b": "aucun écart",
+      "sonde-criteres-c": "1 écart",
+      "sonde-criteres-d": "aucun écart",
+      "sonde-differentielle-secrets": "1 écart",
+      "sonde-canaux-indirects": "2 écarts",
+      "sonde-fuite-agregats": "4 écarts",
+      "sonde-fuite-comparaison": "2 écarts",
+      "sonde-fuite-prets-et-erreurs": "3 écarts",
+      "sonde-client-et-transport": "3 écarts"
+    },
+    "total_ecarts_mesures": 16,
+    "correspondance_ecarts_anomalies": "16 écarts mesurés se regroupent en 13 anomalies, trois écarts étant des corollaires d'un même défaut : les 4 écarts de sonde-fuite-agregats forment ANO-05 (2 écarts, parité reconstituée puis 6 joueurs démasqués) et ANO-06 (2 écarts, argmax révélé puis 5 joueurs démasqués) ; les 2 écarts de sonde-fuite-comparaison forment ANO-04 (menteur nommé, puis 5 candidats sur 5 fuyants). Détail : canaux-indirects 2 → ANO-01, ANO-02 ; differentielle-secrets 1 → ANO-03 ; fuite-comparaison 2 → ANO-04 ; fuite-agregats 4 → ANO-05, ANO-06 ; fuite-prets-et-erreurs 3 → ANO-07, ANO-08, ANO-09 ; client-et-transport 3 → ANO-10, ANO-11, ANO-12 ; criteres-c 1 → ANO-13.",
+    "ecarts_requalifies_en_artefact_de_mesure": "3 — voir journal_des_faux_positifs. Ils ne figurent pas dans les 16.",
+    "comparaison_visuelle": "desactivee",
+    "motif_desactivation_visuelle": "Les trois conditions préalables sont absentes, et toutes les trois sont vérifiables : (1) l'environnement de rendu n'est pas épinglé — Windows 11, aucun conteneur Playwright, `ls node_modules/@playwright` ne rend rien et ni playwright ni pixelmatch ne figurent dans package.json ni dans applications/client/package.json ; (2) aucune image de référence approuvée par l'UX n'existe — `find . -name '*.png'` hors node_modules ne rend que les 6 icônes PWA ; (3) aucune neutralisation d'animation n'est donc configurable. En conséquence AUCUNE anomalie de type REGRESSION_VISUELLE n'est déclarée dans ce rapport, et l'absence d'anomalie visuelle ne doit pas être lue comme une absence de dérive visuelle : elle n'a pas été mesurée. Créer la baseline exige un premier rendu validé par l'ux-ui-designer ; elle ne peut pas être dérivée du JSON de tokens, faute de quoi le raisonnement serait circulaire.",
+    "audit_des_tokens": "Conduit sur la SOURCE et non par getComputedStyle, pour la même raison : sans navigateur épinglé, une valeur calculée n'est pas reproductible. Le contrôle de DETTE-02 mesure donc les déclarations de tokens et recalcule les ratios de contraste WCAG à partir des valeurs hexadécimales. La sonde par substitution, elle, a bien été appliquée — non aux tokens CSS mais aux 21 paramètres de configuration du moteur, où la même triche est possible et où elle est mesurable sans navigateur (voir axe_matrice_gains.ca_46)."
+  },
+
+  "constat_structurel_majeur": {
+    "intitule": "Les portes de qualité du projet et les 531 tests passent, et pourtant six canaux d'inférence fuient des secrets. Les deux faits sont compatibles et c'est le problème.",
+    "mesures": [
+      "node outils/verifier-secrets.mjs → « AUCUN SECRET DETECTE / VERDICT AUCUN SECRET BLOQUANT »",
+      "node outils/verifier-visibilite.mjs → « VERDICT CONFORME — 0 divergence(s) », après contrôle de 30 schémas d'événements, 21 entrées de matrice_visibilite, 144 occurrences champ×événement et 157 noms de champs",
+      "node --conditions=gdv-source --test → « tests 531 / pass 531 / fail 0 / duration_ms 39698 »"
+    ],
+    "analyse": "La porte verifier-visibilite contrôle la PRÉSENCE d'un champ secret dans une trame. C'est le bon contrôle, et il est bien fait. Mais aucune des six fuites mesurées ne passe par un champ : elles passent par le DÉNOMBREMENT des trames (ANO-01, ANO-02), par le RECOUPEMENT d'un agrégat public avec des déclarations publiques (ANO-05, ANO-06), par l'INFÉRENCE logique sur un énoncé vrai (ANO-04) et par la DÉPENDANCE d'une sortie publique à une entrée secrète (ANO-03). Une porte qui mesure la présence de champs ne peut pas, par construction, détecter la classe d'attaque visée. Son verdict CONFORME est exact et ne doit pas être lu comme « aucune fuite ». C'est le même angle mort que celui d'un test de couleur qui compare une valeur calculée à un token : il valide le cas qu'il prétend exclure.",
+    "action_requise": "Étendre la porte de visibilité d'un contrôle DIFFÉRENTIEL : pour chaque secret, exécuter deux parties qui ne diffèrent que par ce secret et exiger que le flux projeté vers chaque tiers soit identique octet pour octet, et que le nombre de trames par destinataire soit indépendant du secret. La sonde qa/sondes/sonde-differentielle-secrets.ts et la section (I) de qa/sondes/sonde-canaux-indirects.ts fournissent le harnais prêt à l'emploi.",
+    "assigne_a": "tech-lead"
+  },
+
+  "axe_non_fuite": {
+    "priorite": 1,
+    "verdict": "REJETE",
+    "regle": "Tout défaut sur cet axe est BLOQUANT par mandat. Six le sont.",
+    "canaux_a_contenu_mesures_propres": "Le contenu des trames est sain. Aucune charge projetée vers un tiers ne porte un paiement, un rôle, une mission, un résultat d'enquête ni le porteur de la clause. C'est un résultat positif et il est solide : CA-05, CA-10, CA-12, CA-36, CA-39, CA-42 sont CONFORMES, et la permutation des rôles comme l'identité du porteur laissent le flux d'un tiers rigoureusement inchangé (sonde-differentielle-secrets.txt:5 et :9 — « divergences dans le flux du tiers J1 = [] » dans les deux cas).",
+    "ce_qui_fuit": "Non le contenu, mais sa forme et ses corollaires : le nombre de trames, les agrégats publics recoupés avec les déclarations publiques, et la dépendance d'une sortie publique à une entrée secrète.",
+    "anomalies_bloquantes": ["ANO-01", "ANO-02", "ANO-03", "ANO-04", "ANO-05", "ANO-06"],
+    "anomalies_majeures": ["ANO-07", "ANO-08"],
+    "anomalies_mineures": ["ANO-09"],
+    "temoin_de_non_regression": "La sonde différentielle rend un résultat NÉGATIF — donc rassurant — sur les deux secrets permanents : le flux d'un tiers est insensible à la permutation des rôles secrets et à l'identité du porteur de clause. Les fuites sont circonscrites aux canaux énumérés, elles ne sont pas générales."
+  },
+
+  "axe_matrice_gains": {
+    "verdict": "VALIDE",
+    "methode": "La sonde reproduit la matrice du cadre_de_reference_normatif de la SPEC de façon INDÉPENDANTE : elle ne réutilise aucun test du backend et recalcule les coefficients depuis les soldes réellement mouvementés par le moteur.",
+    "mesures": {
+      "coefficients_esperance_mensonge": "[6, -13] — E[Mensonge](p) = 6 − 13p (sonde-matrice-gains.txt, section « Dérivation »)",
+      "seuil_indifference": "0.23076923076923078 = 3/13 exactement, mesuré et non postulé",
+      "menteur_impuni": "+6",
+      "menteur_demasque": "-7",
+      "part_du_demasque": "0 (RG-15)",
+      "amende": "6 = 2 × ampleur 3",
+      "accusation_juste": "+6 à l'accusateur",
+      "fausse_accusation": "-2, verdict HONNETE confirmé",
+      "esperance_verite": "+3 pour les 5 honnêtes",
+      "ca_26": "récompense 40, parts [6,6,6,6,6,9], reliquat 1 non distribué — conforme au libellé littéral de CA-26",
+      "ca_26_temoin": "tous déclarent 4 et J5 paie 0 → parts [6,6,6,6,6,6], le témoin discrimine bien"
+    },
+    "ca_46": {
+      "verdict": "CONFORME",
+      "double_controle": "Indispensable : le scan statique seul ne prouve rien, car un littéral absent de la source ne démontre pas que la configuration soit réellement LUE — exactement la raison pour laquelle on ne se contente jamais de comparer une valeur calculée à un token.",
+      "controle_1_statique": "66 fichiers de paquets/moteur/src scannés, commentaires et chaînes retirés. 20 occurrences des littéraux 12, 3, 2, 15, 10 ; les 20 sont des DÉCLARATIONS de constantes nommées en tête de module ; 0 littéral nu dans la logique. Aucune de ces constantes ne double un paramètre de configuration (contrôle par comparaison de nom : résultat vide). Aucun des 21 paramètres n'est jamais lu : la liste des paramètres non lus dans moteur/src est vide, donc aucune règle morte.",
+      "nature_des_20_constantes": "Règles structurelles du GDD absentes des 21 paramètres (EXEMPLAIRES_MAX_PAR_ROLE, SEUIL_FAUSSAIRE_MANCHES_MENTIES, FACTEUR_PLUS_GENEREUX, POIDS_ACCUSATION…) et arithmétique non ludique (horloge/iso.ts, alea/sfc32.ts). CA-46 ne vise que les valeurs de parametres_configuration : ces constantes n'en sont pas. Mon premier critère de scan était trop large et a produit un rejet que j'ai retiré après vérification ligne à ligne.",
+      "controle_2_substitution": "14 paramètres forcés à une sentinelle improbable, chacun avec une mesure qui doit en dépendre. 14 sur 14 déplacent le comportement : pieces_initiales 12→37 déplace le solde initial de 12 à 37 ; nb_manches 5→2 fait jouer 2 manches au lieu de 5 ; multiplicateur_recompense 2→5 porte la récompense de 60 à 150 ; multiplicateur_amende 2→7 porte l'amende de −2 à −7 ; joueurs_min 5→6 change ACCEPTEE en EFFECTIF_INSUFFISANT. Paramètres inertes : aucun. Témoin supplémentaire sur durees_phases_s.NEGOCIATION forcée à 777 s : phase_fin_at passe de 15:08:43 à 15:19:40."
+    }
+  },
+
+  "axe_machine_etats": {
+    "verdict": "VALIDE",
+    "sequence_des_phases": "30 phases observées sur une partie de 5 manches, enchaînant exactement les 6 phases par manche sans saut ni retour, puis état_partie TERMINEE et 5 manches clôturées (sonde-machine-etats.txt:3-6).",
+    "matrice_commande_par_phase": "Les 12 commandes exposées confrontées aux 6 phases. Dans chaque phase, les seules commandes acceptées sont celles de ACTIONS_PAR_PHASE, abandonner_partie étant légitimement acceptée partout. 61 refus mesurés, et les 61 laissent l'état STRICTEMENT inchangé — mesure [61,61] à la ligne 21, ce qui est le cœur de CA-43.",
+    "pipeline": "NOMBRE_ETAPES_PIPELINE = 17, ETAPES.length = 17, ordre etape01 → etape17 vérifié par les noms de fonctions. Le dénombrement ne suffisant pas, la sensibilité à l'ORDRE est éprouvée séparément : l'amende (étape 13) est servie avant le remboursement du prêt (étape 15) — amende de 8 due, 4 liquidées sur un solde de 4, remboursement de prêt 0, prêt laissé ACTIF. Un pipeline aux étapes interverties ne produirait pas ce résultat.",
+    "invariant_monetaire": "CA-32 contrôlé par une fonction DISTINCTE du moteur, qui ne lit que le journal des mouvements et jamais le champ solde_pieces, sur trois exécutions : nominale à 2 menteurs, cas de contrainte (amende supérieure au solde + transfert + accusation juste), et partie complète de 5 manches. Zéro écart et zéro solde négatif dans les trois. Contrôle supplémentaire : chaque solde_apres journalisé est le cumul exact des deltas qui le précèdent.",
+    "trois_lois_du_genie": {
+      "loi_1_verite": "CONFORME — toute révélation émise est revérifiée vraie par verification.ts ; la sonde la revérifie à son tour contre les paiements réels par une fonction DISTINCTE du sélecteur, sur les 5 manches d'une partie : [[1,'EXONERATION',5,true],[2,…,true],[3,…,true],[4,…,true],[5,…,true]] (sonde-criteres-a.txt:84).",
+      "loi_2_deux_suspects": "CONFORME SUR LE NOMBRE JOURNALISÉ, DÉFAITE SUR LE FOND — suspects_restants >= 2 à chaque émission mesurée, mais le calcul de cet ensemble sous-implémente la définition normative de RG-23. Voir ANO-04 : sous le gabarit COMPARAISON, suspects_restants est journalisé à 6 alors qu'un joueur est déterminé menteur par la seule information publique, ce qui en impose 5 au plus.",
+      "loi_3_jamais_nommer_un_menteur": "VIOLÉE — ANO-04. La garde designeUnMenteurUnique du moteur ne couvre que le cas |suspects| == 2 ; à 6 suspects, les 5 candidats COMPARAISON passent et les 5 désignent un menteur."
+    },
+    "cas_limites": "17 cas limites mesurés, aucun écart : égalité stricte au seuil de réussite (18 payés pour 18), total payé nul, tous les joueurs menteurs (COMPTAGE bien écarté à k == nb_joueurs), somme des poids nulle (reliquat 36 = récompense, aucune part versée, aucun solde négatif), pénalité supérieure au solde de l'accusateur, deux FAISEUR_CONTRATS et porteur lui-même faiseur (aucun doublon de destinataire), deux INSPECTEUR_TRESOR, égalité de score final à 6 ex aequo au rang 1, LE_MAGNAT en doublon, aucun gabarit éligible, double soumission (RG-70), voisinage sur un cercle de 5 et de 8, abandon en pleine manche 3 sans aucun secret révélé, même pseudo dans deux sessions."
+  },
+
+  "canaux_indirects_examines": [
+    {
+      "canal": "Contenu des charges projetées vers un tiers",
+      "resultat": "PROPRE",
+      "mesure": "Sur une manche complète, aucune trame d'autrui ne porte de champ montant_paye (liste vide, sonde-criteres-a.txt:54), aucun rôle autre que le sien n'apparaît dans une vue privée (sonde-differentielle-secrets.txt:33-34), et la charge de clause ne nomme jamais le porteur (sonde-criteres-a.txt:67)."
+    },
+    {
+      "canal": "Nombre de trames reçues par un tiers, sous variation d'un paiement secret",
+      "resultat": "PROPRE",
+      "mesure": "Paiement de J5 forcé à 4 puis à 1, déclarations publiques identiques : le tiers J1 reçoit 25 trames dans les deux cas (sonde-canaux-indirects.txt:6-7, verdict CONFORME ligne 21). Ce canal précis est clos."
+    },
+    {
+      "canal": "Nombre de trames par destinataire, sur une partie entière",
+      "resultat": "FUITE",
+      "anomalie": "ANO-01 et ANO-02",
+      "mesure": "clause_recue par joueur = {J0:0,J1:0,J2:0,J3:1,J4:0,J5:1} ; resultat_enquete par joueur = {J3:1, tous les autres 0}."
+    },
+    {
+      "canal": "Permutation des rôles secrets (J4 et J5 échangés)",
+      "resultat": "PROPRE",
+      "mesure": "« divergences dans le flux du tiers J1 = [] » (sonde-differentielle-secrets.txt:5). Le rôle secret ne fuit par aucun canal différentiel."
+    },
+    {
+      "canal": "Identité du porteur de clause (J3 contre J4), secret permanent",
+      "resultat": "PROPRE",
+      "mesure": "« divergences dans le flux du tiers J1 = [] » (sonde-differentielle-secrets.txt:9). Le porteur n'apparaît dans aucune charge publique."
+    },
+    {
+      "canal": "Existence d'une enquête secrète, effet sur la révélation publique de la manche suivante",
+      "resultat": "FUITE",
+      "anomalie": "ANO-03",
+      "mesure": "9 divergences dans le flux du tiers J4, dont la révélation de la manche 2 : COMPTAGE k=1 sans enquête, EXONERATION ciblant J2 avec enquête (sonde-differentielle-secrets.txt:27)."
+    },
+    {
+      "canal": "Agrégat public total_consolation, clause CONSOLATION",
+      "resultat": "FUITE",
+      "anomalie": "ANO-05",
+      "mesure": "nb_impairs déduit du public = 6 ; nb_impairs réel secret = 6 (sonde-fuite-agregats.txt:4-5)."
+    },
+    {
+      "canal": "Parts publiées, clause LE_PLUS_GENEREUX",
+      "resultat": "FUITE",
+      "anomalie": "ANO-06",
+      "mesure": "argmax déduit des parts = [J0] ; argmax réel des paiements secrets = [J0] (sonde-fuite-agregats.txt:15-16)."
+    },
+    {
+      "canal": "Champ bonus_epices_verse de execution_resultat",
+      "resultat": "PROPRE",
+      "mesure": "Booléen et non montant (typeof = 'boolean'), ne porte ni montant ni nombre de bénéficiaires ; false hors marchand, true avec marchand. Témoin volontairement inclus parce qu'un booléen d'activation est le format sûr (sonde-fuite-agregats.txt:21-24)."
+    },
+    {
+      "canal": "Énoncé d'une révélation vraie du catalogue, gabarit COMPARAISON",
+      "resultat": "FUITE",
+      "anomalie": "ANO-04",
+      "mesure": "5 candidats COMPARAISON sur 5 désignent un menteur ; J5 nommé menteur à coup sûr par la seule trame publique, vérifié contre les paiements réels = true (sonde-fuite-comparaison.txt:12-20)."
+    },
+    {
+      "canal": "Trame pret_preleve adressée au prêteur, prélèvement plafonné",
+      "resultat": "FUITE",
+      "anomalie": "ANO-07",
+      "mesure": "montant_preleve 3 = solde réel 3 de l'emprunteur, avec reliquat_du 6 > 0 (sonde-fuite-prets-et-erreurs.txt:6-9)."
+    },
+    {
+      "canal": "Message d'erreur SOLDE_INSUFFISANT sur repondre_pret",
+      "resultat": "FUITE",
+      "anomalie": "ANO-08",
+      "mesure": "« Le prêteur n'a plus le principal disponible. » rendu à l'emprunteur (sonde-fuite-prets-et-erreurs.txt:14)."
+    },
+    {
+      "canal": "Codes d'erreur distincts sur un identifiant de prêt (oracle d'existence)",
+      "resultat": "FUITE ATTÉNUÉE",
+      "anomalie": "ANO-09",
+      "mesure": "CIBLE_INVALIDE pour un prêt inexistant, USURPATION_IDENTITE pour un prêt existant adressé à autrui (sonde-fuite-prets-et-erreurs.txt:18-19). Atténuée par des identifiants UUIDv4 non devinables."
+    },
+    {
+      "canal": "Codes d'erreur ne dépendant que de l'état de l'auteur",
+      "resultat": "PROPRE",
+      "mesure": "DEJA_SOUMIS au second paiement, MONTANT_INVALIDE sur déclaration supérieure au solde, QUOTA_DEPASSE sur enquête répétée, CIBLE_INVALIDE sur enquête ou accusation de soi-même. Aucun ne dépend d'un secret d'autrui (sonde-fuite-prets-et-erreurs.txt:23-30)."
+    },
+    {
+      "canal": "Trame reçue par la CIBLE d'une enquête",
+      "resultat": "PROPRE",
+      "mesure": "0 trame reçue par la cible J5 (sonde-criteres-a.txt:102, verdict CONFORME ligne 31 de la sonde prêts)."
+    },
+    {
+      "canal": "Trame paiement_enregistre — canal soupçonné puis écarté",
+      "resultat": "PROPRE",
+      "mesure": "Soupçonné parce qu'un type paiement_enregistre apparaissait dans le relevé de CA-10. Mesure dédiée : la trame n'est projetée QU'AU payeur, charge {numero_manche:1, enregistre:true}, sans montant et sans identité. Aucun tiers ne la reçoit. Il n'existe donc aucun indicateur public « a payé » — ce qui confirme au passage l'omission arbitrée en CONF-12."
+    },
+    {
+      "canal": "Vue privée de reconnexion",
+      "resultat": "PROPRE",
+      "mesure": "3593 octets pour J4 ; un seul rôle cité, le sien ; manche_courante ne porte ni enquêtes ni porteur de clause ; mes_enquetes_de_la_manche vide pour le non-enquêteur ET pour l'enquêteur de la manche précédente ; joueurs[] vu par un tiers ne porte que joueur_id, pseudo, position_cercle, connecte, est_hote — jamais le solde d'autrui, ce qui établit que le solde est bien un secret de partie et fonde la gravité de ANO-07 et ANO-08."
+    },
+    {
+      "canal": "Mise en cache des réponses /api par le service worker",
+      "resultat": "FUITE POTENTIELLE",
+      "anomalie": "ANO-10",
+      "mesure": "Le motif /^\\/api\\// ne correspond à aucune URL réelle parce que Workbox l'exécute sur url.href : [['https://hote.exemple/api/sessions',false],['http://127.0.0.1:5173/api/configuration/defauts',false],['/api/sessions',true]]."
+    },
+    {
+      "canal": "Journaux du serveur",
+      "resultat": "PROPRE",
+      "mesure": "39 clés expurgées ; jeton_session, montant_paye, role_secret, graine, mission_secrete, clause_cle et joueur_id rendus « [expurge] », y compris en charge imbriquée. Aucune valeur secrète ne subsiste (sonde-client-et-transport.txt:35-37)."
+    },
+    {
+      "canal": "Exfiltration du jeton de session par la CSP",
+      "resultat": "FUITE POTENTIELLE",
+      "anomalie": "ANO-12",
+      "mesure": "connect-src = « 'self' wss: » ; jeton stocké en localStorage sous la clé gdv.session."
+    }
+  ],
+
+  "verdicts": [
+    { "critere": "CA-01", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:3-5 — état CREEE + code ABCDEF à la création, SALLE_ATTENTE après le premier joueur rejoint." },
+    { "critere": "CA-02", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:8-10 — démarrage à 4 joueurs refusé EFFECTIF_INSUFFISANT, état maintenu à SALLE_ATTENTE." },
+    { "critere": "CA-03", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:13-14 — 9e joueur refusé SESSION_PLEINE." },
+    { "critere": "CA-04", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:17-20 — omission et duplication refusées ORDRE_PLACES_INVALIDE, état maintenu à PLACEMENT." },
+    { "critere": "CA-05", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:23-26 — J0 ne reçoit que son propre couple rôle/mission ; confronté aux 6 couples réels de la table, « fuites détectées = [] »." },
+    { "critere": "CA-06", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:29-36 — les 4 effectifs 5, 6, 7 et 8 mesurés : 4 rôles présents, aucun au-delà de 2 exemplaires, 1 rôle et 1 mission par joueur." },
+    { "critere": "CA-07", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:39-41 — MONTANT_INVALIDE et 0 trame declaration_publiee émise." },
+    { "critere": "CA-08", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:44-46 — 6 destinataires, charge {joueur_id, montant_declare:4, nb_declarations:1, nb_joueurs:6}." },
+    { "critere": "CA-09", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:49-50 — payer plus que déclaré refusé MONTANT_INVALIDE." },
+    { "critere": "CA-10", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:53-55 — aucune trame d'autrui ne porte de champ montant_paye (liste vide). Le critère est satisfait à la lettre : il interdit l'APPARITION de la valeur, non l'inférence. Réserve : ANO-04, ANO-05 et ANO-06 permettent de DÉDUIRE le mensonge sans que la valeur apparaisse ; c'est l'angle mort du critère, non son non-respect." },
+    { "critere": "CA-11", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:58-59 — les 5 non-soumis matérialisés à déclaré 0 / payé 0 (RG-32)." },
+    { "critere": "CA-12", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:62-67 — destinataires effectifs [J0, J2] = porteur J2 ∪ faiseur J0, personne d'autre ; la charge ne nomme jamais le porteur. Réserve : le CONTENU est conforme, mais le fait que seuls ces deux joueurs reçoivent une trame constitue ANO-01." },
+    { "critere": "CA-13", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:70-71 — 5 clauses distinctes tirées sur la partie : CONSOLATION, PRIME_AU_DELATEUR, TRESOR_DES_HONNETES, LE_PLUS_GENEREUX, GENIE_GARDE_UN_TIERS." },
+    { "critere": "CA-14", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:74-76 — charge {total_declare:26, total_paye:19, objectif:18} diffusée aux 6 joueurs." },
+    { "critere": "CA-15", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:79-81 — manche sans menteur : gabarits éligibles = [EXONERATION], COMPTAGE écarté, EXONERATION émise. Complété par CL-15 (sonde-cas-limites.txt:53-59) : quand aucun gabarit n'est éligible, 0 révélation émise et seul l'écart total est publié." },
+    { "critere": "CA-16", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:84-86 — les 5 révélations de la partie revérifiées VRAIES par une fonction distincte du sélecteur, et suspects_restants = 5 >= 2 à chaque émission. Réserve explicite : le critère porte sur le NOMBRE JOURNALISÉ, et ce nombre est mal calculé sous le gabarit COMPARAISON (6 journalisés contre 5 au plus selon RG-23). Le critère reste satisfait à la lettre puisque 6 >= 2 ; le défaut est reporté en ANO-04 et non ici, pour ne pas imputer à CA-16 un manquement qu'il n'énonce pas." },
+    { "critere": "CA-17", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:89-91 — manche_min_revelation_passe = 3, et 0 candidat PASSE aux manches 1 et 2." },
+    { "critere": "CA-18", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:94-96 — cercle [J0..J5], seul J5 menteur, cibles VOISINAGE éligibles = [J0] et [J4], soit exactement les deux voisins. Complété par CL-20 sur un cercle de 5 et de 8." },
+    { "critere": "CA-19", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:100-103 — coût 2 prélevé (solde 2 → 0), résultat privé {cible:J5, montant_paye:2, montant_declare:5} reçu par le seul enquêteur, et 0 trame reçue par la cible." },
+    { "critere": "CA-20", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:104-106 — enquête d'un INSPECTEUR_TRESOR ACCEPTEE à coût réduit. Complété par CL-11 : deux inspecteurs paient 1 chacun quand un non-inspecteur paie 2." },
+    { "critere": "CA-21", "statut": "CONFORME", "preuve": "sonde-criteres-a.txt:107-109 — non-inspecteur à 1 pièce refusé SOLDE_INSUFFISANT, solde inchangé à 1." },
+    { "critere": "CA-22", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:3-9 — verdict MENTEUR diffusé aux 6, amende liquidée 6, part de l'accusé 0 avec exclu_du_partage true ; et la charge publique ne porte ni ampleur du mensonge ni montant." },
+    { "critere": "CA-23", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:12-15 — verdict HONNETE, mouvements [J0 −2 penalite_fausse_accusation_payee, J5 +2 penalite_fausse_accusation_recue]." },
+    { "critere": "CA-24", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:18-20 — seconde accusation refusée QUOTA_DEPASSE, témoin hors phase ACTION_HORS_PHASE." },
+    { "critere": "CA-25", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:23-28 — amende due 10 sur un solde de 3 : liquidée à 3, accusé à 0, accusateur +3, aucun solde négatif." },
+    { "critere": "CA-26", "statut": "CONFORME", "preuve": "sonde-matrice-gains.txt, section CA-26 — total payé 20, récompense 40, parts [6,6,6,6,6,9], reliquat 1 non distribué. Témoin discriminant : tous déclarent 4 et J5 paie 0 → parts [6,6,6,6,6,6]." },
+    { "critere": "CA-27", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:31-35 — 17 payés pour 18 : réussi false, parts [], consolation appliquée, total 6, mouvements de +1 pour les 6 joueurs." },
+    { "critere": "CA-28", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:38-39 — GENIE_GARDE_UN_TIERS : plancher(40 × 2/3) = 26." },
+    { "critere": "CA-29", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:42-44 — TRESOR_DES_HONNETES : multiplicateur 3 et récompense 60 sans menteur, multiplicateur 2 et récompense 40 avec menteur." },
+    { "critere": "CA-30", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:47-48 — poids doublé pour le plus généreux, parts [10,5,5,5,5,5], somme 35 <= récompense 38. Complété par CL-12 : à paiements tous égaux, les 6 ex aequo sont doublés et les parts restent identiques. Réserve : la publication de ces parts est le vecteur de ANO-06." },
+    { "critere": "CA-31", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:51-54 — amende 12 due et liquidée, et surtout : 0 trame citant la clause reçue AVANT l'exécution, la clause n'apparaissant qu'ensuite dans execution_resultat (étape 16)." },
+    { "critere": "CA-32", "statut": "CONFORME", "preuve": "sonde-criteres-d.txt — invariant recalculé par une fonction DISTINCTE qui ne lit que le journal des mouvements, sur trois exécutions : nominale à 2 menteurs, cas de contrainte (amende > solde + transfert de 10 + accusation juste → soldes [14,0,35,14,16,16]), et partie complète de 5 manches (soldes [0,7,0,0,7,0]). Zéro écart et zéro négatif dans les trois." },
+    { "critere": "CA-33", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:57-59 — ACTION_NON_AUTORISEE_ROLE, et le message « Cette commande n'est pas autorisée. » ne nomme aucun rôle, ce qui évite de transformer le refus en oracle de rôle." },
+    { "critere": "CA-34", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:62-66 — prêt de 4 à la manche 2, du_total 6, 6 prélevés à la manche 3, mouvements [J1 −6, J0 +6], prêt passé au statut SOLDE." },
+    { "critere": "CA-35", "statut": "CONFORME", "preuve": "sonde-criteres-b.txt:69-74 — J5 à 0 pièce peut encore accuser et recevoir un transfert, reste dans la session, et remonte à 3 à la manche suivante." },
+    { "critere": "CA-36", "statut": "CONFORME", "preuve": "sonde-criteres-c.txt:3-5 — clés de la charge de solde = exactement [solde_pieces, derniers_mouvements], et les mouvements sont ceux du seul destinataire." },
+    { "critere": "CA-37", "statut": "CONFORME", "preuve": "sonde-criteres-c.txt:8-14 — mode avancé, 1 signataire : delta +15, genie_libere true, vainqueur [J2], charge publique {nb_signataires:1, consequence:SIGNATAIRE_UNIQUE_RECOMPENSE}. Écart accepté constaté sur le même scénario : ECART-S4-01 (CONF-07), le MARCHAND_DEJA_LIE occupant role_secret." },
+    { "critere": "CA-38", "statut": "CONFORME", "preuve": "sonde-criteres-c.txt:17-22 — 3 signataires : sanctions [−6, −6, −6], genie_libere false, mission du gardien réussie." },
+    { "critere": "CA-39", "statut": "CONFORME", "preuve": "sonde-criteres-c.txt:25-29 — 0 trame projetée par la signature de J0 ; un non-signataire ne voit que le DÉCOMPTE {nb_signataires:1} ; 0 trame de J3 citant une signature hors écran de scores." },
+    { "critere": "CA-40", "statut": "CONFORME", "preuve": "sonde-criteres-c.txt:32-37 — score = pièces restantes + 10 si mission réussie (J3 : 13 + 10 = 23), rôles et missions publiés, et ni porteur de clause ni enquête dans la charge de scores." },
+    { "critere": "CA-41", "statut": "CONFORME", "preuve": "sonde-criteres-c.txt:38-42 — LE_MAGNAT : J5 a menti exactement aux manches citées ; LE_FAUSSAIRE réussie si jamais démasqué, échouée sinon, les deux branches mesurées." },
+    { "critere": "CA-42", "statut": "CONFORME", "preuve": "sonde-criteres-c.txt:45-48 — après reconnexion en ENQUETES_ACCUSATIONS, J0 retrouve rôle, mission, solde 6, son enquête {cible:J1, montant_paye:2} et la phase avec son échéance ; et la vue d'un tiers ne contient aucune enquête d'autrui." },
+    { "critere": "CA-43", "statut": "CONFORME", "preuve": "sonde-machine-etats.txt:9-22 — matrice complète des 12 commandes × 6 phases ; dans chaque phase seules les commandes de ACTIONS_PAR_PHASE sont acceptées ; 61 refus mesurés et les 61 laissent l'état STRICTEMENT inchangé." },
+    { "critere": "CA-44", "statut": "CONFORME", "preuve": "sonde-machine-etats.txt:25-28 — declarer_contribution avec le joueur_id d'autrui refusé USURPATION_IDENTITE ; et authentifier soumise comme commande de jeu refusée MESSAGE_MALFORME." },
+    { "critere": "CA-45", "statut": "CONFORME", "preuve": "sonde-criteres-c.txt:51-53 — objectif_par_joueur 4 à 6 joueurs : objectif 24, et la charge voeu_annonce porte {objectif:24, nb_manches:5}." },
+    { "critere": "CA-46", "statut": "CONFORME", "preuve": "sonde-criteres-d.txt — double contrôle. Statique : 66 fichiers scannés, 0 littéral nu dans la logique, 0 constante doublant un paramètre de configuration, 0 paramètre jamais lu. Substitution : 14 paramètres sur 14 forcés à une sentinelle déplacent le comportement, plus un témoin sur durees_phases_s.NEGOCIATION. Aucun paramètre inerte." },
+    { "critere": "CA-47", "statut": "CONFORME", "preuve": "sonde-criteres-c.txt:56-61 — compteur de groupe à 3 après la 3e partie terminée, dernier_voeu_debloque true, et la trame groupe_mis_a_jour n'est adressée qu'à l'hôte." },
+    { "critere": "CA-48", "statut": "CONFORME", "preuve": "sonde-criteres-c.txt:62-65 — abandon : état ABANDONNEE, compteur ramené à 2, charge {motif:ABANDON_HOTE, compteur_groupe_incremente:false}, et 0 trame de scores émise. Complété par CL-24 : abandon en pleine manche 3, aucun classement calculé, aucun secret révélé." },
+    { "critere": "CA-49", "statut": "CONFORME", "preuve": "sonde-criteres-c.txt:68-71 — phase encore DECLARATION_PAIEMENT après 5 paiements sur 6, REVELATION dès le 6e, l'échéance du minuteur n'étant pas atteinte." },
+    { "critere": "CA-50", "statut": "NON_CONFORME", "preuve": "sonde-criteres-c.txt:74-76 — les 5 commandes inventées (executer_pipeline, emettre_revelation, distribuer, executer_manche, reveler) sont toutes refusées, donc la garantie de fond est tenue : la liste des commandes réellement exposées au client est bien limitée aux 12 commandes de jeu. MAIS le refus prend la forme d'une EXCEPTION « GESTIONNAIRES[type] is not a function » et non d'une erreur typée comme l'exige ARCHI/gestion_erreurs. Voir ANO-13." }
+  ],
+
+  "anomalies": [
+    {
+      "id": "ANO-01",
+      "type": "FONCTIONNEL",
+      "sous_type": "fuite par canal indirect — dénombrement de trames",
+      "gravite": "bloquant",
+      "composant": "projection des événements — clause_recue",
+      "selecteur": "paquets/moteur/src/projection/evenements-prives.ts (clause_recue) ; contrat API, trame clause_recue",
+      "viewport": "sans objet — défaut de protocole, indépendant du rendu",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-canaux-indirects.ts",
+        "Lire la section (II) « Profil de trafic » : une partie complète à 6 joueurs, porteur J3, FAISEUR_CONTRATS J5.",
+        "Relever la ligne « trames clause_recue par joueur »."
+      ],
+      "attendu": "Le nombre de trames reçues par un joueur ne doit dépendre d'aucun secret. Un observateur du trafic — voisin qui compte les rafraîchissements, proxy d'entreprise, ou simplement un joueur qui ouvre les outils de développement sur son propre téléphone et compare avec ses camarades — ne doit pas pouvoir distinguer le porteur de la clause ni les Faiseurs de contrats.",
+      "obtenu": "trames clause_recue par joueur = {J0:0, J1:0, J2:0, J3:1, J4:0, J5:1}. Seuls le porteur et le Faiseur de contrats reçoivent une trame. L'ensemble « porteur ∪ FAISEUR_CONTRATS » se lit dans le seul dénombrement des trames, sans qu'aucun champ secret n'ait fuité.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-canaux-indirects.txt:25-28 et verdict NON_CONFORME ligne 31. Mesures corroborantes : porteur = J3 (ligne 25), FAISEUR_CONTRATS = [J5] (ligne 26).",
+      "action_requise": "Émettre clause_recue à TOUS les joueurs à l'ouverture de la phase VOEU, avec une charge VIDE pour les non-destinataires, de sorte que le dénombrement devienne constant. C'est exactement la demande formulée par l'ux-ui-designer au nœud S2 et rejetée en CONF-06. Exige une version 1.1.0 du contrat API déclarant la charge vide, puis l'alignement du moteur et du client. Contrôler le correctif en rejouant la section (II) de la sonde : la ligne « trames clause_recue par joueur » doit rendre 1 pour les six joueurs.",
+      "assigne_a": "tech-lead",
+      "co_assigne": "dev-backend pour l'implémentation après mise à jour du contrat",
+      "note_sur_l_arbitrage": "CONF-06 avait rejeté cette demande. Le chef de projet a déjà rouvert l'arbitrage et reconnu l'erreur (statut « ROUVERT LE 2026-10-29 », renvoi à CONF-13) : le raisonnement initial ne portait que sur le canal VISUEL et n'avait pas examiné le canal RÉSEAU. Cette anomalie est maintenue à sa pleine gravité, l'arbitrage étant rouvert et non refermé."
+    },
+    {
+      "id": "ANO-02",
+      "type": "FONCTIONNEL",
+      "sous_type": "fuite par canal indirect — dénombrement de trames",
+      "gravite": "bloquant",
+      "composant": "projection des événements — resultat_enquete",
+      "selecteur": "paquets/moteur/src/projection/evenements-prives.ts (resultat_enquete)",
+      "viewport": "sans objet",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-canaux-indirects.ts",
+        "Section (II), relever « trames resultat_enquete par joueur » et « profil global »."
+      ],
+      "attendu": "RG-27 : « Le résultat d'une enquête n'est transmis qu'à l'enquêteur. Ni la cible ni la table n'apprennent qu'une enquête a eu lieu. » L'EXISTENCE de l'enquête ne doit être connue que de l'enquêteur, ce qui impose que son volume de trafic soit indiscernable de celui des autres.",
+      "obtenu": "trames resultat_enquete par joueur = {J3:1, tous les autres 0}. J3 est identifié comme enquêteur par le seul volume de trafic. Le profil global le confirme : J3 reçoit 28 trames quand J0 et J4 en reçoivent 25. Le CONTENU de RG-27 est respecté — la cible ne reçoit rien, mesuré à 0 trame — mais pas son INTENTION.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-canaux-indirects.txt:27 et :29, verdict NON_CONFORME ligne 32.",
+      "action_requise": "Uniformiser le volume par destinataire sur la phase ENQUETES_ACCUSATIONS : à la clôture de la phase, émettre à CHAQUE joueur une trame resultat_enquete — portant le résultat réel pour l'enquêteur, une charge vide pour les autres. Grouper ce correctif avec ANO-01 dans la même version 1.1.0 du contrat API, les deux relevant du même défaut de conception. Contrôler en rejouant la section (II) : la ligne « trames resultat_enquete par joueur » doit rendre la même valeur pour les six joueurs.",
+      "assigne_a": "tech-lead",
+      "co_assigne": "dev-backend"
+    },
+    {
+      "id": "ANO-03",
+      "type": "FONCTIONNEL",
+      "sous_type": "fuite différentielle — une sortie publique dépend d'une entrée secrète",
+      "gravite": "bloquant",
+      "composant": "sélection des révélations — score d'activité",
+      "selecteur": "paquets/moteur/src/revelations/score-activite.ts:18-19 (POIDS_ACCUSATION = 3, POIDS_ENQUETE = 2) ; SPEC catalogue_revelations.score_activite ; RG-22",
+      "viewport": "sans objet",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-differentielle-secrets.ts",
+        "Section (3) : deux parties identiques, graine identique ; dans la seule variante B, J2 lance une enquête SECRÈTE à la manche 1.",
+        "Comparer les révélations PUBLIQUES de la manche 2 vues par le tiers J4."
+      ],
+      "attendu": "Aucune trame reçue par un tiers ne doit varier selon qu'une enquête secrète a eu lieu ou non. Une enquête est un acte secret (RG-27) ; son existence ne peut pas se répercuter sur une sortie publique.",
+      "obtenu": "La révélation publique de la manche 2 change : COMPTAGE k=1 sans enquête, EXONERATION ciblant J2 avec enquête, et suspects_restants passe de 6 à 5. Le choix de cible du génie suit score_activite = 3 × accusations + 2 × enquêtes + 1 × transferts (RG-22) ; les accusations sont publiques, mais les enquêtes et les transferts ne le sont pas. Un joueur qui observe que le génie le cible apprend qu'une enquête ou un transfert secret a eu lieu, et le poids 2 contre 1 permet même de discriminer lequel. 9 divergences au total dans le flux du tiers J4.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-differentielle-secrets.txt:14-18 (scores d'activité : J2 passe de 0 à 2) et :27 (la divergence #40 sur la trame revelation). Verdict NON_CONFORME ligne 18.",
+      "action_requise": "Arbitrer puis corriger la SPEC : retirer les termes SECRETS de score_activite et ne conserver que les composantes publiques, soit score_activite = 3 × accusations. Les accusations étant déjà publiques (CA-22 mesure la diffusion du verdict aux 6 joueurs), un score fondé sur elles seules ne fuit rien. Si le départage fin importe, le remplacer par un tirage pseudo-aléatoire sur la graine de session, qui ne corrèle à aucun secret. Décision de SPEC avant tout développement.",
+      "assigne_a": "chef-de-projet",
+      "co_assigne": "dev-backend pour l'implémentation après arbitrage"
+    },
+    {
+      "id": "ANO-04",
+      "type": "FONCTIONNEL",
+      "sous_type": "fuite par inférence — la deuxième et la troisième loi du génie sont défaites",
+      "gravite": "bloquant",
+      "composant": "catalogue de révélations — gabarit COMPARAISON, et calcul de l'ensemble des suspects publics",
+      "selecteur": "paquets/moteur/src/revelations/eligibilite.ts et verification.ts (garde designeUnMenteurUnique) ; paquets/moteur/src/revelations/suspects.ts ; SPEC catalogue_revelations.definition_suspects_publics (RG-23), RG-21",
+      "viewport": "sans objet",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-fuite-comparaison.ts",
+        "Scénario : 6 joueurs, tous déclarent 4, seul J5 ment en payant 1.",
+        "Relever la révélation sélectionnée, la charge reçue par le tiers J1, puis la section « Ampleur de la faille »."
+      ],
+      "attendu": "Deuxième loi du génie, RG-21 et RG-23 : une révélation n'est émise que si l'ensemble des suspects publics compte au moins 2 joueurs APRÈS son émission, cet ensemble étant défini comme « les joueurs dont le statut d'honnêteté sur la manche courante n'est pas déterminé par la seule information publique ». Troisième loi : le génie ne nomme jamais un menteur.",
+      "obtenu": "La révélation COMPARAISON [J0, J5] est émise et diffusée aux 6 joueurs. Comme toutes les déclarations valent 4, « J0 a payé plus que J5 » implique payé(J5) < payé(J0) <= 4 = déclaré(J5), donc J5 a menti, avec certitude, pour n'importe quel observateur. Vérification contre les paiements réels : true. Deux manquements mesurés : (1) suspects_restants est journalisé à 6 alors que le statut de J5 EST déterminé par la seule information publique, ce qui en impose 5 au plus — le calcul de RG-23 n'implémente que la liste fermée (exonération, accusation MENTEUR, accusation HONNETE) et ignore la clause générale qui la précède ; (2) la garde designeUnMenteurUnique du moteur ne se déclenche que pour |suspects| == 2, si bien qu'à 6 suspects les 5 candidats COMPARAISON passent, et les 5 désignent un menteur — paires fuyantes J0>J5, J1>J5, J2>J5, J3>J5, J4>J5.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-fuite-comparaison.txt:11-14 (charge publique et menteur désigné), :17-19 (5 candidats sur 5 fuient), :23-24 (« garde déclenchée ? = non — tous les candidats sont passés »). Verdicts NON_CONFORME lignes 14 et 20.",
+      "action_requise": "Généraliser la garde : avant d'émettre un candidat, recalculer l'ensemble des suspects publics en appliquant la clause GÉNÉRALE de RG-23 — un joueur sort de l'ensemble dès que son statut est déterminé par la seule information publique, inférence comprise — et écarter le candidat si l'ensemble résultant compte moins de 2 joueurs. Pour COMPARAISON, la condition de fuite est caractérisable sans énumération : si déclaré(a) <= déclaré(b), alors « a a payé plus que b » détermine que b a menti ; le candidat doit alors être écarté. Contrôler le correctif en rejouant la sonde : « candidats COMPARAISON qui désignent un menteur » doit rendre 0.",
+      "assigne_a": "dev-backend",
+      "co_assigne": "chef-de-projet pour confirmer que la clause générale de RG-23 prime sur la liste fermée qui la suit"
+    },
+    {
+      "id": "ANO-05",
+      "type": "FONCTIONNEL",
+      "sous_type": "fuite par recoupement d'agrégat public",
+      "gravite": "bloquant",
+      "composant": "clause CONSOLATION — champ total_consolation de execution_resultat",
+      "selecteur": "paquets/moteur/src/pipeline/etape-11.ts ; contrat API, EvtExecutionResultat.total_consolation ; RG-74",
+      "viewport": "sans objet",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-fuite-agregats.ts",
+        "Section (1) : clause CONSOLATION, 6 joueurs déclarant tous 4, échec du vœu.",
+        "Appliquer nb_impairs = total_paye − 2 × total_consolation à la charge publique et comparer au nombre réel de paiements impairs."
+      ],
+      "attendu": "RG-74 pose que les montants de consolation individuels ne sont jamais publiés, parce que plancher(montant_paye_i / 2) révélerait le paiement secret de chaque joueur, et conclut que « seuls l'activation de la clause CONSOLATION et le total consolé sont publics ». Le total ne doit donc rien révéler des paiements individuels.",
+      "obtenu": "Le total consolé publié permet de reconstituer la PARITÉ de l'ensemble des paiements secrets. La charge publique porte total_paye 16 et total_consolation 5, donc nb_impairs = 16 − 10 = 6 : déduit 6, réel 6. Comme les 6 déclarations publiques valent toutes 4, un nombre pair, tout joueur de paiement impair a nécessairement menti : les 6 joueurs sont prouvés menteurs par le seul recoupement du public. C'est précisément ce que le gabarit COMPTAGE interdit à k == nb_joueurs — interdiction mesurée comme respectée en CL-04 — et qui est obtenu ici par un chemin que RG-21 ne gouverne pas, execution_resultat n'étant pas une révélation du catalogue. Le raisonnement de RG-74 est juste au niveau individuel et faux au niveau de l'agrégat.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-fuite-agregats.txt:3-6 (charge publique, nb_impairs déduit 6, nb_impairs réel 6, déclarations toutes paires). Verdicts NON_CONFORME lignes 7 et 8.",
+      "action_requise": "Arbitrer en SPEC puis corriger RG-74 : retirer total_consolation de la charge publique de execution_resultat et ne conserver que le booléen consolation_appliquee, chaque joueur apprenant sa part par son canal privé de solde — ce que RG-74 prévoit déjà. Le booléen suffit à l'information de jeu et ne porte aucune quantité, sur le modèle de bonus_epices_verse que la sonde a mesuré propre. Contrôler en rejouant la sonde : la ligne « nb_impairs DÉDUIT du public » doit devenir incalculable.",
+      "assigne_a": "chef-de-projet",
+      "co_assigne": "tech-lead pour le retrait du champ au contrat, dev-backend pour l'implémentation"
+    },
+    {
+      "id": "ANO-06",
+      "type": "FONCTIONNEL",
+      "sous_type": "fuite par recoupement d'agrégat public",
+      "gravite": "bloquant",
+      "composant": "clause LE_PLUS_GENEREUX — champ parts de execution_resultat",
+      "selecteur": "paquets/moteur/src/pipeline/etape-08.ts:18 (FACTEUR_PLUS_GENEREUX) ; contrat API, EvtExecutionResultat.parts",
+      "viewport": "sans objet",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-fuite-agregats.ts",
+        "Section (2) : clause LE_PLUS_GENEREUX, 6 joueurs déclarant tous 4, J0 payant le plus.",
+        "Comparer les joueurs à part maximale avec l'argmax réel des paiements secrets."
+      ],
+      "attendu": "Les parts publiées ne doivent pas permettre d'identifier le plus gros payeur, le montant payé étant secret.",
+      "obtenu": "Les parts publiées [J0:10, les cinq autres:5] désignent J0 comme bénéficiaire du doublement, donc comme argmax des paiements secrets : déduit [J0], réel [J0]. Pire, la conjonction avec des déclarations toutes égales à 4 prouve que les CINQ AUTRES ont menti : pour chacun, payé(i) < payé(argmax) <= déclaré(i). Un seul agrégat public démasque cinq joueurs sur six.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-fuite-agregats.txt:11-16 (charge publique, parts, argmax déduit [J0], argmax réel [J0]). Verdicts NON_CONFORME lignes 17 et 18.",
+      "action_requise": "Arbitrer en SPEC le format de publication des parts sous LE_PLUS_GENEREUX. Deux options à trancher par le chef de projet, le QA n'ayant pas à choisir : soit ne publier que le TOTAL distribué et la part de chaque joueur par son seul canal privé de solde, soit conserver la clause en lui retirant son effet différencié sur les parts. Contrôler en rejouant la sonde : « joueurs à poids doublé déduits » doit devenir indéterminable depuis la charge publique.",
+      "assigne_a": "chef-de-projet",
+      "co_assigne": "tech-lead, dev-backend"
+    },
+    {
+      "id": "ANO-07",
+      "type": "FONCTIONNEL",
+      "sous_type": "fuite de solde entre deux parties liées",
+      "gravite": "majeur",
+      "composant": "prêts — trame pret_preleve adressée au prêteur",
+      "selecteur": "paquets/moteur/src/pipeline/etape-15.ts ; contrat API, EvtPretPreleve.montant_preleve et reliquat_du",
+      "viewport": "sans objet",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-fuite-prets-et-erreurs.ts",
+        "Section (A) : prêt de du_total 9, solde de l'emprunteur J1 ramené à 3 juste avant le prélèvement, qui est donc plafonné.",
+        "Lire la trame pret_preleve reçue par le PRÊTEUR J0."
+      ],
+      "attendu": "Le solde d'un joueur est un secret de partie : la vue privée d'un tiers ne porte, pour les autres joueurs, que joueur_id, pseudo, position_cercle, connecte et est_hote — jamais solde_pieces (mesuré). Un prêteur ne doit donc pas pouvoir déduire le solde exact de son emprunteur.",
+      "obtenu": "La trame porte montant_preleve 3 ET reliquat_du 6. Comme reliquat_du > 0, le prélèvement a nécessairement été plafonné par le solde, donc montant_preleve EST le solde exact de l'emprunteur à cet instant : déduit 3, réel 3. La conjonction des deux champs transforme un plafonnement en oracle de solde.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-fuite-prets-et-erreurs.txt:3-9. Verdict NON_CONFORME ligne 9. Secret du solde établi par la mesure de joueurs[] dans la vue privée, reportée dans canaux_indirects_examines.",
+      "action_requise": "Retirer montant_preleve de la trame adressée au PRÊTEUR et n'y conserver que reliquat_du, qui suffit à l'information contractuelle du prêt. Le prêteur apprend ainsi ce qu'il lui reste dû sans apprendre pourquoi. Le montant prélevé reste légitime dans le canal privé de solde de l'EMPRUNTEUR. Contrôler en rejouant la section (A) : la ligne « solde de J1 déduit par J0 » doit devenir incalculable.",
+      "assigne_a": "tech-lead",
+      "co_assigne": "dev-backend"
+    },
+    {
+      "id": "ANO-08",
+      "type": "FONCTIONNEL",
+      "sous_type": "fuite de solde par message d'erreur",
+      "gravite": "majeur",
+      "composant": "commande repondre_pret — message de l'erreur SOLDE_INSUFFISANT",
+      "selecteur": "paquets/moteur/src/commandes/negociation.ts (repondre_pret)",
+      "viewport": "sans objet",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-fuite-prets-et-erreurs.ts",
+        "Section (B) : le prêteur J0 transfère des pièces après avoir proposé un prêt, son solde tombe à 2 ; l'emprunteur J1 accepte alors le prêt.",
+        "Lire l'erreur rendue à J1."
+      ],
+      "attendu": "Un refus adressé à un joueur ne doit renseigner que sur l'état de CE joueur. Les témoins de la section (C) montrent que c'est la règle générale du moteur et qu'elle est bien tenue ailleurs : DEJA_SOUMIS, MONTANT_INVALIDE, QUOTA_DEPASSE, CIBLE_INVALIDE ne dépendent que de l'auteur.",
+      "obtenu": "{code: SOLDE_INSUFFISANT, message: « Le prêteur n'a plus le principal disponible. »}. L'emprunteur apprend que solde(J0) < 6, et le message le lui dit explicitement. En répétant l'acceptation sur des prêts de principaux différents, l'emprunteur encadre le solde du prêteur par dichotomie.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-fuite-prets-et-erreurs.txt:13-14. Verdict NON_CONFORME ligne 15. Témoins propres aux lignes 23-30.",
+      "action_requise": "Remplacer le couple code/message par un refus qui ne qualifie pas la cause : code PRET_INDISPONIBLE et message « Ce prêt n'est plus disponible. », en faisant passer le prêt au statut CADUC côté serveur. L'emprunteur apprend que l'offre est retirée, et non pourquoi. Contrôler en rejouant la section (B) : le message ne doit plus permettre de borner le solde du prêteur.",
+      "assigne_a": "dev-backend",
+      "co_assigne": "tech-lead si le code d'erreur figure au contrat"
+    },
+    {
+      "id": "ANO-09",
+      "type": "FONCTIONNEL",
+      "sous_type": "oracle d'existence par code d'erreur",
+      "gravite": "mineur",
+      "composant": "commande repondre_pret — discrimination des codes de refus",
+      "selecteur": "paquets/moteur/src/commandes/negociation.ts (repondre_pret)",
+      "viewport": "sans objet",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-fuite-prets-et-erreurs.ts",
+        "Section (B bis) : répondre à un pret_id inexistant, puis à un pret_id existant mais adressé à un autre joueur."
+      ],
+      "attendu": "Les deux refus doivent être indiscernables, faute de quoi la réponse distingue « cet identifiant n'existe pas » de « cet identifiant existe mais n'est pas pour vous ».",
+      "obtenu": "CIBLE_INVALIDE pour le prêt inexistant, USURPATION_IDENTITE pour le prêt existant adressé à autrui. Oracle d'existence sur les identifiants de prêt.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-fuite-prets-et-erreurs.txt:18-19. Verdict NON_CONFORME ligne 20.",
+      "action_requise": "Rendre le même code pour les deux cas sur repondre_pret. Classé MINEUR et non majeur parce que l'exploitation suppose de deviner un UUIDv4, ce qui n'est pas réalisable : la sonde le mentionne elle-même comme atténuation. À corriger pour la propreté du modèle de menace, non pour une exploitabilité réelle.",
+      "assigne_a": "dev-backend"
+    },
+    {
+      "id": "ANO-10",
+      "type": "FONCTIONNEL",
+      "sous_type": "engagement de sécurité inopérant",
+      "gravite": "majeur",
+      "composant": "service worker — règle NetworkOnly sur /api",
+      "selecteur": "applications/client — configuration Workbox, urlPattern /^\\/api\\//",
+      "viewport": "sans objet — défaut de configuration, indépendant du rendu",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-client-et-transport.ts",
+        "Section (A) : appliquer le motif déclaré à trois URL, dont deux réalistes et une réduite au chemin."
+      ],
+      "attendu": "L'engagement « aucune réponse de /api n'est mise en cache » doit être porté par une règle NetworkOnly qui s'APPLIQUE effectivement. Cet engagement n'est pas accessoire : c'est lui que CONF-10 invoque pour refuser la rétrogradation de workbox 7.4.1 vers 5.1.4 malgré les 4 vulnérabilités de DETTE-04, au motif que « workbox est précisément la brique qui applique cet engagement de sécurité ». La décision CONF-10 repose donc sur une garantie qui, mesurée, n'opère pas.",
+      "obtenu": "Workbox exécute le motif sur url.href et non sur le chemin, comme l'atteste node_modules/workbox-routing/RegExpRoute.js : regExp.exec(url.href). Résultats mesurés : 'https://hote.exemple/api/sessions' → false ; 'http://127.0.0.1:5173/api/configuration/defauts' → false ; '/api/sessions' → true. La route ne correspond donc à AUCUNE URL réelle. L'engagement ne tient plus que par l'absence fortuite de toute autre règle de cache : une projection privée resterait lisible sur un téléphone prêté après la partie dès qu'une règle de cache serait ajoutée.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-client-et-transport.txt:3-7, avec la citation de la source de Workbox en ligne 6. Verdict NON_CONFORME ligne 7.",
+      "action_requise": "Remplacer le motif ancré sur le chemin par un prédicat explicite sur l'URL analysée, de la forme urlPattern: ({ url }) => url.pathname.startsWith('/api/'), qui est insensible à l'origine. Contrôler en rejouant la section (A) : les trois URL de la mesure doivent rendre true. À corriger conjointement avec ANO-11, le préfixe servi déterminant le chemin à filtrer.",
+      "assigne_a": "dev-frontend",
+      "consequence_sur_un_arbitrage": "Le motif de CONF-10 doit être réexaminé après correction : il refuse un correctif de sécurité au nom d'une garantie qui n'est pas opérante aujourd'hui. Le refus reste probablement juste — la rétrogradation de deux versions majeures reste une perte nette — mais il doit être rejustifié sur une garantie effective."
+    },
+    {
+      "id": "ANO-11",
+      "type": "FONCTIONNEL",
+      "sous_type": "écart entre le contrat d'API et l'implémentation — CONF-11 confirmé et chiffré",
+      "gravite": "majeur",
+      "composant": "serveur HTTP — préfixe des 6 routes REST",
+      "selecteur": "applications/serveur — enregistrement des routes ; contrat API, servers = ['https://{hote}/api']",
+      "viewport": "sans objet",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-client-et-transport.ts",
+        "Section (B) : confronter les routes réellement enregistrées aux chemins déclarés au contrat et au préfixe de servers."
+      ],
+      "attendu": "Les 6 opérations du contrat doivent être servies sous le préfixe /api déclaré dans servers : /api/sante, /api/configuration/defauts, /api/sessions, /api/sessions/{code_adhesion}/apercu, /api/sessions/{code_adhesion}/joueurs, /api/groupes/moi.",
+      "obtenu": "Chiffrage demandé : 0 route sur 6 porte le préfixe. Les routes sont enregistrées à la racine — /sante, /configuration/defauts, /sessions, /sessions/:code_adhesion/apercu, /sessions/:code_adhesion/joueurs, /groupes/moi — soit un écart sur les 6 chemins du contrat, c'est-à-dire la totalité. L'écart est masqué en développement par une réécriture du proxy Vite (/^\\/api/u → ''), mesurée présente : il serait donc invisible en développement et total en production.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-client-et-transport.txt:11-16. Verdict NON_CONFORME ligne 15.",
+      "action_requise": "Conformer le SERVEUR au contrat, qui prime : enregistrer les 6 routes sous le préfixe /api, puis RETIRER la réécriture du proxy Vite, qui deviendrait une seconde source de vérité et masquerait toute régression ultérieure. Contrôler en rejouant la section (B) : « routes servies sous /api » doit rendre 6. Grouper avec ANO-10, dont le prédicat de filtrage dépend du préfixe effectivement servi.",
+      "assigne_a": "dev-backend",
+      "co_assigne": "dev-frontend pour le retrait de la réécriture du proxy",
+      "note_sur_l_arbitrage": "CONF-11 avait groupé cette correction avec le nœud S6 et chargé le QA de confirmer l'écart. Confirmation faite et chiffrée : 0 sur 6. Le constat de CONF-11 selon lequel le frontend a eu raison de rester conforme au contrat est vérifié — les 6 chemins du contrat et les 6 chemins attendus par le client coïncident."
+    },
+    {
+      "id": "ANO-12",
+      "type": "FONCTIONNEL",
+      "sous_type": "surface d'exfiltration du jeton de session",
+      "gravite": "majeur",
+      "composant": "en-tête Content-Security-Policy — directive connect-src",
+      "selecteur": "applications/serveur ou applications/client — déclaration de la CSP",
+      "viewport": "sans objet",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-client-et-transport.ts",
+        "Section (D) : relever la CSP complète, la directive connect-src, et l'emplacement de stockage du jeton."
+      ],
+      "attendu": "Le jeton de session vivant en localStorage, la CSP est présentée comme le rempart contre son exfiltration par injection de script. connect-src doit alors énumérer les origines autorisées, et non une famille de schémas.",
+      "obtenu": "connect-src = « 'self' wss: ». Le jeton vit en localStorage sous la clé gdv.session. Le motif wss: autorise l'émission vers TOUT hôte en WebSocket sécurisé : un script injecté peut ouvrir wss://hote-de-l-attaquant/ et y verser le jeton. Le reste de la CSP est pourtant soigné — object-src 'none', base-uri 'none', form-action 'none', script-src 'self' — ce qui rend l'ouverture de connect-src d'autant plus saillante.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-client-et-transport.txt:38-41. Verdict NON_CONFORME ligne 40.",
+      "action_requise": "Restreindre connect-src à l'origine de déploiement effective, de la forme « connect-src 'self' wss://<hote-de-deploiement> », l'hôte étant injecté à la construction. Mesure de défense en profondeur à arbitrer séparément : déplacer le jeton de localStorage vers un cookie Secure, HttpOnly et SameSite=Strict, qu'un script injecté ne peut pas lire. Contrôler en rejouant la section (D) : connect-src ne doit plus contenir de schéma nu.",
+      "assigne_a": "dev-frontend",
+      "co_assigne": "tech-lead pour l'arbitrage sur le stockage du jeton"
+    },
+    {
+      "id": "ANO-13",
+      "type": "FONCTIONNEL",
+      "sous_type": "forme du refus non conforme au standard d'architecture",
+      "gravite": "mineur",
+      "composant": "moteur — appliquerCommande, garde sur un type de commande inconnu",
+      "selecteur": "paquets/moteur/src/commandes/index.ts (table GESTIONNAIRES) ; paquets/moteur/src/commandes/resultat.ts",
+      "viewport": "sans objet",
+      "reproduction": [
+        "node --conditions=gdv-source --experimental-strip-types qa/sondes/sonde-criteres-c.ts",
+        "Section CA-50 : soumettre les 5 commandes inventées executer_pipeline, emettre_revelation, distribuer, executer_manche, reveler."
+      ],
+      "attendu": "ARCHI/gestion_erreurs : un refus est une erreur TYPÉE rendue dans le Resultat, jamais une exception. Le fichier commandes/resultat.ts revendique explicitement une défense en profondeur.",
+      "obtenu": "Les 5 commandes sont bien refusées — la garantie de fond de CA-50 est tenue, et la liste des commandes réellement exposées au client reste limitée aux 12 commandes de jeu — mais le refus prend la forme d'une exception « GESTIONNAIRES[type] is not a function ». appliquerCommande n'a aucune garde sur un type de commande inconnu. Le transport le barre en amont via SchemaEnveloppeCommande, si bien que le défaut n'est pas atteignable depuis le réseau aujourd'hui ; la défense en profondeur revendiquée ne couvre donc pas le TYPE, seulement la charge.",
+      "token_consomme": "sans objet",
+      "preuve": "qa/rapports/sonde-criteres-c.txt:74-77. Verdict NON_CONFORME ligne 76.",
+      "action_requise": "Ajouter dans appliquerCommande une garde explicite sur l'absence du type dans GESTIONNAIRES, rendant une erreur typée COMMANDE_INCONNUE au lieu de laisser l'accès indéfini lever. Contrôler en rejouant la section CA-50 : les 5 commandes inventées doivent rendre un code d'erreur et non « EXCEPTION ». Classé MINEUR parce que le défaut n'est pas atteignable depuis le transport ; il reste une anomalie car il contredit un standard d'architecture explicite et parce qu'une exception non typée franchit la frontière de couche.",
+      "assigne_a": "dev-backend"
+    }
+  ],
+
+  "journal_des_faux_positifs": {
+    "principe": "Trois contrôles ont d'abord rendu NON_CONFORME. Vérification faite, c'était la MESURE qui était fautive, pas le code. Ils sont consignés ici et exclus des anomalies : un rejet non reproduit consommerait une itération sur un bug fantôme, ce qui est le pire usage d'un plafond de 3.",
+    "cas": [
+      {
+        "controle": "CA-46, substitution de pieces_initiales",
+        "symptome": "témoin 0 et sentinelle 0, donc « valeur codée en dur »",
+        "cause_reelle": "La sonde lisait le solde AVANT demarrer_partie, alors que la dotation initiale n'est versée qu'au démarrage. Vérifié directement : solde J0 avant démarrage = 0, après = 12, et après démarrage avec pieces_initiales forcé à 37 = 37.",
+        "statut": "mesure corrigée, paramètre CONSOMMÉ"
+      },
+      {
+        "controle": "CA-46, substitution de nb_manches",
+        "symptome": "témoin 1 et sentinelle 1",
+        "cause_reelle": "etat.manches.length vaut 1 au démarrage : les manches sont matérialisées une à une. Mesure remplacée par le nombre de manches RÉELLEMENT jouées jusqu'à TERMINEE, qui rend [5,'TERMINEE'] contre [2,'TERMINEE'].",
+        "statut": "mesure corrigée, paramètre CONSOMMÉ"
+      },
+      {
+        "controle": "CA-46, substitution de multiplicateur_amende",
+        "symptome": "témoin [−10] et sentinelle [−10]",
+        "cause_reelle": "L'ampleur du mensonge choisie était si forte que l'amende était plafonnée par le solde (RG-41), et le plafond masquait le multiplicateur. Ampleur ramenée à 1 : l'amende passe de −2 à −7.",
+        "statut": "mesure corrigée, paramètre CONSOMMÉ"
+      },
+      {
+        "controle": "CA-46, scan statique des littéraux",
+        "symptome": "20 occurrences signalées comme violations",
+        "cause_reelle": "Mon critère de scan était trop large : il cherchait les littéraux 12, 3, 2, 15, 10 partout, alors que CA-46 ne vise que les valeurs de parametres_configuration. Les 20 occurrences sont des déclarations de constantes NOMMÉES portant des règles du GDD absentes des 21 paramètres (EXEMPLAIRES_MAX_PAR_ROLE, SEUIL_FAUSSAIRE_MANCHES_MENTIES, FACTEUR_PLUS_GENEREUX, POIDS_ACCUSATION) ou de l'arithmétique non ludique (horloge/iso.ts, alea/sfc32.ts). Critère resserré après vérification ligne à ligne : 0 littéral nu, 0 constante doublant un paramètre.",
+        "statut": "rejet retiré, CA-46 CONFORME"
+      }
+    ]
+  },
+
+  "charges_confiees_traitees": {
+    "CONF-11": {
+      "etat": "CONFIRMÉ ET CHIFFRÉ",
+      "resultat": "0 route sur 6 porte le préfixe /api ; écart sur la totalité des 6 chemins du contrat. Reporté en ANO-11, gravité majeur. Le contournement par réécriture du proxy Vite est mesuré présent et doit être retiré avec le correctif, sous peine de constituer une seconde source de vérité."
+    },
+    "DETTE-02": {
+      "etat": "VÉRIFIÉ SUR L'IMPLÉMENTATION — AUCUNE ANOMALIE",
+      "resultat": "La bordure et le libellé persistant, sur lesquels repose seule l'identification du voile puisque le fond n'est qu'à 1,18:1, sont tous deux PRÉSENTS et SUFFISANTS. Mesures : bordure déclarée sur .voile = true ; libellé persistant rendu SANS CONDITION = true ; libellé de l'état masqué présent = true, de texte « Secret — maintiens pour voir ».",
+      "contrastes_recalcules": "Thème clair : bordure/voile 3,24:1 (>= 3:1, WCAG 1.4.11 satisfait), libellé/voile 10,36:1 (>= 4,5:1). Thème sombre : bordure/voile 5,95:1, libellé/voile 17,77:1. Le ratio voile/page de 1,18:1 du thème sombre est confirmé, ce qui valide le constat d'origine de DETTE-02 : le fond ne porte effectivement pas l'identification, et les deux porteurs de substitution tiennent.",
+      "complement": "L'aide clavier est présente — « Espace maintenu pour voir, Entrée pour une révélation minutée, Échap pour remasquer » — donc le voile n'est pas réservé au pointeur.",
+      "reserve_de_methode": "Mesuré sur les DÉCLARATIONS de tokens et par recalcul des ratios WCAG, non par getComputedStyle dans un navigateur épinglé. Le ratio est une fonction déterministe des valeurs hexadécimales, donc ce recalcul est exact ; en revanche il ne prouve pas que la bordure soit effectivement PEINTE à l'écran. Cette dernière vérification exige l'environnement de rendu épinglé qui manque, et reste ouverte.",
+      "preuve": "qa/rapports/sonde-client-et-transport.txt:19-32, 6 verdicts CONFORME consécutifs."
+    }
+  },
+
+  "ecarts_acceptes_constates": [
+    {
+      "id": "ECART-S4-01",
+      "arbitrage": "CONF-07",
+      "constat": "CONSTATÉ, NON COMPTÉ COMME ANOMALIE. En mode avancé, MARCHAND_DEJA_LIE et GARDIEN_DE_LA_LAMPE occupent le champ role_secret : mesuré [J2, J3] dans le scénario CA-37. Le joueur tiré perd donc son rôle de base et l'un des 4 pouvoirs peut disparaître de la partie, là où le GDD écrit « à la place de sa mission ».",
+      "preuve": "qa/rapports/sonde-criteres-c.txt:9",
+      "position_du_qa": "L'écart est réel, documenté en RG-51, couvert par CA-37 qui reste CONFORME, et hors de portée des premiers playtests puisque le mode avancé exige 3 parties terminées par le même groupe (RG-50). Rien à ajouter à l'arbitrage. La condition de reprise inscrite en CONF-07 demeure applicable."
+    },
+    {
+      "id": "DETTE-04",
+      "arbitrage": "CONF-10",
+      "constat": "CONSTATÉ, NON COMPTÉ COMME ANOMALIE. 4 vulnérabilités basses de la chaîne de construction PWA, sans correctif amont, deepmerge 4.3.1 étant la dernière version publiée et incluse dans la plage vulnérable.",
+      "position_du_qa": "Aucune objection sur la dette elle-même. En revanche le MOTIF de l'arbitrage est entamé par une mesure : CONF-10 refuse la rétrogradation de workbox au nom de l'engagement « aucune réponse de /api n'est mise en cache », et la sonde établit que la règle qui porte cet engagement ne s'applique à aucune URL réelle (ANO-10). La conclusion reste très probablement juste, mais elle doit être rejustifiée après correction d'ANO-10, sur une garantie opérante et non supposée."
+    },
+    {
+      "id": "DETTE-03",
+      "constat": "CONSTATÉ, NON COMPTÉ COMME ANOMALIE. Transport non chiffré en développement.",
+      "position_du_qa": "Mesure corroborante utile : connect-src autorise déjà wss:, donc la cible chiffrée est bien prévue au niveau de la CSP. La restriction d'hôte reste à faire, et c'est ANO-12."
+    },
+    {
+      "id": "CONF-12",
+      "constat": "CONSTATÉ ET VÉRIFIÉ. L'omission de la pastille publique « a payé » est confirmée par la mesure : la trame paiement_enregistre n'est projetée QU'AU payeur, avec la charge {numero_manche:1, enregistre:true}, sans montant ni identité, et aucun tiers ne la reçoit. Il n'existe donc aucun compteur public de paiements dans l'implémentation.",
+      "position_du_qa": "L'arbitrage est tenu dans le code. Avertissement sur la piste d'amélioration envisagée en CONF-12 : un COMPTE AGRÉGÉ du type « 4 marchands sur 6 ont validé » n'est pas sûr par nature, et CONF-12 avait raison d'exiger une vérification d'inférence avant de l'introduire. ANO-05 et ANO-06 démontrent précisément que deux agrégats publics de ce projet sont déjà exploitables par recoupement avec les déclarations publiques. Cette vérification doit donc être conduite AVANT toute introduction, et non après."
+    }
+  ],
+
+  "non_mesure_assume": [
+    {
+      "objet": "Régression visuelle et rendu effectif des tokens dans un navigateur",
+      "motif": "Les trois conditions préalables sont absentes et vérifiées absentes : environnement de rendu non épinglé, aucune image de référence approuvée par l'UX, pas de neutralisation d'animation configurable. Prononcer un verdict visuel ici produirait des faux rejets qui consommeraient l'itération 3 sur des bugs fantômes.",
+      "consequence": "comparaison_visuelle = desactivee ; 0 anomalie de type REGRESSION_VISUELLE dans ce rapport. L'absence d'anomalie visuelle n'est PAS un résultat de conformité visuelle.",
+      "pour_lever": "Épingler un conteneur Playwright, faire approuver un premier rendu par l'ux-ui-designer et le versionner comme baseline. Déclarer alors BASELINE_CREEE sans prononcer de verdict sur le cycle de création."
+    },
+    {
+      "objet": "Audit des 6 opérations REST par appel HTTP réel contre un serveur en fonctionnement",
+      "motif": "Les routes ont été auditées sur leur ENREGISTREMENT et sur le contrat (ANO-11). Les tests négatifs par rôle sur appel HTTP direct n'ont pas été conduits faute d'instance en fonctionnement dans ce cycle.",
+      "attenuation": "Le modèle d'autorisation a bien été éprouvé, mais au niveau du moteur et non du transport : usurpation d'identité refusée USURPATION_IDENTITE (CA-44), action hors phase refusée sur la matrice complète des 12 commandes × 6 phases avec état strictement inchangé sur les 61 refus (CA-43), pouvoir de rôle refusé ACTION_NON_AUTORISEE_ROLE avec un message qui ne nomme aucun rôle (CA-33). C'est la couche qui porte réellement les droits.",
+      "pour_lever": "Lancer le serveur et rejouer les 6 operationId du contrat API, avec pour chacun un test négatif par rôle déclaré et la vérification qu'aucune réponse ne porte un champ absent du schéma."
+    }
+  ],
+
+  "verdict_global": "REJETE",
+
+  "motivation_du_verdict": "REJETÉ en raison de six anomalies BLOQUANTES sur l'axe de non-fuite des secrets, qui est l'axe de priorité 1 et sur lequel tout défaut est bloquant par mandat. Les 50 critères d'acceptation ont tous reçu un verdict mesuré : 49 CONFORMES et 1 NON_CONFORME, aucun omis et aucun NON_TESTABLE. La matrice de gains et la machine à états sont VALIDES, et solidement : coefficients [6, −13] et seuil d'indifférence mesuré à 3/13 exactement, 17 étapes de pipeline dont la sensibilité à l'ordre est éprouvée et pas seulement le dénombrement, invariant monétaire recalculé par une fonction distincte sur trois exécutions, 14 paramètres de configuration sur 14 prouvés consommés par substitution. Le fait marquant de ce cycle n'est donc pas la faiblesse du code : c'est que les 531 tests du projet passent, que la porte de visibilité rend CONFORME avec 0 divergence, et que six canaux d'inférence fuient néanmoins des secrets — parce que ni les tests ni la porte ne mesurent cette classe d'attaque. Quatre des six bloquantes exigent un arbitrage de SPEC ou de contrat AVANT tout développement : ANO-01 et ANO-02 appellent une version 1.1.0 du contrat API, ANO-03, ANO-05 et ANO-06 appellent une décision du chef de projet sur ce qui peut être publié. Les lancer en développement sans cet arbitrage consommerait l'itération 3, qui est la dernière.",
+
+  "ordre_de_traitement_recommande": [
+    "1. ARBITRER, avant toute ligne de code : ANO-03, ANO-05 et ANO-06 relèvent de la SPEC ; ANO-01 et ANO-02 relèvent du contrat API en version 1.1.0. Cinq des six bloquantes sont des décisions, pas des correctifs.",
+    "2. CORRIGER ANO-04, qui est la seule bloquante entièrement imputable au code : généraliser la garde sur l'ensemble des suspects publics conformément à la clause générale de RG-23.",
+    "3. CORRIGER les majeures de production : ANO-11 puis ANO-10, dans cet ordre car le prédicat de filtrage dépend du préfixe servi, puis ANO-12, puis ANO-07 et ANO-08.",
+    "4. CORRIGER les mineures ANO-09 et ANO-13.",
+    "5. ÉTENDRE la porte de visibilité d'un contrôle différentiel, faute de quoi cette classe de défaut reviendra sans être vue — voir constat_structurel_majeur."
+  ]
+}
