@@ -134,12 +134,7 @@ function envoyer(
 export function creerMagasin(options: OptionsMagasin): Magasin {
   const etat = reactive(etatInitial()) as EtatLocal;
   const ctx: Contexte = {
-    options,
-    etat,
-    client: null,
-    intention: 'accueil',
-    code: '',
-    surcharge: {},
+    options, etat, client: null, intention: 'accueil', code: '', surcharge: {},
   };
 
   return {
@@ -177,8 +172,7 @@ export function creerMagasin(options: OptionsMagasin): Magasin {
     preremplirCode(code): void {
       ctx.code = code;
     },
-    surchargeEquilibrage: () =>
-      Object.keys(ctx.surcharge).length === 0 ? null : ctx.surcharge,
+    surchargeEquilibrage: () => (Object.keys(ctx.surcharge).length === 0 ? null : ctx.surcharge),
     memoriserSurchargeEquilibrage(surcharge): void {
       ctx.surcharge = surcharge;
     },
