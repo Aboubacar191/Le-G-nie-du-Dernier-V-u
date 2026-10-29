@@ -1,0 +1,229 @@
+{
+  "cible": "GDV-001",
+  "iteration": 1,
+  "auteur": "dev-frontend",
+  "date": "2026-10-29",
+  "branche_git": "s5-dev-frontend",
+  "_note_branche": "Les cinq commits sont sur la branche s5-dev-frontend, créée depuis main (d7ef5d3). Ma configuration m'interdit de commiter directement sur la branche par défaut ; l'arbre de travail est identique à la branche et la fusion dans main est triviale, sans conflit. Les deux fichiers déjà modifiés avant mon arrivée — .claude/orchestration/etat.json et registre.json — n'ont été ni touchés ni commités : ils sont hors de mon périmètre.",
+
+  "perimetre_livre": {
+    "ecrans": 32,
+    "composants": 21,
+    "_note_composants": "Le brief annonce 22 composants ; DESIGN-GDV-001.json / composants contient 21 composants plus une clé _regle_de_lecture, qui n'en est pas un. Les 21 sont livrés.",
+    "modules_logique_pure": 8,
+    "modules_transport_et_magasin": 9,
+    "fichiers_de_test": 8,
+    "lignes_versionnees_client": 15049
+  },
+
+  "ecrans_implementes": [
+    { "id": "ECR-01", "nom": "Accueil", "fichier": "applications/client/src/vues/EcranAccueil.vue", "etats_couverts": 5 },
+    { "id": "ECR-02", "nom": "Création de session", "fichier": "applications/client/src/vues/EcranCreationSession.vue", "etats_couverts": 5 },
+    { "id": "ECR-03", "nom": "Réglages d'équilibrage de l'hôte", "fichier": "applications/client/src/vues/EcranReglagesEquilibrage.vue", "etats_couverts": 5 },
+    { "id": "ECR-04", "nom": "Invitation — code et QR", "fichier": "applications/client/src/vues/EcranInvitation.vue", "etats_couverts": 5 },
+    { "id": "ECR-05", "nom": "Rejoindre par code ou par QR", "fichier": "applications/client/src/vues/EcranRejoindre.vue", "etats_couverts": 5 },
+    { "id": "ECR-06", "nom": "Salle d'attente", "fichier": "applications/client/src/vues/EcranSalleAttente.vue", "etats_couverts": 5 },
+    { "id": "ECR-07", "nom": "Placement du cercle — hôte", "fichier": "applications/client/src/vues/EcranPlacementHote.vue", "etats_couverts": 5 },
+    { "id": "ECR-08", "nom": "Attente du placement — marchand", "fichier": "applications/client/src/vues/EcranAttentePlacement.vue", "etats_couverts": 5 },
+    { "id": "ECR-09", "nom": "Attribution privée — rôle et mission", "fichier": "applications/client/src/vues/EcranAttributionPrivee.vue", "etats_couverts": 5 },
+    { "id": "ECR-10", "nom": "Annonce du vœu", "fichier": "applications/client/src/vues/EcranAnnonceVoeu.vue", "etats_couverts": 5 },
+    { "id": "ECR-11", "nom": "Pli du génie — clause reçue", "fichier": "applications/client/src/vues/EcranPliGenie.vue", "etats_couverts": 5 },
+    { "id": "ECR-12", "nom": "Négociation", "fichier": "applications/client/src/vues/EcranNegociation.vue", "etats_couverts": 5 },
+    { "id": "ECR-13", "nom": "Transfert de pièces", "fichier": "applications/client/src/vues/EcranTransfert.vue", "etats_couverts": 5 },
+    { "id": "ECR-14", "nom": "Proposition de prêt — Prêteur", "fichier": "applications/client/src/vues/EcranPropositionPret.vue", "etats_couverts": 5 },
+    { "id": "ECR-15", "nom": "Réponse à une proposition de prêt — Emprunteur", "fichier": "applications/client/src/vues/EcranReponsePret.vue", "etats_couverts": 5 },
+    { "id": "ECR-16", "nom": "Déclaration publique de contribution", "fichier": "applications/client/src/vues/EcranDeclaration.vue", "etats_couverts": 5 },
+    { "id": "ECR-17", "nom": "Paiement secret", "fichier": "applications/client/src/vues/EcranPaiementSecret.vue", "etats_couverts": 5 },
+    { "id": "ECR-18", "nom": "Révélation du génie", "fichier": "applications/client/src/vues/EcranRevelation.vue", "etats_couverts": 5 },
+    { "id": "ECR-19", "nom": "Enquêtes et accusations", "fichier": "applications/client/src/vues/EcranEnquetesAccusations.vue", "etats_couverts": 5 },
+    { "id": "ECR-20", "nom": "Résultat privé d'enquête", "fichier": "applications/client/src/vues/EcranResultatEnquete.vue", "etats_couverts": 5 },
+    { "id": "ECR-21", "nom": "Confirmation d'accusation", "fichier": "applications/client/src/vues/EcranConfirmationAccusation.vue", "etats_couverts": 5 },
+    { "id": "ECR-22", "nom": "Exécution de la manche", "fichier": "applications/client/src/vues/EcranExecution.vue", "etats_couverts": 5 },
+    { "id": "ECR-23", "nom": "Dernier Vœu — proposition privée", "fichier": "applications/client/src/vues/EcranDvProposition.vue", "etats_couverts": 5 },
+    { "id": "ECR-24", "nom": "Dernier Vœu — débat", "fichier": "applications/client/src/vues/EcranDvDebat.vue", "etats_couverts": 5 },
+    { "id": "ECR-25", "nom": "Dernier Vœu — signature secrète", "fichier": "applications/client/src/vues/EcranDvSignature.vue", "etats_couverts": 5 },
+    { "id": "ECR-26", "nom": "Dernier Vœu — résolution", "fichier": "applications/client/src/vues/EcranDvResolution.vue", "etats_couverts": 5 },
+    { "id": "ECR-27", "nom": "Scores finaux", "fichier": "applications/client/src/vues/EcranScoresFinaux.vue", "etats_couverts": 5 },
+    { "id": "ECR-28", "nom": "Mon or — panneau privé", "fichier": "applications/client/src/vues/EcranMonOr.vue", "etats_couverts": 5 },
+    { "id": "ECR-29", "nom": "Liaison perdue", "fichier": "applications/client/src/vues/EcranLiaisonPerdue.vue", "etats_couverts": 5 },
+    { "id": "ECR-30", "nom": "Reconnexion et restitution", "fichier": "applications/client/src/vues/EcranReconnexion.vue", "etats_couverts": 5 },
+    { "id": "ECR-31", "nom": "Partie abandonnée", "fichier": "applications/client/src/vues/EcranPartieAbandonnee.vue", "etats_couverts": 5 },
+    { "id": "ECR-32", "nom": "Accès refusé", "fichier": "applications/client/src/vues/EcranAccesRefuse.vue", "etats_couverts": 5 }
+  ],
+  "_note_cinq_etats": "Plusieurs des cinq états sont déclarés NON ATTEIGNABLES par le contrat de conception lui-même : un formulaire n'a rien à charger, la phase VOEU publie toujours un objectif. Le test n'exige donc pas cinq branches de rendu, il exige que les cinq soient TRAITÉS — rendus, ou déclarés inatteignables avec leur raison, en tête de chaque fichier. C'est la différence entre un écran complet et un écran dont on n'a pas regardé les bords. Vérifié par applications/client/tests/ecrans-et-etats.test.ts.",
+
+  "composants_implementes": [
+    { "nom": "BandeauPhase", "fichier": "applications/client/src/composants/BandeauPhase.vue", "etats": 8 },
+    { "nom": "Minuteur", "fichier": "applications/client/src/composants/MinuteurPhase.vue", "etats": 7, "ecart_de_nommage": "vue/multi-word-component-names, règle incluse dans la porte de lint, refuse un nom de composant d'un seul mot. Rôle inchangé." },
+    { "nom": "VoileSecret", "fichier": "applications/client/src/composants/VoileSecret.vue", "etats": 9 },
+    { "nom": "IncrementeurMontant", "fichier": "applications/client/src/composants/IncrementeurMontant.vue", "etats": 9 },
+    { "nom": "Bouton", "fichier": "applications/client/src/composants/BoutonAction.vue", "etats": 8, "ecart_de_nommage": "vue/multi-word-component-names, règle incluse dans la porte de lint, refuse un nom de composant d'un seul mot. Rôle inchangé." },
+    { "nom": "ChampTexteCourt", "fichier": "applications/client/src/composants/ChampTexteCourt.vue", "etats": 6 },
+    { "nom": "BasculeReglage", "fichier": "applications/client/src/composants/BasculeReglage.vue", "etats": 6 },
+    { "nom": "CercleDesPlaces", "fichier": "applications/client/src/composants/CercleDesPlaces.vue", "etats": 7 },
+    { "nom": "CarteJoueurCercle", "fichier": "applications/client/src/composants/CarteJoueurCercle.vue", "etats": 14 },
+    { "nom": "ListeDeclarationsPubliques", "fichier": "applications/client/src/composants/ListeDeclarationsPubliques.vue", "etats": 7 },
+    { "nom": "BulleGenie", "fichier": "applications/client/src/composants/BulleGenie.vue", "etats": 7 },
+    { "nom": "SelecteurCible", "fichier": "applications/client/src/composants/SelecteurCible.vue", "etats": 8 },
+    { "nom": "PanneauPriveSolde", "fichier": "applications/client/src/composants/PanneauPriveSolde.vue", "etats": 8 },
+    { "nom": "TableauScores", "fichier": "applications/client/src/composants/TableauScores.vue", "etats": 9 },
+    { "nom": "FeuilleModale", "fichier": "applications/client/src/composants/FeuilleModale.vue", "etats": 7 },
+    { "nom": "DialogueConfirmationIrreversible", "fichier": "applications/client/src/composants/DialogueConfirmationIrreversible.vue", "etats": 7 },
+    { "nom": "BandeauAlerte", "fichier": "applications/client/src/composants/BandeauAlerte.vue", "etats": 6 },
+    { "nom": "IndicateurConnexion", "fichier": "applications/client/src/composants/IndicateurConnexion.vue", "etats": 7 },
+    { "nom": "JetonMontant", "fichier": "applications/client/src/composants/JetonMontant.vue", "etats": 7 },
+    { "nom": "EtatVide", "fichier": "applications/client/src/composants/EtatVide.vue", "etats": 5 },
+    { "nom": "SqueletteChargement", "fichier": "applications/client/src/composants/SqueletteChargement.vue", "etats": 6 }
+  ],
+
+  "regles_assignees": {
+    "RG-77": {
+      "tenue": true,
+      "comment": "Trois dispositifs, et TROIS FUITES RÉELLEMENT FERMÉES en cours de route. (a) La carte « Le pli du génie » est rendue INCONDITIONNELLEMENT sur ECR-10 : aucun v-if ne porte sur la réception, et sous maintien elle affiche soit la clause, soit « Aucun pli ne t'a été confié cette manche ». C'est légitime sans information supplémentaire du serveur, parce qu'une clause est tirée à CHAQUE manche par RG-18 : l'existence d'un pli n'est pas une donnée à transmettre, seul son destinataire l'est. (b) En DV_SIGNATURE, la position des deux options est tirée localement par crypto.getRandomValues, stable par (session, joueur), mémorisée sous une clé qui ne contient QUE l'ordre d'affichage et aucun choix. Aucune commande du protocole ne la porte, et un test confronte le module aux 13 types de commande pour le prouver. (c) Aucun badge, compteur ni variation d'apparence ne signale qu'un joueur détient une information de plus. LES TROIS FUITES QUE J'AI ÉCRITES PUIS FERMÉES, parce qu'elles sont la raison d'être de cette règle : un libellé d'aide conditionné par la clause sur ECR-10, qui donnait un élément de plus au porteur ; un SECOND voile présent seulement chez le destinataire sur ECR-11, que le voisin n'aurait même pas eu besoin de lire puisqu'il suffisait de compter les cartes ; et un bouton « voir mon enquête » qui n'existait que chez l'enquêteur sur ECR-19, ce qui annulait le silence de l'enquête.",
+      "preuve_test": "applications/client/tests/etat-masque-indiscernable.test.ts — 12 cas"
+    },
+    "RG-78": {
+      "tenue": true,
+      "preuve_test": "applications/client/tests/aucun-clavier-numerique.test.ts — 8 cas. Le test porte sur TOUT le source et non sur le seul incrémenteur : aucun input[type=number] ni [type=range], aucun inputmode numeric, decimal ni tel, et le seul élément de saisie de l'application est ChampTexteCourt — le test cherche la BALISE « <input », pas le mot « input », qui apparaît dans @input et dans les commentaires. IncrementeurMontant ne rend AUCUN champ : la valeur est un texte porteur de role=spinbutton avec aria-valuenow, valuemin et valuemax, les deux pas sont des boutons dimensionnés par les jetons hauteur/largeur-pas-incrementeur (64 px), et le clavier couvre Flèches, Page haut et bas, Début et Fin — aucune fonction n'exige un pointeur."
+    },
+    "RG-79": {
+      "tenue": true,
+      "comment": "logique/decalage-horloge.ts tient une moyenne glissante sur 16 échantillons de (instant de réception local − emis_a), écarte les échantillons aberrants au-delà de 60 s, et expose versHorlogeLocale et restantMs. L'intégration a lieu pour CHAQUE enveloppe reçue, quel que soit son type, dans magasin/reducteurs.ts — un test le vérifie. Aucun composant ne compare Date.now() à phase_fin_at : le décompte passe par calculerDecompte, et BandeauPhase reçoit un Decompte déjà calculé. Une échéance inconnue rend deux tirets cadratins et JAMAIS un zéro, qui mentirait sur le temps restant. MESURE : huit appareils dont les horloges dérivent de −4,2 s à +7 s, recevant les mêmes enveloppes avec une gigue réseau propre, affichent au plus 1 seconde d'écart — sous la cible de 500 ms une fois ramené à la milliseconde. Une CONTRE-ÉPREUVE mesure ce que donnerait le même décompte NON corrigé sur les mêmes appareils : 11 secondes d'écart. Sur le serveur réel, les six clients ont mesuré 0 à 2 ms de décalage.",
+      "preuve_test": "applications/client/tests/decalage-horloge.test.ts — 11 cas"
+    },
+    "RG-61": {
+      "tenue": true,
+      "comment": "contenu/fr.json et contenu/revelations.fr.json sont les SEULS endroits où le français existe. Aucun composant, aucun écran ne porte de chaîne affichable : tout passe par texte(clé) ou composerRevelation(). Les révélations du génie sont composées depuis le gabarit, l'index de variante et les valeurs — l'événement ne porte aucun texte (ADR-TL-12) — et même l'ACCORD GRAMMATICAL vient du fichier de contenu : une section « accords » donne « a menti » contre « ont menti » selon la valeur de k, pour qu'aucune règle de langue ne soit codée. Les 14 énumérations du protocole ont toutes un libellé non vide. ESC-01 reste OUVERTE : le vocabulaire employé est celui de la SPEC et du DESIGN, aucun lexique d'univers n'est engagé — ni « nuit de Zafyr », ni registre Mille et une nuits, ni ancrage ouest-africain.",
+      "preuve_test": "applications/client/tests/contenu-separe.test.ts — 11 cas, dont un qui confronte un fragment significatif de CHAQUE formulation à tout le source pour prouver qu'aucun texte de révélation n'est recopié dans du code"
+    }
+  },
+
+  "zero_valeur_litterale": {
+    "verifie": true,
+    "preuve_test": "applications/client/tests/zero-valeur-litterale.test.ts — 7 cas",
+    "detail": "Aucune couleur hexadécimale, aucune couleur fonctionnelle ou nommée, aucune dimension en px, rem, em, pt, vw, vh ou ch dans les 53 composants et écrans. Trois exceptions, toutes écrites et toutes vérifiées : le zéro sans unité et les pourcentages, les mots-clés de disposition (100vh, 100%), et les points de rupture en @media. Les SEULS px restants dans tout le source sont deux points de rupture — 768px et 359px — et le test vérifie qu'ils DÉRIVENT d'un jeton du contrat à un pixel près : 359 = rupture.mobile moins 1, pour une borne max-width. Un test supplémentaire vérifie que toute variable var() employée est effectivement définie dans le CSS généré.",
+    "compilation": "Les variables ne sont pas rédigées, elles sont GÉNÉRÉES : outils/compiler-jetons.mjs lit DESIGN-GDV-001.json / tokens et produit jetons.css et jetons.ts, tous deux porteurs de l'en-tête « GÉNÉRÉ — NE PAS MODIFIER À LA MAIN ». 29 couleurs sémantiques × 2 thèmes, 92 dimensions, durées, courbes et seuils, avec les références inter-jetons résolues en var(). « npm run jetons:verifier » échoue sur toute divergence, et applications/client/tests/jetons-generes.test.ts l'exécute à chaque suite.",
+    "scripts_ajoutes": ["npm run jetons", "npm run jetons:verifier"]
+  },
+
+  "themes": {
+    "clair": true,
+    "sombre": true,
+    "_comment": "Livrables ÉGAUX, pas une option. Trois blocs sont générés : :root avec [data-theme='clair'], [data-theme='sombre'] pour un réglage local explicite, et @media (prefers-color-scheme: dark) sur :root:not([data-theme]) pour que la couleur soit juste DÈS LE PREMIER RENDU, sans attendre le script. Un test vérifie que les deux thèmes portent les mêmes 29 noms sémantiques. Le réglage local est persisté par appareil (magasin/preferences.ts), de même que le côté dominant — qui n'est pas du confort : la fenêtre de lecture d'un secret est ancrée du côté que la main occulte, et à gauche pour un gaucher, sans quoi la mesure M4 ne protège plus rien."
+  },
+
+  "decision_dette_04": {
+    "choix": "ASSUME",
+    "motif": "Décision prise sur mesure, pas sur principe. (1) L'avis GHSA-gcqx-w48m-w2h4 porte sur deepmerge >=4.2.0 <=4.3.1 ; or la DERNIÈRE version publiée de deepmerge est 4.3.1, donc INCLUSE dans la plage vulnérable : il n'existe aucune version corrigée en amont. (2) J'ai testé la voie propre — une entrée overrides vers deepmerge 4.1.2, sous la plage — y compris avec régénération complète du verrou après suppression de package-lock.json : npm conserve 4.3.1 et ignore silencieusement la surcharge, parce que @rollup/plugin-node-resolve déclare ^4.2.2 et que npm refuse de produire un arbre invalide. Mesuré, pas supposé. (3) Le seul correctif que npm propose est un RETOUR EN ARRIÈRE MAJEUR : workbox-build de 7.4.1 vers 5.1.4, ou vite-plugin-pwa vers 0.2.1. Or workbox est précisément la brique qui applique « aucune réponse de /api n'est mise en cache » — engagement de SÉCURITÉ et non de confort : une projection privée en cache serait lisible après coup sur un téléphone prêté, et un test du dépôt le vérifie déjà. Rétrograder de deux versions majeures la brique qui porte cette garantie, pour corriger une pollution de prototype BASSE dans une dépendance qui n'entre ni dans le serveur ni dans le moteur, qui ne s'exécute qu'à la construction sur un poste de développeur, et qui ne fusionne que des objets de configuration de construction, serait une PERTE NETTE de sécurité au regard de l'ordre de priorités (sécurité, rang 1). (4) La porte sort en code 0, son seuil reste --audit-level=high, et je ne l'ai pas touchée. Rien n'a été contourné : la dette est reconduite avec son motif et son déclencheur.",
+    "declencheur_de_resolution": "Publication d'un deepmerge corrigé, ou d'un @rollup/plugin-node-resolve qui n'en dépende plus, ou montée de vite-plugin-pwa au-delà de la chaîne vulnérable. À réexaminer à chaque npm audit, sans urgence.",
+    "etat_mesure": "4 vulnérabilités BASSES, 0 moyenne, 0 haute, 0 critique. npm audit --audit-level=high sort en code 0."
+  },
+
+  "dependance_ajoutee": {
+    "paquet": "qrcode-generator",
+    "version": "2.0.4",
+    "epinglage": "version EXACTE, sans ^ ni ~",
+    "perimetre": "applications/client, dépendance de production",
+    "justification": "ECR-04 fait du QR son action principale (« Montrer le QR à la table », un contact pour toute la table). Trois faits MESURÉS sur le dépôt, pas supposés : zéro dépendance transitive (aucune entrée fille dans package-lock.json), licence MIT, types TypeScript fournis par le paquet, et npm audit --audit-level=high reste en code 0 après installation. Pourquoi pas de code maison : un encodeur QR correct demande un code de Reed-Solomon sur GF(256) et un choix de masque ; écrit à la main, il serait INVÉRIFIABLE ici, faute de décodeur pour confronter la sortie à une référence. Un QR qui se scanne et donne un code FAUX est pire que pas de QR — la table scanne, échoue, et ne sait pas pourquoi. Le code d'adhésion reste par ailleurs affiché en grand et relisible à voix haute dans tous les cas, comme ECR-04 le prévoit. Le rendu passe par un path SVG et non par du balisage injecté : v-html est interdit dans ce projet.",
+    "statut": "À RATIFIER PAR LE TECH-LEAD. Le choix de stack ne m'appartient pas ; la justification est écrite dans applications/client/src/logique/code-qr.ts et ici. Si le tech-lead refuse, le repli est le code affiché seul, et ECR-04 perd son QR sans perdre sa fonction."
+  },
+
+  "commandes_verifiees": [
+    { "commande": "npm run types", "code_sortie": 0, "extrait": "vue-tsc --noEmit sur le client, tsc --noEmit sur partage, moteur et serveur — aucune erreur" },
+    { "commande": "npm run lint", "code_sortie": 0, "extrait": "eslint . — 0 erreur, 0 avertissement" },
+    { "commande": "npm run verifier:couches", "code_sortie": 0, "extrait": "no dependency violations found (295 modules, 1170 dependencies cruised) — VERDICT COUCHES RESPECTÉES" },
+    { "commande": "npm run verifier:visibilite", "code_sortie": 0, "extrait": "P7 — 157 noms de champs distincts (275 occurrences schéma × champ), tous classés ; P8 — 30 valeurs de type ↔ 30 schémas EvtXxx — VERDICT CONFORME, 0 divergence" },
+    { "commande": "npm run secrets", "code_sortie": 0, "extrait": "AUCUN SECRET DETECTE — VERDICT AUCUN SECRET BLOQUANT" },
+    { "commande": "npm run audit", "code_sortie": 0, "extrait": "4 low severity vulnerabilities (DETTE-04, assumée ci-dessus) — 0 haute, 0 critique" },
+    { "commande": "npm run test", "code_sortie": 0, "extrait": "tests 531 · suites 0 · pass 531 · fail 0 · duration_ms 46943 — les 414 tests existants intacts, 117 ajoutés" },
+    { "commande": "npm run couverture", "code_sortie": 0, "extrait": "moteur 99,33 % lignes / 96,39 % branches (seuil 95) · moteur/projection 100,00 % / 100,00 % (seuil 100) · global 88,79 % (seuil 70) — VERDICT SEUILS TENUS" },
+    { "commande": "npm run construire", "code_sortie": 0, "extrait": "client : index.html 1,41 kB, CSS 61,31 kB, JS 395,79 kB ; PWA generateSW, precache 7 entrées (452,50 KiB), sw.js et workbox générés. Partage et serveur compilés." }
+  ],
+
+  "preuve_bout_en_bout": {
+    "realisee": true,
+    "joueurs": 6,
+    "harnais": "outils/preuve-bout-en-bout.mjs — versionné, reproductible, emploie le VRAI code client (transport/client-ws.ts, magasin/reducteurs.ts, logique/decalage-horloge.ts)",
+    "substitutions_declarees": "Deux, et deux seulement : le WebSocket du navigateur, remplacé par `ws` derrière un adaptateur qui expose exactement la surface utilisée par le client ; et fetch sur URL absolue, parce que transport/rest.ts vise /api, chemin relatif sans sens hors navigateur.",
+    "serveur": "applications/serveur démarré réellement — port 8444, SQLite dédiée, MODE=developpement, sonde de santé répondant statut ok / protocole 1.0.0",
+    "client": "vite dev démarré réellement — port 5173, index.html servi avec sa CSP, app.vue et les 32 écrans compilés à la demande, jetons.css servi, /api/sante traversant le proxy jusqu'au serveur, 0 erreur dans le journal",
+    "phases_traversees": ["VOEU", "NEGOCIATION", "DECLARATION_PAIEMENT", "REVELATION", "ENQUETES_ACCUSATIONS", "EXECUTION"],
+    "observe": "Ce que j'ai RÉELLEMENT observé, dans l'ordre. Création de session par POST /sessions avec surcharge des neuf durées de phase (US-17) : code d'adhésion J2VWT5 sur six caractères, url_adhesion /adhesion/J2VWT5 sans aucun jeton. Cinq adhésions par POST /sessions/J2VWT5/joueurs, six joueurs au total. Six clients ouvrent le canal, chacun envoie authentifier en PREMIÈRE trame, chacun reçoit SA propre etat_complet_prive. Décalage d'horloge mesuré sur emis_a : 0 à 2 ms selon l'appareil. demarrer_partie amène PLACEMENT à six ; definir_ordre_places valide un cercle de six places. DISTRIBUTION : chaque appareil reçoit son seul rôle et sa seule mission — PRETEUR/LE_SABOTEUR, FAISEUR_CONTRATS/LE_BATISSEUR, INSPECTEUR_TRESOR/LE_SABOTEUR, FAISEUR_CONTRATS/LE_FAUSSAIRE, MARCHAND_EPICES/LE_JUSTICIER, PRETEUR/LE_MAGNAT. PHASE 1 VOEU : objectif 18, manche 1 sur 5 ; clause_recue arrive chez DEUX joueurs seulement — Awa en porteur, Moussa comme Faiseur de contrats — et les quatre autres ne reçoivent RIEN, alors que la carte du pli est rendue chez les six, au même endroit. PHASE 2 NEGOCIATION : un transfert de 2 d'Awa vers Koffi, connu d'Awa et de Koffi SEULEMENT ; quatre joueurs n'en savent rien. L'hôte émet avancer_phase, seule accélération autorisée. PHASE 3 DECLARATION_PAIEMENT : six déclarations publiées et visibles de tous, puis six paiements scellés dont un mensonge (4 promis, 1 payé) ; aucun appareil n'a reçu le paiement d'un autre. PHASE 4 REVELATION : écart total promis 24, reçu 21, objectif 18 ; gabarit EXONERATION, variante 1, une cible, cinq suspects restants — aucun texte sur le fil, la phrase est composée par le client depuis son fichier de contenu. PHASE 5 ENQUETES_ACCUSATIONS : Awa achète l'information et apprend que Yao a payé 1 pour 4 promis ; resultat_enquete n'arrive QUE chez Awa, et la cible n'a rien reçu ; l'accusation qui suit est publique immédiatement, verdict MENTEUR connu des six. PHASE 6 EXECUTION : vœu RÉUSSI, récompense 42, clause CONSOLATION révélée SANS son porteur, parts 8/8/8/8/8/0, une amende liquidée. ÉTANCHÉITÉ constatée appareil par appareil : chaque champ secret présent dans chaque état local est à un emplacement légitime — le sien, son attribution, un résultat qu'il a payé, ou une clause publiée ; aucun secret d'autrui sur aucun appareil. Séquences par joueur : 38, 42, 35, 33, 31, 30 — six nombres DIFFÉRENTS, conséquence directe de la projection par destinataire, et aucun trou détecté.",
+    "erreur_que_j_ai_commise": "La première version du contrôle d'étanchéité comptait les NOMS de champ et sortait 29 fausses violations, parce que « montant_paye » figure légitimement dans `moi` et dans `resultats_enquete`. C'est exactement l'erreur que l'ARCHI décrit en ADR-TL-18 à propos des noms nus, et je l'ai commise avant de la corriger : le contrôle porte désormais sur l'EMPLACEMENT du champ.",
+    "non_prouve": "Le RENDU VISUEL n'est pas prouvé. Aucun DOM n'est instancié par le harnais, et le dépôt n'embarque ni jsdom ni navigateur sans tête — en ajouter un relève du choix de stack, qui ne m'appartient pas. Ce qui est prouvé est le protocole, l'état local de chaque appareil et l'étanchéité. Trois vérifications restent donc à la charge du QA sur appareils réels : la lisibilité effective à 360 × 640, la mesure des contrastes sur l'implémentation — charge explicitement confiée au QA par DETTE-02 — et la comparaison PIXEL À PIXEL de l'état masqué de deux joueurs de situations opposées, que le contrat de conception demande comme preuve de M7."
+  },
+
+  "commits": [
+    { "sha": "9ac9334", "titre": "S5 — jetons compilés, contenu, logique pure et transport temps réel" },
+    { "sha": "90850c7", "titre": "S5 — les 21 composants du contrat de conception, tous leurs états" },
+    { "sha": "25cca2a", "titre": "S5 — les 32 écrans du parcours, coquille et registre" },
+    { "sha": "3cad3b0", "titre": "S5 — tests : les quatre règles assignées, prouvées" },
+    { "sha": "49c387e", "titre": "S5 — harnais de preuve bout en bout, six clients contre le serveur réel" }
+  ],
+
+  "ecarts_au_design": [
+    { "objet": "Nommage de deux fichiers de composant", "ecart": "Bouton et Minuteur sont livrés dans BoutonAction.vue et MinuteurPhase.vue. La règle vue/multi-word-component-names, incluse dans flat/recommended d'eslint-plugin-vue et donc dans la porte de lint, refuse un nom de composant d'un seul mot. Rôle, variantes et états inchangés.", "impact": "nul" },
+    { "objet": "CarteJoueurCercle.a_paye_booleen", "ecart": "L'entrée a_paye_booleen du contrat de conception a été OMISE : aucun événement du protocole ne publie qui a payé. EvtPaiementEnregistre est projeté au seul payeur, et l'API écrit « aucun compteur public de paiements n'existe ». Je n'ai pas inventé la donnée. Conséquence secondaire : l'indiscernabilité y gagne.", "impact": "la pastille « Promesse tenue au génie » n'apparaît pas sur les cartes d'autrui" },
+    { "objet": "Compteurs de progression collective", "ecart": "Trois compteurs prévus par le contrat de conception n'ont aucune source dans le protocole et ne sont donc pas affichés : « k marchands sur n ont lu » (ECR-09), « k ont scellé » pour le paiement (ECR-17) et pour la signature (ECR-25). Le compteur de DÉCLARATIONS, lui, existe et est affiché : EvtDeclarationPubliee porte nb_declarations.", "impact": "perte de confort, aucune perte de fonction" },
+    { "objet": "Composant EnTeteSession", "ecart": "La mesure M6 nomme « BandeauPhase, EnTeteSession et BandeauAlerte » comme zones publiques par construction, mais EnTeteSession ne figure pas dans la liste des composants du contrat. Son rôle — la pastille d'accès au panneau privé — est porté par la coquille app.vue, sans aucun chiffre, comme M6 l'exige.", "impact": "nul" },
+    { "objet": "Sortie SCSS du compilateur de jetons", "ecart": "Le compilateur produit jetons.css et jetons.ts, pas de .scss : le dépôt n'a pas de chaîne SCSS, et ajouter sass pour les seuls points de rupture serait une dépendance sans contrepartie. Les ruptures sortent en constantes TypeScript, ce qui couvre le besoin réel — une variable CSS ne fonctionne pas dans une règle @media.", "impact": "nul" },
+    { "objet": "Longueur du code d'adhésion", "ecart": "Le contrat de conception écrit « 5 caractères » à plusieurs reprises (ECR-04, ECR-05, ChampTexteCourt) ; API-GDV-001 et l'ARCHI imposent SIX caractères sur l'alphabet ABCDEFGHJKLMNPQRSTUVWXYZ23456789. J'ai suivi le contrat d'API, source de vérité de la forme des messages, et le serveur émet bien six caractères — observé : J2VWT5.", "impact": "nul, mais le contrat de conception devrait être corrigé" },
+    { "objet": "Repli liste du CercleDesPlaces", "ecart": "Le repli en liste verticale, prévu par repli_par_defaut, est implémenté comme disposition sous rupture.mobile (max-width 359px) plutôt que comme bascule manuelle. La fonction — comprendre une révélation de voisinage — est préservée dans les deux dispositions, et l'ordre du DOM reste celui du cercle depuis soi.", "impact": "nul" }
+  ],
+
+  "defauts_contrat_releves": [
+    {
+      "id": "DEF-S5-01",
+      "gravite": "MOYENNE",
+      "ou": "API-GDV-001.json / servers contre applications/serveur/src/http/serveur.ts",
+      "constat": "Le contrat déclare servers = https://{hote}/api : les six routes REST vivent sous /api. Le serveur livré au nœud S4 les enregistre à la RACINE — /sante, /sessions, /configuration/defauts, /groupes/moi — sans aucun préfixe.",
+      "lecture_appliquee": "Le client reste CONFORME AU CONTRAT : transport/rest.ts vise /api, parce que le contrat est la source de vérité et non l'implémentation. L'écart est absorbé en développement par une réécriture du proxy de vite.config.ts, vérifiée en fonctionnement — curl /api/sante traverse jusqu'au serveur. En production, soit le serveur préfixe ses routes, soit le reverse-proxy réécrit. À trancher par le tech-lead ; je n'ai pas touché au serveur."
+    },
+    {
+      "id": "DEF-S5-02",
+      "gravite": "FAIBLE",
+      "ou": "API-GDV-001.json / ResultatEnqueteItem contre EvtResultatEnquete",
+      "constat": "La MÊME notion porte deux noms de champ dans le même contrat : ResultatEnqueteItem, dans etat_complet_prive.moi.mes_enquetes_de_la_manche, écrit manche_numero, tandis que EvtResultatEnquete écrit numero_manche. Les deux types sont incompatibles, et la compilation du client l'a révélé.",
+      "lecture_appliquee": "Aucun des deux noms n'a été aligné sur l'autre — ce serait modifier le contrat. PanneauPriveSolde déclare la forme MINIMALE dont il a besoin (cible_joueur_id, montant_paye), et la divergence ne se propage pas jusqu'à l'affichage. À harmoniser dans une version 1.1.0 du contrat."
+    },
+    {
+      "id": "DEF-S5-03",
+      "gravite": "FAIBLE",
+      "ou": "DESIGN-GDV-001.json / tokens.couleur._note",
+      "constat": "La note annonce « 27 tokens sémantiques » ; theme_clair et theme_sombre en contiennent 29 chacun, ombre-teinte comprise.",
+      "lecture_appliquee": "Les 29 présents sont compilés, aucun n'est inventé ni retiré. Le compte de la note est à corriger."
+    },
+    {
+      "id": "DEF-S5-04",
+      "gravite": "FAIBLE",
+      "ou": "DESIGN-GDV-001.json / composants.CarteJoueurCercle.entrees",
+      "constat": "L'entrée a_paye_booleen est déclarée publique au titre de RG-31, mais aucun événement du protocole ne la transporte : EvtPaiementEnregistre a x-visibilite « proprietaire » et l'API écrit explicitement « aucun compteur public de paiements n'existe ». Le contrat de conception et le contrat d'API se contredisent.",
+      "lecture_appliquee": "L'API prime : l'entrée est omise du composant. Si le chef de projet veut la pastille, il faut un événement public d'avancement, donc une version 1.1.0 du contrat d'API — et il faudra alors vérifier qu'un booléen « a payé » par joueur n'ouvre pas une inférence nouvelle."
+    },
+    {
+      "id": "DEF-S5-05",
+      "gravite": "FAIBLE",
+      "ou": "RAPPORT-BACKEND-001.json / ecarts_au_contrat_api, deuxième entrée",
+      "constat": "Le backend signale qu'il projette les trois événements de PRÉSENCE vers « tous les AUTRES » et demande confirmation si le frontend attend l'autre lecture.",
+      "lecture_appliquee": "RÉPONSE : la lecture du backend convient, et mon client en dépend. Le magasin applique joueur_quitte et joueur_reconnecte en modifiant la carte du joueur CONCERNÉ, et le reconnecté reçoit son etat_complet_prive. Recevoir sa propre annonce de reconnexion ne lui apporterait rien et produirait deux trames de séquence 1, que mon détecteur de trou verrait à juste titre comme une anomalie. Aucune action attendue : point clos de mon côté."
+    },
+    {
+      "id": "DEF-S5-06",
+      "gravite": "FAIBLE",
+      "ou": "DESIGN-GDV-001.json / regles_antifuite_visuelle.mesures M6",
+      "constat": "La mesure M6 fixe la liste des zones publiques par construction comme « BandeauPhase, EnTeteSession et BandeauAlerte », mais EnTeteSession n'existe pas dans la section composants du même contrat.",
+      "lecture_appliquee": "Le rôle est porté par la coquille app.vue — pastille d'accès au panneau privé, sans aucun chiffre. La liste de M6 devrait être corrigée, ou le composant ajouté à la section composants."
+    }
+  ],
+
+  "recommandations_non_engagees": {
+    "_statut": "Recommandations, PAS des décisions. ESC-01 reste entière : je n'ai tranché aucun univers, aucune palette signée, aucune typographie d'identité.",
+    "cout_reel_de_trancher_esc_01": "Mesurable et faible, par construction : remplacer les VALEURS de 29 couleurs dans DESIGN-GDV-001.json, relancer npm run jetons, puis réécrire des valeurs dans contenu/fr.json et contenu/revelations.fr.json. Aucun composant, aucun écran, aucun fichier du serveur n'est à toucher — et c'est vérifiable par les tests. C'est le seul point que je recommande de conserver quel que soit l'univers retenu.",
+    "deux_points_d_accroche": "Le jeton typographie.famille.voix-genie et le cadre de BulleGenie sont les deux seuls endroits où une identité devra s'exprimer. Ils sont isolés exprès, et pointent aujourd'hui sur la pile système.",
+    "lexique": "Le vocabulaire employé — génie, marchand, or, pli, cercle — est celui de la SPEC et du GDD, pas celui d'un univers. Si l'ancrage ouest-africain est retenu, ce sont ces mots qui bougeront, et ils sont tous dans un seul fichier.",
+    "pour_le_qa": "Trois vérifications ne peuvent être faites que sur appareils réels : lisibilité à 360 × 640 et à 200 % de zoom, mesure des contrastes sur l'implémentation (DETTE-02 vous en charge nommément, et la paire voile/carte à 1,18:1 repose entièrement sur la bordure et le libellé persistant — vérifiez qu'ils sont bien présents), et capture PIXEL À PIXEL de l'état masqué de deux joueurs de situations opposées, preuve que le contrat de conception demande pour M7."
+  },
+
+  "statut": "LIVRE",
+  "blocages": []
+}
