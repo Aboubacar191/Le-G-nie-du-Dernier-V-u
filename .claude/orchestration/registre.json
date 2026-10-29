@@ -217,6 +217,80 @@
       "decision": "AUCUNE MODIFICATION DU CONTRAT API. AUCUNE RESYNCHRONISATION DE S3. Les deux points deviennent des exigences du nœud S5, inscrites en RG-77 et RG-79.",
       "motif": "Vérifié dans le contrat avant de décider, pas supposé. (1) Le décalage d'horloge est DÉJÀ prescrit : x-temps-reel.horloge impose au client une moyenne glissante sur le champ emis_a que porte chaque enveloppe, cible sous 500 ms. La demande était déjà satisfaite. (2) L'uniformité de la carte de clause ne nécessite aucun message : une clause est tirée à CHAQUE manche par RG-18, donc son existence est une règle connue et non une donnée à transmettre. Le client affiche la carte inconditionnellement et révèle soit la clause reçue, soit « aucun pli ». Diffuser un message vide à tous ajouterait une trame dont la seule raison d'être serait de compenser un défaut de rendu.",
       "axe_prioritaire_invoque": "fiabilite (rang 2) : ne pas rouvrir un contrat validé pour un besoin déjà couvert."
+    },
+    {
+      "id": "CONF-07",
+      "objet": "DEF-S4-01 — Le rôle MARCHAND_DEJA_LIE du mode avancé occupe le champ role_secret, si bien que le joueur tiré perd son rôle de base et l'un des 4 pouvoirs peut disparaître de la partie.",
+      "parties": [
+        "Corriger maintenant : modifier le contrat API pour que la condition de victoire occupe l'emplacement de mission, conformément au GDD (« à la place de sa mission »), puis resynchroniser S3 et S4.",
+        "Accepter la lecture littérale du protocole, la déclarer, et corriger après le premier playtest."
+      ],
+      "note_valeur": 3,
+      "note_cout": 4,
+      "ratio": 0.75,
+      "decision": "REPORTÉ, inscrit comme dette assumée sous l'identifiant ECART-S4-01. L'intention normative est écrite dans RG-51 ; l'écart d'implémentation y est déclaré nommément.",
+      "motif": "Trois raisons concordantes. D'abord le mode avancé n'est atteignable qu'après 3 parties terminées par le même groupe (RG-50) : il est hors de portée des premiers playtests, donc la correction n'est pas urgente. Ensuite S4 est à l'itération 2 sur 3 et le QA n'a pas encore tourné : dépenser la dernière itération sur une fonctionnalité verrouillée me priverait de toute marge pour un défaut que le QA trouverait dans la boucle de jeu principale, qui est elle jouée dès la première partie. Enfin l'écart est documenté et testé (CA-37), pas silencieux. Un report tracé vaut mieux qu'une correction qui épuise la marge.",
+      "axe_prioritaire_invoque": "fiabilite (rang 2) : préserver la capacité de correction sur le cœur jouable prime sur la fidélité d'une fonctionnalité verrouillée.",
+      "condition_de_reprise": "À corriger avant le premier playtest susceptible d'atteindre le mode avancé, soit après 3 parties complètes du même groupe. Exige une version 1.1.0 du contrat API avec rupture de compatibilité déclarée."
+    },
+    {
+      "id": "CONF-08",
+      "objet": "DEF-S4-05, DEF-S4-06 et DEF-S4-07 — trois écarts entre l'ARCHI et l'implémentation, tous relevés et motivés par le backend.",
+      "parties": [
+        "Resynchroniser S3 une troisième fois pour aligner l'ARCHI sur l'implémentation.",
+        "Accepter les trois lectures et les consigner, en préservant la dernière itération du tech-lead."
+      ],
+      "note_valeur": 2,
+      "note_cout": 3,
+      "ratio": 0.67,
+      "decision": "ACCEPTÉS ET CONSIGNÉS, sans resynchronisation de S3. Le tech-lead conserve son itération 3 sur 3 pour un éventuel défaut structurel révélé par le QA.",
+      "motif": "Les trois écarts ne changent aucun comportement de jeu et vont tous dans le sens d'une vérifiabilité accrue, avec preuve par test. (DEF-S4-05) montant_declare rendu non nullable dans le moteur : un état impossible en moins est une branche invérifiable en moins sur la frontière de sécurité, et c'est derrière ce genre de branche inatteignable qu'une fuite se cache sans qu'aucun test ne la voie — l'argument est meilleur que ma règle. (DEF-S4-06) deux types réservés systeme:expiration_phase et systeme:cloture_partie, inatteignables depuis un client : sans eux ADR-TL-05 serait inapplicable, puisque le temps fait avancer le jeu autant que les commandes ; le test de rejeu le démontre. (DEF-S4-07) identifiants créés par le moteur dérivés de la graine par un générateur séparé à sel distinct, au format UUIDv4 vérifié : c'est la seule façon de réconcilier ADR-TL-10 et ADR-TL-05, qui étaient incompatibles.",
+      "a_integrer": "À replier dans l'ARCHI lors de la prochaine intervention du tech-lead, quelle qu'en soit la cause. Pas de dispatch dédié."
+    },
+    {
+      "id": "CONF-09",
+      "objet": "Ratification de la dépendance qrcode-generator@2.0.4, ajoutée par le nœud S5 hors de la liste de l'ARCHI.",
+      "note_valeur": 4,
+      "note_cout": 1,
+      "ratio": 4.0,
+      "decision": "RATIFIÉE.",
+      "motif": "Les trois faits avancés ont été VÉRIFIÉS par moi, pas acceptés sur parole : licence MIT, zéro dépendance transitive, version épinglée exactement sans caret. L'argument décisif n'est pas la commodité mais la vérifiabilité : un encodeur QR maison exige un code de Reed-Solomon sur GF(256) et un choix de masque, et serait invérifiable faute de décodeur pour confronter la sortie à une référence. Or un QR qui se scanne et rend un code FAUX est pire que pas de QR — la table scanne, échoue, et ne comprend pas pourquoi. Le code d'adhésion textuel reste par ailleurs disponible comme repli.",
+      "axe_prioritaire_invoque": "fiabilite (rang 2)"
+    },
+    {
+      "id": "CONF-10",
+      "objet": "DETTE-04 — les 4 vulnérabilités basses de la chaîne de construction PWA, que S5 a choisi d'assumer.",
+      "note_valeur": 5,
+      "note_cout": 1,
+      "ratio": 5.0,
+      "decision": "DÉCISION DE L'AGENT CONFIRMÉE : dette reconduite, rien n'est corrigé, la porte n'est pas touchée.",
+      "motif": "J'ai vérifié le fait central moi-même : deepmerge 4.3.1 est la DERNIÈRE version publiée et elle est incluse dans la plage vulnérable (>=4.2.0 <=4.3.1). Il n'existe donc AUCUN correctif amont — la dette n'est pas un report de confort, c'est une impossibilité. Le seul remède proposé par npm est une rétrogradation majeure de workbox, de 7.4.1 vers 5.1.4. Or workbox est précisément la brique qui applique « aucune réponse de /api n'est mise en cache », laquelle est un engagement de SÉCURITÉ : une projection privée en cache resterait lisible sur un téléphone prêté après la partie. Rétrograder de deux versions majeures la brique qui porte cette garantie, pour corriger une pollution de prototype BASSE dans une dépendance qui ne s'exécute qu'à la construction sur un poste de développeur et n'entre ni dans le serveur ni dans le moteur, serait une PERTE NETTE de sécurité. L'agent a classé correctement selon l'axe de rang 1.",
+      "axe_prioritaire_invoque": "securite (rang 1), appliqué dans les deux sens : c'est l'axe qui fait REFUSER le correctif."
+    },
+    {
+      "id": "CONF-11",
+      "objet": "DEF-S5-01 — Le contrat API déclare les 6 routes REST sous le préfixe /api ; le serveur livré en S4 les enregistre à la racine.",
+      "parties": [
+        "Corriger le serveur maintenant (itération 3 sur 3 de S4, pour un préfixe de route).",
+        "Corriger le contrat (itération 3 sur 3 du tech-lead).",
+        "Grouper la correction avec les constats du QA en une seule reprise de S4."
+      ],
+      "note_valeur": 3,
+      "note_cout": 2,
+      "ratio": 1.5,
+      "decision": "GROUPÉE AVEC LE NŒUD S6. Le contrat prime, donc c'est le SERVEUR qui se conformera ; mais la correction est reportée pour être groupée avec les éventuels constats du QA, en une seule reprise de S4.",
+      "motif": "Le frontend a eu raison de rester conforme au contrat plutôt qu'à l'implémentation, et d'absorber l'écart par une réécriture de proxy en développement, vérifiée en fonctionnement. L'écart n'est donc pas bloquant aujourd'hui, et le déploiement n'est pas dans ce cycle. Dépenser l'itération 3 de S4 maintenant sur un préfixe de route me priverait de la marge nécessaire si le QA trouve un défaut de fond. Le QA aura pour charge de confirmer cet écart, et tout sera corrigé d'un seul passage.",
+      "axe_prioritaire_invoque": "fiabilite (rang 2) : préserver la marge de correction sur le cœur jouable."
+    },
+    {
+      "id": "CONF-12",
+      "objet": "DEF-S5-04 — Le DESIGN déclare une pastille publique « a payé » par joueur sur la carte du cercle, alors que le contrat API énonce qu'aucun compteur public de paiements n'existe.",
+      "note_valeur": 2,
+      "note_cout": 3,
+      "ratio": 0.67,
+      "decision": "L'OMISSION EST CONFIRMÉE. Le frontend a eu raison de faire primer l'API sur le DESIGN.",
+      "motif": "La hiérarchie est la bonne : le contrat d'API gouverne ce qui sort du serveur, le contrat de conception ne peut pas créer une donnée que le protocole ne transporte pas. Sur le fond, si un retour d'avancement est souhaité — le prototype éprouvé affichait « 4 marchands sur 6 ont validé » — la forme sûre est un COMPTE AGRÉGÉ, pas un booléen par joueur : l'agrégat n'attribue rien à personne. Cela exigerait une version 1.1.0 du contrat d'API, et une vérification qu'un agrégat n'ouvre pas d'inférence par recoupement avec les déclarations publiques. Reporté, inscrit comme amélioration et non comme défaut.",
+      "axe_prioritaire_invoque": "securite (rang 1)"
     }
   ],
 
@@ -235,6 +309,22 @@
     }
   ],
   "dette_assumee_produit": [
+    {
+      "id": "ECART-S4-01",
+      "objet": "En mode avancé, le Marchand déjà lié perd son rôle de base et son pouvoir ; l'un des 4 pouvoirs peut donc disparaître de la partie.",
+      "origine": "DEF-S4-01, relevé par le dev-backend. Ambiguïté d'origine dans MA spécification, qui faisait recevoir un « rôle » à la place d'une « mission ».",
+      "statut": "ASSUMÉ ET DÉCLARÉ (CONF-07). Intention normative écrite dans RG-51, écart nommé dans la même règle.",
+      "portee_reelle": "Nulle avant 3 parties terminées par le même groupe (RG-50). Inatteignable en premier playtest.",
+      "cout_de_correction": "Version 1.1.0 du contrat API avec rupture de compatibilité déclarée, plus une reprise du backend et du frontend."
+    },
+    {
+      "id": "DETTE-04",
+      "objet": "Quatre vulnérabilités BASSES dans la chaîne de dépendances PWA du client : deepmerge (GHSA-gcqx-w48m-w2h4, pollution de prototype) via @rollup/plugin-node-resolve puis workbox-build puis vite-plugin-pwa.",
+      "origine": "DEF-S4-08, relevé par le dev-backend qui a refusé de la corriger hors de son périmètre.",
+      "analyse": "Aucune de ces dépendances n'entre dans le serveur ni dans le moteur : ce sont des outils de construction du client. La porte d'audit sort en code 0, son seuil étant la sévérité haute. La correction exige workbox-build 5.1.4, un changement de version majeure de la chaîne PWA.",
+      "statut": "ASSUMÉE. Transmise au nœud S5 pour décision, pas pour contournement.",
+      "declencheur_de_resolution": "À trancher par le frontend ou l'ingénieur DevOps lors du travail sur la chaîne PWA."
+    },
     {
       "id": "DETTE-01",
       "objet": "Un lecteur d'écran énonce les secrets à voix haute devant la table.",

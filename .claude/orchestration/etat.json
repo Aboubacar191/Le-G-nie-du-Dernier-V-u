@@ -72,8 +72,14 @@
       "nom": "BACKEND",
       "agent": "dev-backend",
       "dependances": ["S3", "S3B"],
-      "statut": "EN_COURS",
+      "statut": "VALIDE",
       "iteration": 2,
+      "validation_iteration_2": "Contrôle de livraison indépendant : j'ai rejoué moi-même les NEUF portes, aucune sur la foi du rapport. types=0 · lint=0 · verifier:couches=COUCHES RESPECTÉES · verifier:visibilite=CONFORME 0 divergence · secrets=AUCUN SECRET BLOQUANT · audit=0 (4 basses, 0 haute) · test=414/414, 0 échec · couverture=SEUILS TENUS (moteur 99,33 % lignes et 96,39 % branches pour un seuil de 95 ; projection 100 % et 100 % pour un seuil de 100 ; global 89 % pour un plancher de 70) · construire=0, PWA générée. 192 fichiers TypeScript dont 73 de tests.",
+      "matrice_de_gains": "REPRODUITE PAR LE MOTEUR RÉEL, et j'ai refait l'arithmétique indépendamment : 5 honnêtes à 4 plus un menteur à 1 donnent 21 payés, récompense 42, poids 4 chacun, part = plancher(42×4/24) = 7. Honnête −4+7 = +3 ; menteur impuni −1+7 = +6 ; menteur démasqué −1+0−6 = −7. D'où E[Mensonge] = 6−13p, E[Vérité] = 3, indifférence à p = 3/13 ≈ 23,08 %, accusation juste +6, fausse accusation −2. Les quatre chiffres du GDD sortent du moteur sans qu'aucune règle n'ait été ajustée pour eux.",
+      "partie_complete": "Jouée de bout en bout, 5 manches, 6 joueurs, graine fixée. Manche 1 réussie à l'objectif exact (18 payés pour 18), manche 2 échouée (13 payés). Scores finaux cohérents, dont un joueur à 16 pièces classé 2e avec 26 points par mission réussie — la mécanique de mission inverse bien un classement.",
+      "defauts_remontes": "8, tous avec lecture littérale appliquée et AUCUNE règle de jeu inventée. 4 ont corrigé ma SPEC (portée en 1.3.0), 3 sont des écarts d'ARCHI acceptés (CONF-08), 1 est une dette transmise à S5 (DETTE-04).",
+      "non_conformite_de_procedure": "Le brief imposait des commits par palier ; l'agent n'a rien commité (178 changements en attente). J'ai sécurisé le travail moi-même en 4 paliers thématiques, fusionnés en avance rapide sur main : 110b858 (migration Zod et protocole), 4f6d48e (moteur et projection), b957da1 (serveur et persistance), d7ef5d3 (rapport et SPEC 1.3.0). Portes revérifiées vertes après fusion, arbre propre. À rappeler dans les briefs suivants.",
+      "note_rapport": "Le rapport s'auto-déclare itération 1 alors qu'il s'agit de l'itération 2 (reprise). Sans conséquence matérielle, signalé pour l'exactitude du registre.",
       "incident_iteration_1": {
         "cause": "Interruption externe — limite de session de l'API, puis blocage sans progression pendant 600 s. AUCUN rapport livré, aucun commit effectué.",
         "imputabilite": "NON IMPUTABLE au contenu du travail ni à la qualité du brief. La règle du signal d'alerte (« si l'itération 2 échoue pour une raison DIFFÉRENTE de la 1, geler ») ne s'applique donc pas : l'itération 1 n'a produit aucun échec de diagnostic à comparer.",
@@ -110,8 +116,14 @@
       "nom": "FRONTEND",
       "agent": "dev-frontend",
       "dependances": ["S2", "S3", "S4"],
-      "statut": "EN_ATTENTE",
-      "iteration": 0,
+      "statut": "VALIDE",
+      "iteration": 1,
+      "validation": "Contrôle de livraison indépendant sur la branche s5-dev-frontend AVANT toute fusion. J'ai rejoué les NEUF portes moi-même : types=0 · lint=0 · verifier:couches=0 · verifier:visibilite=0 · secrets=0 · audit=0 · construire=0 · test=531/531 avec 0 échec · couverture=SEUILS TENUS (moteur 99,33 % lignes et 96,39 % branches ; projection 100 % et 100 % ; global 88,79 % sur 121 fichiers). 84 fichiers client, 34 vues, 22 composants. 32 écrans et 21 composants déclarés implémentés.",
+      "point_remarquable": "L'agent a ÉCRIT PUIS FERMÉ trois fuites visuelles réelles, et les a documentées au lieu de les taire : un libellé d'aide conditionné par la clause (qui donnait un indice de plus au porteur), un second voile présent seulement chez le destinataire sur l'écran de clause (où il suffisait au voisin de COMPTER LES CARTES), et un bouton « voir mon enquête » n'existant que chez l'enquêteur (ce qui annulait tout le silence de l'enquête). Ce sont exactement les fuites du canal physique que l'étanchéité serveur ne peut pas couvrir.",
+      "qualite_des_tests": "Le test de RG-78 cherche la BALISE « <input » et non le mot « input », pour éviter les faux négatifs sur @input et les commentaires. L'incrémenteur ne rend aucun champ : texte porteur de role=spinbutton avec aria-valuenow, deux boutons de 64 px, navigation complète au clavier. Le test de zéro valeur littérale ne laisse passer que deux px, et vérifie qu'ils DÉRIVENT d'un jeton du contrat à un pixel près.",
+      "themes": "Les deux thèmes sont livrés à égalité, avec prefers-color-scheme sur :root:not([data-theme]) pour que la couleur soit juste DÈS LE PREMIER RENDU. Le côté dominant est persisté par appareil, non par confort : la fenêtre de lecture d'un secret doit être ancrée du côté que la main occulte, à gauche pour un gaucher, sinon la mesure antifuite ne protège plus rien.",
+      "arbitrages_rendus": "CONF-09 dépendance QR ratifiée après vérification des 3 faits · CONF-10 DETTE-04 confirmée assumée après vérification qu'aucun correctif amont n'existe · CONF-11 écart de préfixe /api groupé avec le QA · CONF-12 omission de la pastille « a payé » confirmée, l'API primant sur le DESIGN.",
+      "note_dispatch": "Les trois dépendances sont VALIDE : S2 (32 écrans, 22 composants, tokens neutres), S3 (contrat API 1.0.0 figé), S4 (serveur réellement lançable, 414 tests). Le frontend intègre donc contre un serveur qui tourne, pas contre un simulacre — c'est la séquentialisation que j'avais imposée au départ au nom de la fiabilité.",
       "perimetre": "PWA : création/rejoint session, salle d'attente, 6 phases de manche, fin de partie. Styles placeholder.",
       "livrables": [
         "D:\\Le Génie du Dernier Vœu\\.claude\\orchestration\\contrats\\RAPPORT-FRONTEND-001.json"
@@ -225,6 +237,18 @@
       "arbitrage": "RÉCUPÉRATION (ratio 5,0). Un chantier au lint propre, aux couches respectées et ne cassant que sur un symbole mal nommé est un chantier interrompu, pas un chantier incohérent. Jeter 4093 lignes et une migration de sécurité déjà exécutée aurait détruit de la valeur sans gain de propreté.",
       "iteration_comptee": "2/3, avec mention explicite que l'échec n'est pas imputable au contenu : la règle du signal d'alerte sur divergence des causes d'échec ne s'applique pas, faute d'un premier échec de diagnostic à comparer.",
       "lecon_integree": "Le brief de reprise impose des commits progressifs par palier. Le travail n'a survécu que parce qu'il était sur disque ; aucun commit ne le protégeait."
+    },
+    {
+      "horodatage": "2026-10-28T20:30:00Z",
+      "evenement": "S4 livré en itération 2 puis VALIDE après contrôle de livraison indépendant des NEUF portes, rejouées par moi.",
+      "resultat": "414/414 tests, couverture moteur 99,33 % et projection 100 %, matrice de gains du GDD reproduite par le moteur réel avec arithmétique revérifiée par moi, partie complète de 5 manches jouée à graine fixée.",
+      "arbitrages_rendus": "CONF-07 — report tracé de l'écart ECART-S4-01 sur le Marchand déjà lié, pour préserver la dernière itération de S4 avant le passage du QA, le mode avancé étant verrouillé derrière 3 parties terminées. CONF-08 — trois écarts d'ARCHI acceptés sans resynchroniser S3, afin de préserver aussi sa dernière itération ; l'argument du backend sur les branches inatteignables était meilleur que ma règle. SPEC portée en 1.3.0 sur 4 défauts, dont le plus critique : le cadre de référence de la matrice de gains, absent, qui aurait fait conclure au QA que le moteur était faux.",
+      "action_de_securisation": "L'agent n'ayant rien commité malgré la consigne, j'ai commité son travail moi-même en 4 paliers thématiques sur une branche dédiée, puis fusionné en avance rapide sur main. Portes revérifiées vertes après fusion, arbre propre. Consigne renforcée dans le brief de S5."
+    },
+    {
+      "horodatage": "2026-10-28T20:35:00Z",
+      "evenement": "S5 dispatché (PWA). Les 4 règles qui lui sont nommément assignées (RG-77 à RG-79 et RG-61) sont placées au cœur du brief, parce qu'elles couvrent le seul canal de fuite que le serveur ne peut pas protéger : le regard du voisin assis à côté.",
+      "decision_deleguee": "DETTE-04 (4 vulnérabilités basses de la chaîne PWA) est confiée à S5 comme décision à trancher, avec interdiction de contourner la question ou de désarmer la porte."
     }
   ],
   "controles_de_livraison_programmes": [
