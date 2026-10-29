@@ -135,7 +135,13 @@
       "agent": "ingenieur-qa",
       "dependances": ["S4", "S5"],
       "statut": "EN_COURS",
-      "iteration": 1,
+      "iteration": 2,
+      "incident_iteration_1": {
+        "cause": "Interruption externe — limite de session API. Aucun rapport livré, aucun commit.",
+        "etat_recupere": "14 sondes, 2285 lignes effectives, harnais dédié. J'ai EXÉCUTÉ six sondes moi-même : elles tournent et rendent des mesures. Récupération évidente (ratio 5,0).",
+        "securisation": "J'ai commité les sondes (commit e1a87cf) avant de relancer, pour ne pas rejouer la perte de S4."
+      },
+      "trouvaille_majeure_deja_mesuree": "La sonde canaux-indirects démontre une FUITE RÉELLE que les 9 portes ne voyaient pas : le simple dénombrement des trames par client désigne le porteur de clause, les Faiseurs de contrats et l'enquêteur. Le contenu est étanche ; c'est la FORME du trafic qui fuit. Voir CONF-13 : cette mesure RÉFUTE mon propre arbitrage CONF-06, où j'avais refusé la demande du designer en n'examinant que le canal visuel.",
       "charges_specifiques_transmises": [
         "CONF-02 : vérifier qu'aucune AUTRE inférence non sanctionnée que celle du montant d'amende n'existe dans les messages de classe tous.",
         "CONF-11 : confirmer l'écart de préfixe /api entre le contrat et le serveur, pour groupage de la correction.",

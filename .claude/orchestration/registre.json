@@ -214,7 +214,9 @@
       "note_valeur": 2,
       "note_cout": 4,
       "ratio": 0.5,
+      "statut": "ROUVERT LE 2026-10-29 — DÉCISION PARTIELLEMENT ERRONÉE, voir CONF-13.",
       "decision": "AUCUNE MODIFICATION DU CONTRAT API. AUCUNE RESYNCHRONISATION DE S3. Les deux points deviennent des exigences du nœud S5, inscrites en RG-77 et RG-79.",
+      "erreur_reconnue": "Mon point (2) était FAUX. J'ai raisonné uniquement sur le canal VISUEL — le voisin qui regarde l'écran — et j'ai conclu que l'uniformité de la carte de clause relevait du rendu client. Je n'ai pas examiné le canal RÉSEAU. Le designer, en demandant que clause_recue soit diffusée à TOUS avec une charge vide, visait juste : si le serveur n'émet la trame qu'au porteur et aux Faiseurs de contrats, alors le simple DÉNOMBREMENT DES TRAMES par client désigne ces joueurs, sans qu'aucun champ secret n'ait fuité. Le QA l'a démontré par la mesure au nœud S6. J'ai rejeté une demande correcte avec un ratio valeur/coût de 0,5 calculé sur un périmètre de menace incomplet.",
       "motif": "Vérifié dans le contrat avant de décider, pas supposé. (1) Le décalage d'horloge est DÉJÀ prescrit : x-temps-reel.horloge impose au client une moyenne glissante sur le champ emis_a que porte chaque enveloppe, cible sous 500 ms. La demande était déjà satisfaite. (2) L'uniformité de la carte de clause ne nécessite aucun message : une clause est tirée à CHAQUE manche par RG-18, donc son existence est une règle connue et non une donnée à transmettre. Le client affiche la carte inconditionnellement et révèle soit la clause reçue, soit « aucun pli ». Diffuser un message vide à tous ajouterait une trame dont la seule raison d'être serait de compenser un défaut de rendu.",
       "axe_prioritaire_invoque": "fiabilite (rang 2) : ne pas rouvrir un contrat validé pour un besoin déjà couvert."
     },
@@ -291,6 +293,17 @@
       "decision": "L'OMISSION EST CONFIRMÉE. Le frontend a eu raison de faire primer l'API sur le DESIGN.",
       "motif": "La hiérarchie est la bonne : le contrat d'API gouverne ce qui sort du serveur, le contrat de conception ne peut pas créer une donnée que le protocole ne transporte pas. Sur le fond, si un retour d'avancement est souhaité — le prototype éprouvé affichait « 4 marchands sur 6 ont validé » — la forme sûre est un COMPTE AGRÉGÉ, pas un booléen par joueur : l'agrégat n'attribue rien à personne. Cela exigerait une version 1.1.0 du contrat d'API, et une vérification qu'un agrégat n'ouvre pas d'inférence par recoupement avec les déclarations publiques. Reporté, inscrit comme amélioration et non comme défaut.",
       "axe_prioritaire_invoque": "securite (rang 1)"
+    },
+    {
+      "id": "CONF-13",
+      "objet": "Correction de MON arbitrage CONF-06, réfuté par la mesure du nœud S6 : le dénombrement des trames par client désigne le porteur de clause, les Faiseurs de contrats et l'enquêteur, sans qu'aucun champ secret n'ait fuité.",
+      "mesure_qui_a_tranche": "Sonde qa/sondes/sonde-canaux-indirects.ts, que j'ai exécutée moi-même. Trames clause_recue par joueur = {J0:0, J1:0, J2:0, J3:1, J4:0, J5:1} : un observateur du trafic lit la liste « porteur ∪ FAISEUR_CONTRATS ». Trames resultat_enquete = {J3:1, tous les autres 0} : J3 est identifié comme enquêteur par le seul volume, en violation de RG-27 qui veut que l'existence d'une enquête ne soit connue que de lui.",
+      "mon_erreur": "En CONF-06, j'ai évalué la demande du designer sur le seul canal VISUEL et conclu que l'uniformité de la carte de clause relevait du rendu client. Je n'ai pas examiné le canal RÉSEAU. Mon ratio de 0,5 était calculé sur un périmètre de menace incomplet, donc faux. Le designer avait raison et je l'ai refusé.",
+      "pourquoi_c_est_materiel": "Les huit joueurs sont sur le même réseau local, dans la même pièce. Un joueur qui observe le trafic — même chiffré, le nombre et la taille des trames restant visibles par connexion — identifie le porteur de la clause et l'enquêteur. L'étanchéité du CONTENU est prouvée ; c'est la FORME du trafic qui fuit. La contrainte non négociable du GDD est contournée sans qu'une seule ligne du moteur soit en cause.",
+      "decision": "CORRECTION RETENUE : uniformisation du trafic par destinataire. Toute trame dont la seule présence révèle une information doit être émise à TOUS les joueurs, avec une charge vide ou neutre pour les non-destinataires — au minimum clause_recue et resultat_enquete. La forme contractuelle exacte (charge vide, remplissage, ou cadence uniforme) revient au tech-lead, puisqu'elle touche le contrat API.",
+      "qui_execute": "Tech-lead pour la forme contractuelle, puis dev-backend pour l'implémentation, en GROUPANT avec l'écart de préfixe /api (CONF-11) et les autres anomalies du rapport QA, en un seul passage.",
+      "axe_prioritaire_invoque": "securite (rang 1) — cette fois sur le bon périmètre de menace.",
+      "lecon": "Un arbitrage de sécurité évalué sur un seul canal n'est pas un arbitrage de sécurité. J'aurais dû demander au designer POURQUOI il voulait une diffusion à tous, au lieu de supposer connaître sa raison."
     }
   ],
 
