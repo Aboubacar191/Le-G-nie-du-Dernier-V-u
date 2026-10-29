@@ -134,8 +134,13 @@
       "nom": "QA",
       "agent": "ingenieur-qa",
       "dependances": ["S4", "S5"],
-      "statut": "EN_COURS",
+      "statut": "VALIDE",
       "iteration": 2,
+      "_distinction_essentielle": "Le NŒUD S6 est VALIDE : l'audit a été livré, validé CONFORME par le validateur, et il a fait son travail. C'est le PRODUIT qui est REJETÉ. Ne pas confondre la qualité de l'audit avec son verdict.",
+      "validation": "Contrôle de livraison indépendant : validateur QA CONFORME ; 50 verdicts (49 CONFORME, 1 NON_CONFORME) ; 13 anomalies dont 6 bloquantes, 5 majeures, 2 mineures ; assignations tech-lead 3, chef-de-projet 3, dev-backend 5, dev-frontend 2. J'ai exécuté six sondes moi-même avant la livraison et vérifié l'arithmétique d'ANO-05 : total_paye − 2 × total_consolation = Σ(paye_i mod 2), identité triviale et donc fuite certaine.",
+      "verdict_produit": "REJETE sur l'axe de priorité 1 (non-fuite). Axes 2 (matrice de gains) et 3 (machine à états) VALIDE.",
+      "qualite_de_l_audit": "Exemplaire sur trois points. (1) Il a REFUSÉ quatre de ses propres rejets après vérification ligne à ligne, consignés dans un journal des faux positifs : un rejet non reproduit aurait consommé l'itération 3 sur un fantôme. (2) Il a DÉSACTIVÉ et déclaré la comparaison de pixels faute de harnais et de référence épinglée, en précisant que cette absence n'est pas un résultat de conformité. (3) Il a éprouvé la SENSIBILITÉ À L'ORDRE des 17 étapes (amende 13 avant prêt 15), pas seulement leur dénombrement — et les 61 refus de commandes hors phase laissent tous l'état strictement inchangé.",
+      "constat_le_plus_important": "Les 9 portes étaient toutes vertes, dont la porte de visibilité à 0 divergence sur 144 occurrences champ par événement, ET SIX CANAUX FUYAIENT. Aucune des six fuites ne passe par un champ : la porte mesure la PRÉSENCE D'UN CHAMP, c'est son angle mort exact. Une couverture de 100 % sur la projection ne prouve pas l'absence de fuite ; elle prouve l'absence de fuite PAR CHAMP.",
       "incident_iteration_1": {
         "cause": "Interruption externe — limite de session API. Aucun rapport livré, aucun commit.",
         "etat_recupere": "14 sondes, 2285 lignes effectives, harnais dédié. J'ai EXÉCUTÉ six sondes moi-même : elles tournent et rendent des mesures. Récupération évidente (ratio 5,0).",
@@ -163,6 +168,25 @@
       "justification_exclusion": "Le client demande explicitement 6 livrables : cadrage, fondation, scaffolding, backend, PWA, QA. Aucun déploiement n'est demandé. Le nœud reste déclaré pour reprise ultérieure."
     }
   ],
+  "cycle_de_correction": {
+    "ouvert_le": "2026-10-29",
+    "declencheur": "Verdict produit REJETE du nœud S6 : 6 anomalies bloquantes sur l'axe de priorité 1.",
+    "decision_de_gouvernance": {
+      "objet": "Remise à zéro des compteurs d'itération pour le cycle de correction.",
+      "constat": "S3, S4 et S6 étaient chacun à l'itération 2 sur 3, soit une seule tentative restante pour un cycle de correction substantiel. Appliquer le plafond en l'état aurait gelé le projet immédiatement.",
+      "decision": "COMPTEURS REMIS À ZÉRO pour le cycle de correction, qui est un problème NOUVEAU et distinct. Le plafond de 3 s'applique désormais aux tentatives de correction de ces anomalies.",
+      "justification": "Le plafond de 3 itérations existe pour empêcher le tâtonnement sur un problème mal cerné. Or AUCUNE itération consommée jusqu'ici n'a tenté ces corrections : les itérations 1 et 2 de S4 étaient une construction puis la REPRISE de cette même construction après une coupure d'API, et celles de S6 un audit puis la reprise du même audit. Compter une panne d'infrastructure comme une tentative de solution ratée inverserait la fonction de la règle : cela gèlerait un projet pour des raisons extérieures à son contenu, alors que la règle vise à protéger le code du tâtonnement.",
+      "contrepartie": "Le plafond redevient strict. Si une correction échoue trois fois, gel et rapport de blocage, sans quatrième tentative. Et la règle du signal d'alerte reste armée : si une correction échoue pour une raison DIFFÉRENTE de la précédente, je gèle immédiatement au lieu de consommer la troisième.",
+      "transparence": "Cette interprétation de ma propre règle est signalée à l'utilisateur dans mon compte rendu, pas appliquée en silence."
+    },
+    "sequence_imposee": [
+      {"ordre": 1, "noeud": "S3'", "agent": "tech-lead", "objet": "Décisions de forme contractuelle : ANO-01 et ANO-02 (uniformité du trafic), ANO-07, le test tautologique, et l'arbitrage du préfixe /api. Produit API 1.1.0.", "pourquoi_en_premier": "Cinq des six bloquantes ne sont pas des correctifs mais des DÉCISIONS. Lancer le développement avant serait exactement ce que le QA a recommandé d'éviter."},
+      {"ordre": 2, "noeud": "S4'", "agent": "dev-backend", "objet": "ANO-04, ANO-08, ANO-09, ANO-11, ANO-13, plus l'implémentation de l'API 1.1.0 et des RG-24, RG-74, RG-80, RG-81 et de l'étape 16 révisée."},
+      {"ordre": 3, "noeud": "S5'", "agent": "dev-frontend", "objet": "ANO-10 (la règle NetworkOnly ne matche aucune URL réelle) et ANO-12 (politique de sécurité de contenu et jeton)."},
+      {"ordre": 4, "noeud": "S6'", "agent": "ingenieur-qa", "objet": "Ré-audit avec les sondes existantes comme harnais, plus les nouveaux canaux ouverts par RG-80 et RG-81."}
+    ]
+  },
+
   "parallelisations": [
     {
       "noeuds": ["S2", "S3"],
