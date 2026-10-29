@@ -158,8 +158,11 @@
     { "sha": "90850c7", "titre": "S5 — les 21 composants du contrat de conception, tous leurs états" },
     { "sha": "25cca2a", "titre": "S5 — les 32 écrans du parcours, coquille et registre" },
     { "sha": "3cad3b0", "titre": "S5 — tests : les quatre règles assignées, prouvées" },
-    { "sha": "49c387e", "titre": "S5 — harnais de preuve bout en bout, six clients contre le serveur réel" }
+    { "sha": "49c387e", "titre": "S5 — harnais de preuve bout en bout, six clients contre le serveur réel" },
+    { "sha": "8a022be", "titre": "S5 — rapport de livraison RAPPORT-FRONTEND-001" },
+    { "sha": "cf919da", "titre": "S5 — contenu : les deux défauts que les tests ont trouvés" }
   ],
+  "_note_commits": "Sept commits par palier. Les deux fichiers modifiés avant mon arrivée (.claude/orchestration/etat.json et registre.json) sont restés intacts et non commités : hors périmètre. L'arbre de travail ne contient rien d'autre.",
 
   "ecarts_au_design": [
     { "objet": "Nommage de deux fichiers de composant", "ecart": "Bouton et Minuteur sont livrés dans BoutonAction.vue et MinuteurPhase.vue. La règle vue/multi-word-component-names, incluse dans flat/recommended d'eslint-plugin-vue et donc dans la porte de lint, refuse un nom de composant d'un seul mot. Rôle, variantes et états inchangés.", "impact": "nul" },
