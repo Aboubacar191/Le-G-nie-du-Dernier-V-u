@@ -18,6 +18,9 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/** Port d'écoute du serveur de développement (.env.exemple : PORT=8443). */
+const PORT_SERVEUR = process.env.PORT ?? '8443';
+
 export default defineConfig({
   plugins: [
     vue(),
@@ -54,6 +57,26 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5173,
     strictPort: true,
+    // Même ORIGINE pour le client, les six routes REST et le canal temps réel :
+    // c'est l'hypothèse du contrat (servers : https://{hote}/api, canal
+    // wss://{hote}/tr) et c'est aussi ce que la CSP de index.html autorise.
+    //
+    // La réécriture retire le préfixe /api : le serveur du nœud S4 enregistre
+    // ses routes à la RACINE alors que API-GDV-001 / servers les déclare sous
+    // /api. L'écart est consigné dans RAPPORT-FRONTEND-001, pas corrigé ici :
+    // le serveur n'est pas dans le périmètre de ce nœud.
+    proxy: {
+      '/api': {
+        target: `http://127.0.0.1:${PORT_SERVEUR}`,
+        changeOrigin: false,
+        rewrite: (chemin) => chemin.replace(/^\/api/u, ''),
+      },
+      '/tr': {
+        target: `ws://127.0.0.1:${PORT_SERVEUR}`,
+        ws: true,
+        changeOrigin: false,
+      },
+    },
   },
   build: {
     target: 'es2023',

@@ -1,5 +1,9 @@
 {
-  "_regle": "RG-25 : une formulation par couple (gabarit, variante_formulation). Le serveur n'émet que le gabarit, les valeurs et l'index de variante ; le client compose la phrase (ADR-TL-12). Les tableaux sont vides : les formulations sont écrites au nœud S5, après clôture d'ESC-01. Leur NOMBRE est contraint par le contrat : variante_formulation est un index dans ce tableau.",
+  "_regle": "RG-25 : une formulation par couple (gabarit, variante_formulation). Le serveur n'émet que le gabarit, les valeurs et l'index de variante ; le client compose la phrase (ADR-TL-12, RG-61). Aucun texte de révélation ne figure dans un composant.",
+  "_index": "variante_formulation est un INDEX dans le tableau du gabarit. Le moteur tire dans [0, 1] (NOMBRE_VARIANTES_FORMULATION = 2). Un index hors du tableau se rabat sur 0, comme le prescrit API-GDV-001 / RevelationPublique.",
+  "_substitution": "{total_declare} et {total_paye} viennent de l'événement revelation_ecart_total ; {k} vient de revelation.valeurs.k ; {cible}, {a} et {b} sont les pseudos résolus depuis revelation.cibles. Les clés d'accord sont résolues depuis les mêmes valeurs, jamais devinées.",
+  "_univers": "ESC-01 OUVERTE : ton ambigu et malicieux prescrit par RG-25, sans aucun lexique d'univers. Ces formulations seront remplacées, pas réécrites, à la clôture d'ESC-01.",
+
   "_gabarits_du_catalogue": [
     "ECART_TOTAL",
     "COMPTAGE",
@@ -8,12 +12,55 @@
     "COMPARAISON",
     "PASSE"
   ],
-  "variantes": {
-    "ECART_TOTAL": [],
-    "COMPTAGE": [],
+
+  "_valeurs_attendues": {
+    "ECART_TOTAL": ["total_declare", "total_paye"],
+    "COMPTAGE": ["k"],
     "VOISINAGE": [],
     "EXONERATION": [],
     "COMPARAISON": [],
     "PASSE": []
+  },
+
+  "_cibles_attendues": {
+    "ECART_TOTAL": 0,
+    "COMPTAGE": 0,
+    "VOISINAGE": 1,
+    "EXONERATION": 1,
+    "COMPARAISON": 2,
+    "PASSE": 0
+  },
+
+  "variantes": {
+    "ECART_TOTAL": [
+      "Vous avez promis {total_declare} pièces. J'en ai reçu {total_paye}.",
+      "On m'a annoncé {total_declare}. J'ai compté {total_paye}. Je sais compter."
+    ],
+    "COMPTAGE": [
+      "{k} d'entre vous {verbe_mentir}. Je ne dirai pas {pronom_lequel}.",
+      "J'en vois {k} qui {verbe_mentir_relatif}. Cherchez {pronom_lequel}."
+    ],
+    "VOISINAGE": [
+      "Un menteur est assis à côté de {cible}.",
+      "{cible} a un voisin qui m'a moins donné qu'il ne l'avait dit. Je n'en dis pas plus."
+    ],
+    "EXONERATION": [
+      "{cible} a payé ce qu'il avait promis.",
+      "Je n'ai rien à reprocher à {cible}. Cherchez ailleurs."
+    ],
+    "COMPARAISON": [
+      "{a} a payé plus que {b}.",
+      "Entre {a} et {b}, c'est {a} qui a été le plus généreux. Je ne dis pas lequel a menti."
+    ],
+    "PASSE": [
+      "L'un de vous me ment depuis la première manche.",
+      "Il y a parmi vous une habitude ancienne. Elle a commencé à la première manche."
+    ]
+  },
+
+  "accords": {
+    "verbe_mentir": { "un": "a menti", "plusieurs": "ont menti" },
+    "verbe_mentir_relatif": { "un": "a menti", "plusieurs": "ont menti" },
+    "pronom_lequel": { "un": "lequel", "plusieurs": "lesquels" }
   }
 }
