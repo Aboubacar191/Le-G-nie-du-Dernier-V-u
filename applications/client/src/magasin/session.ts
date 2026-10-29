@@ -50,6 +50,14 @@ export interface Magasin {
   quitter(): void;
   codeAdhesionPrerempli(): string;
   preremplirCode(code: string): void;
+  /**
+   * Surcharge d'équilibrage retenue par l'hôte sur ECR-03, en attente de la
+   * création de session. Null quand l'hôte n'a écarté aucune valeur vérifiée :
+   * le corps de POST /sessions ne porte alors aucune surcharge.
+   */
+  surchargeEquilibrage(): Readonly<Record<string, number>> | null;
+  /** Mémorise la surcharge jusqu'à POST /sessions, qui la fige (US-17). */
+  memoriserSurchargeEquilibrage(surcharge: Readonly<Record<string, number>>): void;
 }
 
 interface Contexte {
@@ -58,6 +66,7 @@ interface Contexte {
   client: ClientTempsReel | null;
   intention: IntentionLocale;
   code: string;
+  surcharge: Readonly<Record<string, number>>;
 }
 
 function origineParDefaut(): string {
@@ -124,7 +133,14 @@ function envoyer(
 
 export function creerMagasin(options: OptionsMagasin): Magasin {
   const etat = reactive(etatInitial()) as EtatLocal;
-  const ctx: Contexte = { options, etat, client: null, intention: 'accueil', code: '' };
+  const ctx: Contexte = {
+    options,
+    etat,
+    client: null,
+    intention: 'accueil',
+    code: '',
+    surcharge: {},
+  };
 
   return {
     etat: readonly(etat) as DeepReadonly<EtatLocal>,
@@ -160,6 +176,11 @@ export function creerMagasin(options: OptionsMagasin): Magasin {
     codeAdhesionPrerempli: () => ctx.code,
     preremplirCode(code): void {
       ctx.code = code;
+    },
+    surchargeEquilibrage: () =>
+      Object.keys(ctx.surcharge).length === 0 ? null : ctx.surcharge,
+    memoriserSurchargeEquilibrage(surcharge): void {
+      ctx.surcharge = surcharge;
     },
   };
 }

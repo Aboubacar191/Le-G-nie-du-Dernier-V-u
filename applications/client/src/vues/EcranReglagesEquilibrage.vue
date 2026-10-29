@@ -9,6 +9,13 @@
 // unique de 21 champs. Toute valeur se saisit à l'incrémenteur : il n'y a
 // aucun clavier numérique dans l'application, pas même ici (RG-78).
 //
+// L'EFFECTIF (joueurs_min, joueurs_max) est réglable au même titre que le
+// reste : sans lui, un playtest à deux marchands exige de réunir cinq
+// personnes. La valeur vérifiée du jeu reste celle de defauts.json — l'écran
+// en émet une SURCHARGE de session, il ne change aucun défaut. Les deux pas
+// sont bornés l'un par l'autre : joueurs_min <= joueurs_max est une contrainte
+// croisée du schéma, autant ne pas offrir le geste que le serveur refusera.
+//
 // Les réglages sont FIGÉS dès que la partie commence : la surcharge voyage dans
 // le corps de POST /sessions, et aucune commande ne la modifie ensuite
 // (commandes_inexistantes_par_conception).
@@ -31,12 +38,17 @@ import EtatVide from '../composants/EtatVide.vue';
 import IncrementeurMontant from '../composants/IncrementeurMontant.vue';
 import SqueletteChargement from '../composants/SqueletteChargement.vue';
 import { texte } from '../logique/contenu.ts';
-import { bornes } from '../logique/montant.ts';
+import { bornes, type Bornes } from '../logique/montant.ts';
 import { utiliserMagasin } from '../magasin/injection.ts';
 import { lireConfigurationParDefaut } from '../transport/rest.ts';
 
+/** Les deux paramètres liés par la contrainte croisée joueurs_min <= joueurs_max. */
+const CHAMP_EFFECTIF_MIN = 'joueurs_min';
+const CHAMP_EFFECTIF_MAX = 'joueurs_max';
+
 /** Sections du contrat de conception : 3 à 5 paramètres chacune (Miller). */
 const SECTIONS = [
+  { cle: 'ecran.reglages.section_effectif', champs: [CHAMP_EFFECTIF_MIN, CHAMP_EFFECTIF_MAX] },
   { cle: 'ecran.reglages.section_monnaie', champs: ['pieces_initiales', 'objectif_par_joueur', 'nb_manches'] },
   {
     cle: 'ecran.reglages.section_recompenses',
@@ -71,6 +83,8 @@ const erreur = ref(false);
 const defauts = ref<Record<string, number>>({});
 const valeurs = ref<Record<string, number>>({});
 const depliees = ref<Record<string, boolean>>({});
+/** Bornes de surcharge PUBLIÉES par GET /configuration/defauts. Jamais devinées. */
+const bornesPubliees = ref<Record<string, Bornes>>({});
 
 onMounted(async () => {
   const resultat = await lireConfigurationParDefaut();
@@ -89,7 +103,37 @@ onMounted(async () => {
   }
   defauts.value = numeriques;
   valeurs.value = { ...numeriques };
+  bornesPubliees.value = lireBornes(resultat.valeur.bornes);
 });
+
+/** Les bornes du serveur, telles qu'il les publie. Une forme inattendue est ignorée. */
+function lireBornes(brutes: Readonly<Record<string, unknown>>): Record<string, Bornes> {
+  const lues: Record<string, Bornes> = {};
+  for (const [champ, brute] of Object.entries(brutes)) {
+    const borne = brute as { min?: unknown; max?: unknown } | null;
+    if (typeof borne?.min === 'number' && typeof borne.max === 'number') {
+      lues[champ] = bornes(borne.min, borne.max);
+    }
+  }
+  return lues;
+}
+
+/**
+ * Bornes d'un pas d'incrémenteur. L'effectif est borné par la configuration
+ * publiée ET par son pendant : on ne laisse pas saisir joueurs_min > joueurs_max,
+ * que le serveur refuserait à la création (RG-71, il revalide de toute façon).
+ */
+function bornesChamp(champ: string): Bornes {
+  const publiee = bornesPubliees.value[champ];
+  if (publiee === undefined) return bornes(0, PLAFOND_REGLAGE);
+  if (champ === CHAMP_EFFECTIF_MIN) {
+    return bornes(publiee.min, valeurs.value[CHAMP_EFFECTIF_MAX] ?? publiee.max);
+  }
+  if (champ === CHAMP_EFFECTIF_MAX) {
+    return bornes(valeurs.value[CHAMP_EFFECTIF_MIN] ?? publiee.min, publiee.max);
+  }
+  return bornes(0, PLAFOND_REGLAGE);
+}
 
 /** Les réglages sont figés dès que la partie commence (étatde session connu). */
 const figes = (): boolean => magasin.etat.session !== null;
@@ -98,10 +142,21 @@ function retablir(): void {
   valeurs.value = { ...defauts.value };
 }
 
+/** Seuls les paramètres ÉCARTÉS de leur valeur vérifiée voyagent (US-17). */
+function surchargeRetenue(): Record<string, number> {
+  const retenue: Record<string, number> = {};
+  for (const [champ, valeur] of Object.entries(valeurs.value)) {
+    if (valeur !== defauts.value[champ]) retenue[champ] = valeur;
+  }
+  return retenue;
+}
+
 function appliquer(): void {
   // La surcharge est transmise à la CRÉATION de session (POST /sessions). Il
   // n'existe aucune commande de modification de configuration : le contrat
-  // l'exclut explicitement, et l'écran ne peut donc pas en émettre une.
+  // l'exclut explicitement, et l'écran ne peut donc pas en émettre une. Elle
+  // est donc MÉMORISÉE jusqu'à ce que ECR-02 crée la session.
+  magasin.memoriserSurchargeEquilibrage(surchargeRetenue());
   magasin.preremplirCode('');
   magasin.naviguer('creation');
 }
@@ -174,7 +229,7 @@ function appliquer(): void {
             </p>
             <IncrementeurMontant
               :valeur="valeurs[champ] ?? 0"
-              :bornes="bornes(0, PLAFOND_REGLAGE)"
+              :bornes="bornesChamp(champ)"
               variante="compact"
               :intitule="texte(`config_libelle.${champ}`)"
               @update:valeur="(nouvelle) => (valeurs[champ] = nouvelle)"

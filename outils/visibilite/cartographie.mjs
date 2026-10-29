@@ -235,10 +235,14 @@ export const CHAMPS_NEUTRES = {
   objectif: 'Objectif de la manche = objectif_par_joueur × nb_joueurs (RG-07), public.',
   reussi: 'Vœu réussi ou non (RG-12), public à l’exécution.',
   recompense: 'Récompense distribuée, publique à l’exécution.',
-  parts: 'Répartition publique de la récompense (étape 16).',
-  part: 'Part individuelle de récompense, publiée à l’exécution.',
-  reliquat_non_distribue: 'Reliquat d’arrondi de la répartition, public.',
-  bonus_epices_verse: 'Bonus MARCHAND_EPICES versé, publié à l’exécution.',
+  // RETRAIT 1.2.0 (ADR-TL-21, RUP-05) — quatre déclarations de neutres supprimées
+  // ici parce que les champs qu'elles couvraient ne sont plus publiés par AUCUN
+  // EvtXxx : parts, part, reliquat_non_distribue, bonus_epices_verse. La porte a
+  // elle-même signalé qu'elles étaient périmées (contrôle P7, 2 divergences), ce
+  // qui est exactement son office : « une liste de neutres qui dérive finit par
+  // couvrir un champ qui n'existe plus et laisser passer celui qui existe ».
+  // NE PAS les réintroduire sans décision d'architecture : les trois premières
+  // sont les vecteurs de ANO-06, bloquante et mesurée.
   consequence: 'Conséquence textuelle neutre d’une transition.',
 
   // Révélations (publiques par construction : c'est leur objet)

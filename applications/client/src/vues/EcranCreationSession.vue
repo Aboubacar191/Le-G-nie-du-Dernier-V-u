@@ -63,6 +63,9 @@ async function creer(): Promise<void> {
   const resultat = await creerSession({
     pseudo: pseudo.value.trim(),
     jeton_groupe: relireJetonGroupe(stockage),
+    // La surcharge réglée sur ECR-03 ne voyage QU'ICI : la configuration est
+    // figée à la création, aucune commande ne la modifie ensuite (US-17).
+    config_surchargee: magasin.surchargeEquilibrage(),
     activer_mode_avance: modeAvance.value,
   });
   chargement.value = false;
