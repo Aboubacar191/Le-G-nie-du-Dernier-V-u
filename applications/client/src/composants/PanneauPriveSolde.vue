@@ -16,7 +16,21 @@
 
 import { computed } from 'vue';
 
-import type { MoiPrive, PageMouvements, PretVuPartie, ResultatEnqueteItem } from '@gdv/partage';
+import type { MoiPrive, PageMouvements, PretVuPartie } from '@gdv/partage';
+
+/**
+ * Enquête affichable, réduite à ce que le panneau montre.
+ *
+ * DÉFAUT DE CONTRAT RELEVÉ : la même notion porte DEUX noms de champ dans
+ * API-GDV-001. ResultatEnqueteItem (dans etat_complet_prive) écrit
+ * `manche_numero`, EvtResultatEnquete écrit `numero_manche`. Le panneau n'a
+ * besoin ni de l'un ni de l'autre : il déclare donc la forme minimale, et la
+ * divergence ne se propage pas jusqu'à l'affichage.
+ */
+export interface EnqueteAffichable {
+  readonly cible_joueur_id: string;
+  readonly montant_paye: number;
+}
 
 import { texte } from '../logique/contenu.ts';
 import EtatVide from './EtatVide.vue';
@@ -27,7 +41,7 @@ interface Props {
   moi: MoiPrive | null;
   mouvements: PageMouvements | null;
   prets: readonly PretVuPartie[];
-  enquetes: readonly ResultatEnqueteItem[];
+  enquetes: readonly EnqueteAffichable[];
   /** Pseudonyme d'un joueur, pour nommer une cible d'enquête. */
   pseudoDe: (joueurId: string) => string;
   chargement?: boolean;
@@ -186,7 +200,7 @@ const journalVide = computed(() => mouvements.value.length <= 1);
             <ul class="panneau__deltas">
               <li
                 v-for="enquete in props.enquetes"
-                :key="`${enquete.cible_joueur_id}-${enquete.manche_numero}`"
+                :key="enquete.cible_joueur_id"
                 class="panneau__delta panneau__delta--texte"
               >
                 {{ props.pseudoDe(enquete.cible_joueur_id) }} · {{ enquete.montant_paye }}

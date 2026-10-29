@@ -41,6 +41,8 @@ export interface Magasin {
   naviguer(intention: IntentionLocale): void;
   /** Mémorise la session et ouvre le canal temps réel. */
   ouvrirSession(jeton: JetonStocke): void;
+  /** Vrai si un jeton de session est mémorisé sur cet appareil (US-16). */
+  jetonMemorise(): boolean;
   /** Reprend une session mémorisée. Faux si aucun jeton n'est stocké. */
   reprendre(): boolean;
   envoyer(type: TypeCommande, charge?: Readonly<Record<string, unknown>>): string | null;
@@ -136,6 +138,7 @@ export function creerMagasin(options: OptionsMagasin): Magasin {
       etat.acces_refuse = false;
       ouvrirCanal(ctx, jeton);
     },
+    jetonMemorise: () => relireJeton(options.stockage) !== null,
     reprendre(): boolean {
       const jeton = relireJeton(options.stockage);
       if (jeton === null) return false;

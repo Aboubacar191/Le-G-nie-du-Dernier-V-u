@@ -155,10 +155,18 @@ export function dureePhaseS(etat: EtatLocal): number | null {
   return config.durees_phases_s?.[etat.phase] ?? null;
 }
 
-export const pseudoDe = (etat: EtatLocal, joueurId: string): string =>
-  etat.joueurs.find((joueur) => joueur.joueur_id === joueurId)?.pseudo ?? joueurId;
+/**
+ * Table minimale attendue par les résolveurs de pseudo. Volontairement plus
+ * étroite que EtatLocal : les écrans manipulent une vue en lecture seule
+ * profonde, et un paramètre trop large les obligerait à la forcer.
+ */
+export interface TableDeJoueurs {
+  readonly joueurs: readonly { readonly joueur_id: string; readonly pseudo: string }[];
+}
 
-export const estHote = (etat: EtatLocal): boolean => etat.moi?.est_hote === true;
+/** Pseudo d'un joueur. Un identifiant non résolu reste visible, donc corrigeable. */
+export const pseudoDe = (table: TableDeJoueurs, joueurId: string): string =>
+  table.joueurs.find((joueur) => joueur.joueur_id === joueurId)?.pseudo ?? joueurId;
 
 /** EtatPartie courant, ou null tant qu'aucune projection n'est arrivée. */
 export const etatPartie = (etat: EtatLocal): EtatPartie | null =>

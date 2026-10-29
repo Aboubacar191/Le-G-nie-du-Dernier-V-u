@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@gdv/partage": "1.0.0",
+    "qrcode-generator": "2.0.4",
     "vue": "3.5.44"
   },
   "devDependencies": {
