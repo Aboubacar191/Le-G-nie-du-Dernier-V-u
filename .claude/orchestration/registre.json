@@ -321,6 +321,28 @@
       "impact_sur_la_SPEC": "Aucun. Le concept docx est antérieur et plus riche que le GDD simplifié : la SPEC est bâtie sur la bonne source. Les éléments retirés par la simplification figuraient déjà en hors_perimetre."
     }
   ],
+  "anomalies_decouvertes_par_le_test_utilisateur": [
+    {
+      "id": "ANO-UX-01",
+      "gravite": "majeur",
+      "assigne_a": "dev-frontend",
+      "decouvert_par": "l'utilisateur, en testant sur son téléphone le 2026-10-29",
+      "symptome_rapporte": "« les boutons Créer une partie ne fonctionnent pas »",
+      "diagnostic": "Les boutons ne sont pas cassés, ils sont DÉSACTIVÉS. EcranAccueil.vue sonde /api/sante UNE SEULE FOIS au montage (ligne 38-39) et fixe serveurInjoignable ; les deux boutons portent :desactive=\"serveurInjoignable\". L'utilisateur avait chargé la page pendant que les serveurs étaient tombés avec une coupure de session : la sonde a échoué et l'état n'est jamais revérifié.",
+      "correctif_attendu": "Relance périodique de la sonde, et reprise automatique dès que le serveur redevient joignable. Sur un jeu en présentiel où huit téléphones se connectent au même Wi-Fi, le premier à charger pendant un micro-incident reste bloqué sans recours.",
+      "contournement_utilisateur": "Recharger la page."
+    },
+    {
+      "id": "ANO-UX-02",
+      "gravite": "mineur",
+      "assigne_a": "dev-frontend",
+      "decouvert_par": "déduit du rapport de l'utilisateur",
+      "diagnostic": "Le bouton désactivé porte bien une raison (texte('ecran.accueil.serveur_injoignable')), et un bandeau d'alerte avec reprise existe. L'utilisateur ne les a pourtant pas vus et a conclu que le bouton était cassé. C'est le symptôme d'un message qui n'atteint pas sa cible.",
+      "correctif_attendu": "Rendre l'état indisponible lisible à l'endroit où l'utilisateur appuie, pas seulement à côté. À traiter avec ANO-UX-01.",
+      "lecon_methode": "Un état d'erreur jugé « couvert » parce qu'un libellé existe n'est couvert que si l'utilisateur le lit. Le seul test valable est un test d'usage réel — celui-ci a trouvé en trois minutes ce que 531 tests automatisés n'ont pas vu."
+    }
+  ],
+
   "dette_assumee_produit": [
     {
       "id": "ECART-S4-01",
