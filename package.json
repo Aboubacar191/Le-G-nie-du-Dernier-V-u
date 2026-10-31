@@ -21,6 +21,7 @@
     "secrets": "node outils/verifier-secrets.mjs",
     "verifier:visibilite": "node outils/verifier-visibilite.mjs",
     "verifier:uniformite": "node --conditions=gdv-source --experimental-strip-types outils/verifier-uniformite.ts",
+    "verifier:uniformite:autoessai": "node --conditions=gdv-source --experimental-strip-types outils/uniformite/autoessai.ts",
     "verifier:routes": "node --conditions=gdv-source --experimental-strip-types outils/verifier-routes.ts",
     "types": "npm run types --workspaces --if-present",
     "lint": "eslint .",
