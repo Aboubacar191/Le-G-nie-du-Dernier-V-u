@@ -74,7 +74,11 @@ export const CARTOGRAPHIE = {
       'effet_clause',
       'multiplicateur_applique',
       'consolation_appliquee',
-      'total_consolation',
+      // total_consolation RETIRÉ ici en même temps que du protocole (RUP-05) :
+      // il est désormais déclaré en champs_interdits de l'entrée « total des
+      // consolations de la manche ». Le laisser cartographié comme publiable
+      // par EvtExecutionResultat aurait AUTORISÉ sa réintroduction, c'est-à-dire
+      // la réouverture de ANO-05 — et P9 ferme la porte sur la contradiction.
       'exclu_du_partage',
     ],
     publication: ['EvtExecutionResultat'],
@@ -127,6 +131,56 @@ export const CARTOGRAPHIE = {
       'RG-74 : plancher(montant_paye / 2) est une fonction directe du paiement secret. ' +
       'Seuls consolation_appliquee et total_consolation (entrée « clause de la manche ») ' +
       'sont publics.',
+  },
+  // ---------------------------------------------------------------------------
+  // QUATRE AGRÉGATS RETIRÉS DU PROTOCOLE PAR L'API 1.2.0 (ADR-TL-21, RUP-05).
+  //
+  // Ces quatre données n'ont AUCUN champ à cartographier : les champs qui les
+  // portaient ont été supprimés des schémas. Une cartographie à `champs: []`
+  // les ferait donc passer P3 sans RIEN mesurer — exactement le défaut que
+  // l'audit du nœud S6 a sanctionné. Elles se déclarent par `champs_interdits`,
+  // dont le contrôle P9 exige l'absence dans TOUS les schémas du contrat, et
+  // non dans les seuls EvtXxx : ANO-06 avait un second vecteur, les parts
+  // voyageaient aussi dans ResumeManchePublique, un schéma imbriqué.
+  //
+  // Les noms listés sont ceux qui ont RÉELLEMENT existé dans le protocole,
+  // plus leurs variantes orthographiques évidentes : un correctif réintroduit
+  // presque toujours le nom d'avant.
+  // ---------------------------------------------------------------------------
+  'total des consolations de la manche': {
+    champs: [],
+    publication: [],
+    champs_interdits: ['total_consolation', 'total_consolations'],
+    _note:
+      'RG-81, ANO-05 mesurée : total_paye − 2 × total_consolation = Σ(paye_i mod 2), soit le ' +
+      'nombre exact de paiements impairs. Agrégat INVERSIBLE, donc jamais émis sous aucun nom.',
+  },
+  'part de récompense individuelle': {
+    champs: [],
+    publication: [],
+    champs_interdits: ['parts', 'part', 'part_recompense', 'parts_recompense'],
+    _note:
+      'RG-81, ANO-06 mesurée : des parts [10,5,5,5,5,5] sous LE_PLUS_GENEREUX désignent ' +
+      'l’argmax des paiements secrets. Le joueur apprend sa part par son seul journal de ' +
+      'pièces (motif part_recompense de MouvementPiece), qui est couvert par l’entrée ' +
+      'solde_pieces : un MOTIF d’énumération n’est pas un champ, et P9 ne contrôle que des ' +
+      'noms de propriétés.',
+  },
+  "reliquat d'arrondi non distribué": {
+    champs: [],
+    publication: [],
+    champs_interdits: ['reliquat_non_distribue', 'reliquat_arrondi'],
+    _note:
+      'RG-81 : reliquat = recompense − Σ parts. Le publier redonne la somme des parts, donc ' +
+      'rouvre ANO-06 par un autre chemin.',
+  },
+  'total distribué de la manche': {
+    champs: [],
+    publication: [],
+    champs_interdits: ['total_distribue', 'total_distribue_manche'],
+    _note:
+      'RG-81 : identique au reliquat par complémentarité. Σ poids restreint l’identité du ' +
+      'plus gros payeur à l’ensemble des joueurs ayant ce montant déclaré.',
   },
   'ampleur du mensonge': {
     champs: ['ampleur_mensonge'],

@@ -4,7 +4,7 @@
 // Chaque fonction ne fait qu'une chose et signale ses anomalies par `signaler`.
 // Aucune ne décide du code de sortie : c'est la porte qui tranche.
 
-import { CHAMPS_NEUTRES } from './cartographie.mjs';
+import { CARTOGRAPHIE, CHAMPS_NEUTRES } from './cartographie.mjs';
 import { cleDeclaree, regleDeChamp } from './inventaire.mjs';
 
 /** Événement exempté de P6 : la re-projection complète privée (RG-73). */
@@ -167,6 +167,138 @@ export function controlerClassification(evenements, index, signaler) {
   return (
     `P7 — ${distincts} noms de champs distincts (${occurrences.length} occurrences ` +
     `schéma×champ), tous classés.`
+  );
+}
+
+// --- P9 : données « jamais émises en public » --------------------------------
+// Une entrée de matrice_visibilite peut porter jamais_emis_en_public: true SANS
+// qu'aucun champ ne la porte : c'est le cas des quatre agrégats retirés du
+// protocole par l'API 1.2.0 (RUP-05). Le risque n'est alors plus la fuite d'un
+// champ existant, c'est la RÉINTRODUCTION d'un champ supprimé — et aucun des
+// contrôles P1 à P8 ne la voit, puisqu'ils ne raisonnent que sur ce qui est
+// présent. P9 raisonne sur ce qui doit rester ABSENT.
+//
+// Trois différences avec P4/P5/P6, toutes volontaires :
+//   · le périmètre est TOUS les schémas de components.schemas, pas les seuls
+//     EvtXxx atteignables : ANO-06 avait un second vecteur, les parts
+//     voyageaient aussi dans ResumeManchePublique, schéma imbriqué ;
+//   · une entrée jamais_emis_en_public sans AUCUNE déclaration mesurable
+//     (ni champs, ni champs_interdits) ferme la porte : un rapport qui ne
+//     mesure rien ne prouve rien ;
+//   · un nom déclaré interdit et cartographié ailleurs ferme la porte : deux
+//     déclarations contradictoires laissent choisir celle qui arrange.
+
+function enregistrerProprietes(noeud, porteur, index) {
+  for (const cle of Object.keys(noeud.properties ?? {})) {
+    if (!index.has(cle)) index.set(cle, new Set());
+    index.get(cle).add(porteur);
+  }
+}
+
+function visiterNoeud(noeud, porteur, index) {
+  if (Array.isArray(noeud)) {
+    for (const item of noeud) visiterNoeud(item, porteur, index);
+    return;
+  }
+  if (noeud === null || typeof noeud !== 'object') return;
+  enregistrerProprietes(noeud, porteur, index);
+  for (const valeur of Object.values(noeud)) visiterNoeud(valeur, porteur, index);
+}
+
+/** Index nom de propriété → schémas porteurs, sur TOUT components.schemas. */
+function indexerToutesProprietes(schemas) {
+  const index = new Map();
+  for (const [nom, schema] of Object.entries(schemas)) visiterNoeud(schema, nom, index);
+  return index;
+}
+
+function controlerDeclarationMesurable(entree, carte, signaler) {
+  const champs = carte.champs ?? [];
+  const interdits = carte.champs_interdits ?? [];
+  if (champs.length > 0 || interdits.length > 0) return true;
+  signaler(
+    'P9',
+    `matrice_visibilite / « ${entree.donnee} » porte jamais_emis_en_public: true mais la ` +
+      `cartographie ne déclare NI champs NI champs_interdits. Rien n’est mesuré pour cette ` +
+      `entrée : la porte se ferme plutôt que de prétendre l’avoir vérifiée.`,
+  );
+  return false;
+}
+
+function controlerCoherenceJamaisEmis(entree, carte, signaler) {
+  if (entree.devient_public !== null && entree.devient_public !== undefined) {
+    signaler(
+      'P9',
+      `matrice_visibilite / « ${entree.donnee} » : jamais_emis_en_public: true et ` +
+        `devient_public = « ${String(entree.devient_public)} » sont contradictoires.`,
+    );
+  }
+  if ((carte.publication ?? []).length > 0) {
+    signaler(
+      'P9',
+      `matrice_visibilite / « ${entree.donnee} » : jamais_emis_en_public: true mais la ` +
+        `cartographie déclare des événements de publication ` +
+        `(${carte.publication.join(', ')}).`,
+    );
+  }
+}
+
+function controlerAbsenceTotale(entree, carte, proprietes, signaler) {
+  for (const interdit of carte.champs_interdits ?? []) {
+    const porteurs = proprietes.get(interdit);
+    if (porteurs === undefined) continue;
+    signaler(
+      'P9',
+      `« ${interdit} » est déclaré JAMAIS ÉMIS pour la donnée « ${entree.donnee} » et ` +
+        `réapparaît comme propriété de ${[...porteurs].join(', ')}. Cette donnée a été ` +
+        `retirée du protocole parce qu’elle est inversible (RG-81) : la réintroduire sous ` +
+        `son ancien nom rouvre la fuite mesurée.`,
+    );
+  }
+}
+
+function controlerNonContradiction(signaler) {
+  const interdits = new Map();
+  for (const [donnee, carte] of Object.entries(CARTOGRAPHIE)) {
+    for (const nom of carte.champs_interdits ?? []) interdits.set(nom, donnee);
+  }
+  for (const [nom, donnee] of interdits) {
+    for (const [autre, carte] of Object.entries(CARTOGRAPHIE)) {
+      if ((carte.champs ?? []).includes(nom)) {
+        signaler(
+          'P9',
+          `« ${nom} » est déclaré interdit par « ${donnee} » et cartographié comme champ de ` +
+            `« ${autre} ». Deux déclarations contradictoires laissent choisir celle qui arrange.`,
+        );
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(CHAMPS_NEUTRES, nom)) {
+      signaler(
+        'P9',
+        `« ${nom} » est déclaré interdit par « ${donnee} » et déclaré NEUTRE dans ` +
+          `CHAMPS_NEUTRES. Un champ interdit ne peut pas être neutre.`,
+      );
+    }
+  }
+  return interdits.size;
+}
+
+export function controlerJamaisEmis(entrees, schemas, signaler) {
+  const proprietes = indexerToutesProprietes(schemas);
+  let controlees = 0;
+  for (const entree of entrees) {
+    if (entree.jamais_emis_en_public !== true) continue;
+    const carte = CARTOGRAPHIE[entree.donnee];
+    if (!carte) continue; // déjà signalé par P3.
+    controlees += 1;
+    controlerCoherenceJamaisEmis(entree, carte, signaler);
+    if (!controlerDeclarationMesurable(entree, carte, signaler)) continue;
+    controlerAbsenceTotale(entree, carte, proprietes, signaler);
+  }
+  const interdits = controlerNonContradiction(signaler);
+  return (
+    `P9 — ${controlees} données « jamais émises en public », ${interdits} noms de champs ` +
+    `interdits confrontés aux ${proprietes.size} noms de propriétés de TOUS les schémas.`
   );
 }
 

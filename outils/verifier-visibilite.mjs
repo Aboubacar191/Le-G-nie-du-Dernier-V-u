@@ -32,6 +32,18 @@
 //       contrôle qui attrape la fuite introduite par un champ nouveau.
 //   P8  L'énumération EnveloppeEvenement.type correspond exactement, un pour un,
 //       aux noms de schémas EvtXxx (ARCHI standards.nommage_messages).
+//   P9  Toute entrée portant jamais_emis_en_public: true est déclarée de façon
+//       MESURABLE (champs, ou champs_interdits), ses noms interdits n'apparaissent
+//       dans AUCUN schéma du contrat — pas seulement dans les EvtXxx — et aucune
+//       autre entrée ne les cartographie. C'est le seul contrôle qui raisonne sur
+//       ce qui doit rester ABSENT : il couvre les quatre agrégats retirés par
+//       l'API 1.2.0 (RUP-05), vecteurs mesurés de ANO-05 et ANO-06.
+//
+// CE QUE CETTE PORTE NE VOIT PAS, ET IL FAUT LE DIRE (ARCHI 1.2.0) : elle
+// raisonne par CHAMP. Son verdict CONFORME signifie « aucun champ déclaré secret
+// ne figure dans une trame qui ne doit pas le porter ». Il ne signifie PAS
+// « aucune fuite » : les six canaux de l'audit du nœud S6 l'ont tous franchie au
+// vert. Elle se cite avec verifier:uniformite, jamais seule.
 //
 // GRANULARITÉ : un champ se déclare par son nom seul (« montant_paye » : même sens
 // partout) ou qualifié par le schéma qui le porte (« MouvementPiece.motif ») quand
@@ -62,6 +74,7 @@ import {
   controlerClassification,
   controlerEnumerationTypes,
   controlerExemptionReprojection,
+  controlerJamaisEmis,
 } from './visibilite/controles.mjs';
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -132,6 +145,7 @@ constats.push(controlerChampsParClasse(evenements, index, signaler));
 constats.push(controlerClassification(evenements, index, signaler));
 const constatP8 = controlerEnumerationTypes(schemas, nomsEvt, signaler);
 if (constatP8) constats.push(constatP8);
+constats.push(controlerJamaisEmis(entrees, schemas, signaler));
 
 // --- Verdict ----------------------------------------------------------------
 const verdict = anomalies.length === 0 ? 'CONFORME' : 'DIVERGENCE';
