@@ -76,12 +76,6 @@ export interface AmendeLiquidee {
   readonly montant_du: number;
 }
 
-export interface PartRecompense {
-  readonly joueur_id: string;
-  readonly part: number;
-  readonly exclu_du_partage: boolean;
-}
-
 export interface RevelationPublique {
   readonly gabarit: Gabarit;
   readonly variante_formulation: number;
@@ -101,7 +95,6 @@ export interface ResumeManchePublique {
   readonly declarations: readonly DeclarationPublique[];
   readonly revelations: readonly RevelationPublique[];
   readonly accusations: readonly AccusationPublique[];
-  readonly parts: readonly PartRecompense[];
 }
 
 export interface ResultatEnqueteItem {

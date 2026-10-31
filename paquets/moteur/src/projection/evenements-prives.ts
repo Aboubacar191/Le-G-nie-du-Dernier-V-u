@@ -152,13 +152,20 @@ export function projeterPretResolu(effet: EffetPretResolu): ProjectionBrute {
   };
 }
 
-export function projeterPretPreleve(effet: EffetPretPreleve): ProjectionBrute {
+export function projeterPretPreleve(
+  effet: EffetPretPreleve,
+  destinataire: string,
+): ProjectionBrute {
+  const emprunteur = destinataire === effet.pret.emprunteur_joueur_id;
   return {
     proprietaires: partiesDuPret(effet.pret),
     charge: {
-      pret: pretVuPartie(effet.pret),
-      montant_preleve: effet.montant_preleve,
-      reliquat_du: effet.reliquat_du,
+      numero_manche: effet.pret.manche_emission,
+      pret_id: effet.pret.id,
+      statut: effet.pret.statut,
+      pret: emprunteur ? pretVuPartie(effet.pret) : null,
+      montant_preleve: emprunteur ? effet.montant_preleve : null,
+      reliquat_du: emprunteur ? effet.reliquat_du : null,
     },
   };
 }

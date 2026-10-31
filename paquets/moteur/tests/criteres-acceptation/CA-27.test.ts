@@ -3,9 +3,8 @@
 // la clause CONSOLATION est active chaque joueur récupère plancher(son
 // paiement / 2).
 //
-// RG-74 : les montants de consolation INDIVIDUELS ne sont jamais publiés —
-// plancher(montant_paye_i / 2) est une fonction directe du paiement secret.
-// Seuls l'activation de la clause et le TOTAL consolé sortent.
+// RG-74 : les montants de consolation, individuellement et en total, ne sont
+// jamais publiés. Seule l'activation de la clause sort sur l'événement public.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -70,9 +69,9 @@ test('CA-27 : le montant de consolation INDIVIDUEL n’est jamais publié (RG-74
   assert.equal(executions.length, 6);
   for (const trame of executions) {
     assert.equal(trame.charge.consolation_appliquee, true);
-    assert.equal(trame.charge.total_consolation, 6, 'seul le total agrégé sort');
-    assert.deepEqual(trame.charge.parts, [], 'aucune part individuelle en cas d’échec');
     const cles = Object.keys(trame.charge);
+    assert.ok(!cles.includes('total_consolation'));
+    assert.ok(!cles.includes('parts'));
     assert.ok(!cles.includes('montant_consolation'));
     assert.ok(!cles.includes('consolation_individuelle'));
   }

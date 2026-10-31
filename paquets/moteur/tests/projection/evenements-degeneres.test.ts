@@ -83,9 +83,10 @@ test('execution_resultat sur une manche close sans récompense : des zéros, pas
   assert.equal(charge.reussi, false);
   assert.equal(charge.recompense, 0);
   assert.equal(charge.multiplicateur_applique, 0);
-  assert.equal(charge.reliquat_non_distribue, 0);
-  assert.equal(charge.total_consolation, null, 'la clause de consolation n’était pas active');
-  assert.deepEqual(charge.parts, []);
+  const cles = Object.keys(charge);
+  assert.ok(!cles.includes('reliquat_non_distribue'));
+  assert.ok(!cles.includes('total_consolation'));
+  assert.ok(!cles.includes('parts'));
 });
 
 test('execution_resultat sur une manche close mais NON CHIFFRÉE : RIEN, pas des zéros', () => {

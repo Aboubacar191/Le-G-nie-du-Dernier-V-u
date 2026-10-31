@@ -17,7 +17,6 @@ import type {
   JoueurPublic,
   MouvementPiece,
   PageMouvements,
-  PartRecompense,
   PretVuPartie,
   ResumeManchePublique,
   RevelationPublique,
@@ -141,14 +140,6 @@ export function revelationsPubliques(manche: Manche): readonly RevelationPubliqu
   }));
 }
 
-export function partsPubliques(manche: Manche): readonly PartRecompense[] {
-  return manche.parts.map((part) => ({
-    joueur_id: part.joueur_id,
-    part: part.part,
-    exclu_du_partage: part.exclu_du_partage,
-  }));
-}
-
 /**
  * Résumé PUBLIC d'une manche. total_paye reste nul avant la phase REVELATION,
  * et clause_revelee avant l'étape 16 de l'exécution : les deux sont portés par
@@ -169,7 +160,6 @@ export function resumeManchePublique(manche: Manche): ResumeManchePublique {
     declarations: declarationsPubliques(manche),
     revelations: revelationsPubliques(manche),
     accusations: accusationsPubliques(manche),
-    parts: partsPubliques(manche),
   };
 }
 

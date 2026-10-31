@@ -139,7 +139,12 @@ export const CHAMPS_DECLARES_PAR_EVENEMENT: Readonly<Record<TypeEvenement, reado
  * sa place en littéral dans le moteur.
  */
 export const MINIMUM_SUSPECTS_PUBLICS: number = (() => {
-  const minimum = schemaContrat('EvtRevelation').properties?.suspects_restants?.minimum;
+  const schema = schemaContrat('EvtRevelation').properties?.suspects_restants;
+  const minimumDirect = schema?.minimum;
+  const minimumOptionnel = schema?.anyOf?.find(
+    (variante) => typeof variante.minimum === 'number',
+  )?.minimum;
+  const minimum = minimumDirect ?? minimumOptionnel;
   if (typeof minimum !== 'number') {
     throw new Error(
       'API-GDV-001.json : EvtRevelation.suspects_restants.minimum absent. ' +

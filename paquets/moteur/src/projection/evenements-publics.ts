@@ -26,7 +26,7 @@ import type {
   EffetVoeuAnnonce,
 } from '../etat/effets.ts';
 import type { EtatSession } from '../etat/types.ts';
-import { joueurPublic, partsPubliques } from './charges.ts';
+import { joueurPublic } from './charges.ts';
 import type { ProjectionBrute } from './evenements-prives.ts';
 
 const AUCUN_PROPRIETAIRE: readonly string[] = [];
@@ -191,7 +191,6 @@ interface ChiffresManche {
   readonly reussi: boolean;
   readonly recompense: number;
   readonly multiplicateur_applique: number;
-  readonly reliquat_non_distribue: number;
 }
 
 function chiffresDeMancheClose(manche: {
@@ -200,7 +199,6 @@ function chiffresDeMancheClose(manche: {
   readonly reussi: boolean | null;
   readonly recompense: number | null;
   readonly multiplicateur_applique: number | null;
-  readonly reliquat_non_distribue: number | null;
 }): ChiffresManche | null {
   const {
     total_declare,
@@ -208,15 +206,13 @@ function chiffresDeMancheClose(manche: {
     reussi,
     recompense,
     multiplicateur_applique,
-    reliquat_non_distribue,
   } = manche;
   if (
     total_declare === null ||
     total_paye === null ||
     reussi === null ||
     recompense === null ||
-    multiplicateur_applique === null ||
-    reliquat_non_distribue === null
+    multiplicateur_applique === null
   ) {
     return null;
   }
@@ -226,7 +222,6 @@ function chiffresDeMancheClose(manche: {
     reussi,
     recompense,
     multiplicateur_applique,
-    reliquat_non_distribue,
   };
 }
 
@@ -265,12 +260,8 @@ export function projeterExecutionResultat(
     multiplicateur_applique: chiffres.multiplicateur_applique,
     clause_revelee: manche.clause_cle,
     effet_clause: `EFFET_${manche.clause_cle}`,
-    parts: partsPubliques(manche),
-    reliquat_non_distribue: chiffres.reliquat_non_distribue,
     consolation_appliquee: manche.consolation_appliquee,
-    total_consolation: manche.total_consolation,
     amendes_liquidees: amendes,
-    bonus_epices_verse: manche.bonus_epices_verse,
   });
 }
 

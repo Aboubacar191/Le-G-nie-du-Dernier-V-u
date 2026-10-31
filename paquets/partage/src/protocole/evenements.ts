@@ -29,7 +29,6 @@ import type {
   LigneClassement,
   PageMouvements,
   PaiementHistorique,
-  PartRecompense,
   PretVuPartie,
   ResultatEnqueteItem,
   ResumeManchePublique,
@@ -215,12 +214,8 @@ export interface ChargeExecutionResultat {
   readonly multiplicateur_applique: number;
   readonly clause_revelee: Clause;
   readonly effet_clause: string;
-  readonly parts: readonly PartRecompense[];
-  readonly reliquat_non_distribue: number;
   readonly consolation_appliquee: boolean;
-  readonly total_consolation: number | null;
   readonly amendes_liquidees: readonly AmendeLiquidee[];
-  readonly bonus_epices_verse: boolean;
 }
 
 export interface ChargeSoldeMisAJour {

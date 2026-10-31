@@ -67,8 +67,12 @@ test('CA-34 : 6 pièces sont prélevées à l’exécution de la manche 3', () =
     'J0',
     'J1',
   ]);
-  assert.equal(preleves[0]?.charge.montant_preleve, 6);
-  assert.equal(preleves[0]?.charge.reliquat_du, 0);
+  const chargePreteur = preleves.find((trame) => trame.destinataire === 'J0')?.charge;
+  const chargeEmprunteur = preleves.find((trame) => trame.destinataire === 'J1')?.charge;
+  assert.equal(chargePreteur?.montant_preleve, null);
+  assert.equal(chargePreteur?.reliquat_du, null);
+  assert.equal(chargeEmprunteur?.montant_preleve, 6);
+  assert.equal(chargeEmprunteur?.reliquat_du, 0);
 });
 
 test('CA-34 : le prélèvement est plafonné au solde, le reliquat reste dû', () => {

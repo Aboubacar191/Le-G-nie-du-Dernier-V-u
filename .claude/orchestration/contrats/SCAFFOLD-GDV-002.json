@@ -1,0 +1,227 @@
+{
+  "cible": "GDV-001",
+  "iteration": 2,
+  "_cycle": "S3B' — itération 1/3 du cycle de correction ouvert par le verdict REJETÉ de l'audit QA du nœud S6.",
+  "_auteur": "ingenieur-devops",
+  "_date": "2026-10-31",
+  "_note_schema": "Aucun schéma n'existe pour le type SCAFFOLD. La structure reprend celle de SCAFFOLD-GDV-001.json, augmentée de la section portes_nouvelles exigée par la mission S3B'.",
+
+  "_constat_qui_fonde_ce_noeud": "À l'audit du nœud S6, les NEUF portes du dépôt étaient vertes — dont verifier:visibilite à 0 divergence sur 144 occurrences champ × événement — et SIX canaux de fuite étaient ouverts. Aucune des six fuites ne passait par un champ. Mes neuf portes de S3B étaient justes et insuffisantes : elles mesuraient toutes la PRÉSENCE D'UN CHAMP. Ce nœud câble les deux portes qui mesurent autre chose : la FORME du trafic (verifier:uniformite) et la surface réellement servie (verifier:routes).",
+
+  "depot": {
+    "branche": "main",
+    "commit": "e3b7176b5ed8f458d189f99d56065fd75e1bf40f",
+    "commit_court": "e3b7176",
+    "commits_de_ce_noeud": [
+      "1b707d9 — porte visibilite : controle P9 (jamais emis) et 4 agregats RUP-05",
+      "6caa08d — porte verifier:routes (ADR-TL-23) : 2 controles, R1 mesuree a 0/6",
+      "d81bfe4 — porte verifier:uniformite (RG-80, ADR-TL-20) : U1 a U4 et le test P-c",
+      "3a98351 — lint au vert : plafond max-lines desarme pour qa/sondes, et lui seul",
+      "e3b7176 — affichage : les constats sont des MESURES, pas des « ok »"
+    ],
+    "_note_arbre_non_propre": "L'arbre n'était PAS propre à la prise de poste, contrairement à l'énoncé de mission : dix-neuf fichiers modifiés non commités, dont applications/client/** (agent ux-ui-designer en parallèle, commit 0e12d34 intercalé dans mon historique), paquets/moteur/src/projection/** et paquets/partage/src/protocole/** (retrait des agrégats RUP-05, en cours), et paquets/partage/src/contrat/api.json. Je n'ai mis en index QUE mes propres fichiers, chemin par chemin, à chaque commit. Aucun travail d'un autre agent n'a été commité ni annulé par moi. Deux exceptions à signaler, détaillées dans observations_pour_le_tech_lead.",
+    "_fichiers_touches": [
+      "outils/verifier-visibilite.mjs — câblage de P9 et avertissement de lecture en en-tête",
+      "outils/visibilite/cartographie.mjs — 4 entrées jamais_emis_en_public, déclaration champs_interdits, retrait de total_consolation de « clause de la manche »",
+      "outils/visibilite/controles.mjs — contrôle P9 (quatre sous-contrôles)",
+      "outils/verifier-routes.ts — porte nouvelle",
+      "outils/verifier-uniformite.ts — porte nouvelle",
+      "outils/uniformite/contrat.ts — lecture du contrat, vocabulaires normatifs",
+      "outils/uniformite/profil.ts — mesure et comparaison des profils de forme, test P-c",
+      "outils/uniformite/scenarios.ts — scénarios de mesure (pilotent qa/sondes/banc.ts)",
+      "outils/uniformite/autoessai.ts — auto-essai de l'instrument, 17 assertions",
+      "package.json — 3 scripts ajoutés, chaîne verifier étendue",
+      "eslint.config.mjs — plafond max-lines désarmé pour qa/sondes/, et lui seul"
+    ]
+  },
+
+  "portes_nouvelles": [
+    {
+      "nom": "verifier:uniformite — uniformité de forme du trafic (RG-80, ADR-TL-20)",
+      "commande": "npm run verifier:uniformite  (node --conditions=gdv-source --experimental-strip-types outils/verifier-uniformite.ts [--contrats <dossier>])",
+      "bloquante": true,
+      "etat_actuel": "ROUGE — 27 divergences, code de sortie 1. ATTENDU et NORMAL : le backend n'a pas encore implémenté RUP-01 à RUP-05. Une porte qui passerait avant le correctif serait une porte inutile.",
+      "ce_qu_elle_detecte": {
+        "U1a_nombre": "L'inégalité du NOMBRE de trames par destinataire, à effectif 6 puis 8, à graine fixée. Mesure actuelle à 6 joueurs : {J0:46, J1:46, J2:47, J3:48, J4:44, J5:44}. Un observateur qui COMPTE sans rien lire distingue les joueurs.",
+        "U1b_sequence": "L'inégalité terme à terme des suites de TYPES, donc l'impossibilité d'égaliser les numéros de séquence par session que RUP-01 rend exigible. Le contrôle le moins coûteux de la porte : aucune instrumentation du transport.",
+        "U1d_alignement": "CONTRÔLE AJOUTÉ par moi, non prescrit tel quel, après un constat de mesure : U1a et U1b raisonnent par RANG et ne distinguent pas « J0 a reçu sa trame au lot 5 » de « J1 au lot 9 ». paiement_enregistre, émis au SEUL payeur, a un compte parfaitement ÉGAL [2,2,2,2,2,2] quand les six joueurs paient : U1a, U1b et U4 le laissent passer. U1d exige que les N trames de même rang portent N numéros d'ordre CONSÉCUTIFS, ce qui est la conséquence exacte de l'émission de lot de RUP-02. Aucune heuristique de découpage n'est nécessaire.",
+        "U1c_taille": "L'écart de taille rang par rang, PLUS une sonde de présence du remplissage RUP-03 dans applications/serveur/src/temps-reel. Mesure actuelle : remplissage ABSENT, 34 rangs de taille inégale à 6 joueurs, écart maximal 862 octets (solde_mis_a_jour, 0 à 862). Sans remplissage l'écart brut EST l'écart réel sur le fil : TLS préserve les longueurs.",
+        "U2_differentiel": "La DÉPENDANCE du flux d'un joueur à un acte secret. Sept paires à graine identique ne différant que par un acte : paiement, enquête, transfert, permutation des rôles, identité du porteur de clause, prêt proposé, réponse au prêt. Le profil doit être identique pour chaque joueur, ACTEUR COMPRIS — sa charge peut différer, sa forme non. Mesure actuelle : 2 paires sur 7 invariantes. Seul contrôle du dépôt dont les deux opérandes soient INDÉPENDANTS, donc le seul non tautologique au sens de ADR-TL-24.",
+        "U3_statique": "Sur le seul contrat : x-emission appartenant à un vocabulaire NORMATIF (une valeur absente ou inventée ferme la porte — c'était le défaut réel de l'API 1.1.0, neuf schémas sur trente), x-charge-neutre présent là où il est exigible, x-charge-neutre et chaque variante de x-charge-par-destinataire sous-ensembles des propriétés déclarées, et aucun champ de charge neutre rattaché par outils/visibilite/cartographie.mjs à une donnée non publique. Mesure actuelle : 30 schémas contrôlés, 0 divergence — le contrat 1.2.0 est sain sur ce point.",
+        "U4_exceptions": "Deux choses. (1) La liste des exceptions du contrat est FERMÉE : une clé inconnue de l'outil ferme la porte, parce qu'« y ajouter une ligne est une décision d'architecture, pas un ajustement de code ». La clé tous_les_autres_refus est écrite DANS la section exceptions alors qu'elle déclare l'INVERSE : lire les clés comme autant d'exemptions serait faux, et l'outil porte une table de lecture explicite pour cela. (2) Les types dont le code se dispense d'uniformité sont MESURÉS puis confrontés aux exemptions déclarées. Mesure actuelle : 4 types non uniformes dans le code (solde_mis_a_jour, clause_recue, transfert_enregistre, resultat_enquete), 0 déclaré exempt.",
+        "P_c_cles": "L'ensemble des clés émises doit être ÉGAL, au sens de l'égalité d'ensembles, à EXACTEMENT la variante complète, ou x-charge-neutre, ou une variante de x-charge-par-destinataire. Un ensemble INTERMÉDIAIRE est un défaut bloquant : c'est la charge « à moitié vidée » d'un développeur qui construit le neutre en SUPPRIMANT les champs un par un. Mesure actuelle : 670 charges confrontées (275 à 6 joueurs, 395 à 8), 0 divergence — P-c est le seul contrôle de cette porte déjà vert, et il le restera seulement si le backend construit les charges neutres par CONSTRUCTION et non par soustraction."
+      },
+      "ce_qu_elle_ne_detecte_PAS": [
+        "La CADENCE. Elle ne mesure aucun instant. L'ARCHI ne rend pas exigible en v1 une cadence indépendante des actes, et le résidu est inscrit en dette assumée : un observateur apprend qu'UN acte a eu lieu à l'instant t, jamais lequel ni de qui.",
+        "Le résidu INTER-PALIER de etat_complet_prive (3593 octets mesurés à 6 joueurs), déjà inscrit en dette assumée.",
+        "Les trames accuse_reception et erreur — LACUNE MESURÉE ET DÉCLARÉE. Le harnais pilote le moteur sans id_correlation : aucune des deux n'est projetée dans les scénarios, 14 types de trame sur 30 apparaissent. Or accuse_reception est l'UN DES TROIS contributeurs du profil 28 contre 25 de ANO-02. La porte ne couvre donc pas ce tiers-là. Fermer la lacune demande un harnais qui corrèle les commandes, ce qui appartient au nœud QA.",
+        "Les erreurs de PROTOCOLE (JETON_ABSENT, JETON_INVALIDE, MESSAGE_MALFORME, COMMANDE_INCONNUE, TROP_DE_REQUETES) : elles naissent dans le transport, sur un socket parfois anonyme ; le harnais joue le moteur, elles sont hors de sa portée — ce qui est cohérent, le contrat les exempte.",
+        "Toute asymétrie que le SCÉNARIO ne crée pas. U4 déduit les exceptions du code d'une inégalité de dénombrement : si les N joueurs agissent tous dans le même ordre, le dénombrement redevient égal et seul U1d voit encore quelque chose.",
+        "La signature du Dernier Vœu comme acte secret de U2 : elle exige le mode avancé et un parcours DV complet. Sept des huit actes de la liste fermée sont couverts, le huitième est déclaré manquant.",
+        "L'EXHAUSTIVITÉ SUR LES ÉTATS. Le harnais joue des scénarios, pas tous les états possibles. Le test P-c en propriété (fast-check) sur états générés reste DÛ par le nœud backend : cette porte en est le filet, pas le substitut.",
+        "Le CONTENU d'une charge, par construction et par décision : c'est l'office de verifier:visibilite. Les deux verdicts se citent ensemble, jamais l'un seul."
+      ],
+      "preuve_echec_sur_violation_volontaire": {
+        "auto_essai": "npm run verifier:uniformite:autoessai — 17 assertions, code 0. CONTRÔLE POSITIF sur un trafic synthétique parfaitement uniforme : les six contrôles rendent conforme et ne signalent rien. Une porte toujours rouge est aussi inutile qu'une porte toujours verte ; c'est la seule preuve possible tant que RUP-01 à RUP-05 ne sont pas implémentées.",
+        "violations_une_par_controle": "U1a voit une trame retirée à J1 (1 anomalie). U1b voit un type changé au même rang. U1d voit un désalignement de lot — et la même mesure montre que U1a reste MUET dessus, ce qui démontre que les deux contrôles ne sont pas redondants. U1c voit UN octet d'écart sur une seule trame. U2 voit une trame de plus chez l'acteur à profil par ailleurs identique.",
+        "seuil_exact_sur_P_c": "Quatre assertions dans les deux sens : un ensemble égal à x-charge-neutre ({numero_manche}) PASSE ; un sous-ensemble strict de la variante complète ({solde_pieces}) ÉCHOUE ; la variante neutre AVEC une clé de plus ÉCHOUE ; l'objet vide ÉCHOUE quand x-charge-neutre n'est pas vide. L'égalité est exigée, pas l'inclusion.",
+        "violations_sur_copie_corrompue_du_contrat": "node … outils/verifier-uniformite.ts --contrats <copie> sur un API-GDV-001.json volontairement amputé : x-emission retiré de EvtVoeuAnnonce → U3 parle ; x-charge-neutre retiré de EvtPaiementEnregistre → U3 parle ; x-charge-neutre de EvtSoldeMisAJour forcé à ['solde_pieces'] → U3 « une charge neutre qui porte un secret est une porte dérobée déclarée » ; variante preteur citant un champ inexistant → U3 parle ; une troisième exception EvtClauseRecue ajoutée à la section exceptions → U4 « la liste des exceptions est FERMÉE » ; propriété recompense retirée de EvtExecutionResultat → P-c parle sur des projections RÉELLES. Les contrats réels n'ont jamais été modifiés : la porte accepte --contrats précisément pour cela.",
+        "constats_retires": true
+      },
+      "harnais": "qa/sondes/banc.ts, écrit par l'ingénieur QA, NON réécrit (prescription explicite du tech-lead). Il joue le moteur par ses seules portes publiques et enregistre toutes les trames réellement projetées, destinataire par destinataire. Aucun serveur démarré, aucun port ouvert : la porte s'exécute sur une machine partagée sans rien déranger, serveurs de développement arrêtés."
+    },
+    {
+      "nom": "verifier:routes — six routes REST sous /api, et aucune réécriture de préfixe (ADR-TL-23)",
+      "commande": "npm run verifier:routes  (node --conditions=gdv-source --experimental-strip-types outils/verifier-routes.ts [--contrats <dossier>] [--client <fichier>])",
+      "bloquante": true,
+      "etat_actuel": "ROUGE — 0/6 routes, 14 divergences, code de sortie 1. C'est ANO-11 telle que le QA l'a mesurée, reproduite mécaniquement. Les deux correctifs appartiennent au nœud backend (préfixe) et au nœud frontend (retrait de la réécriture) ; je les CONTRÔLE sans les faire.",
+      "ce_qu_elle_detecte": {
+        "R1_routes": "L'ensemble des chemins réellement enregistrés par le serveur, PRÉFIXE COMPRIS, confronté aux opérations de paths du contrat préfixées par servers[0].url. ÉGALITÉ DANS LES DEUX SENS : une route déclarée et non servie ferme la porte, et une route servie et non contractuelle la ferme aussi. Le préfixe n'est PAS écrit en dur dans l'outil, il est LU dans servers[0].url — un préfixe codé dans l'outil serait la troisième source de vérité que ADR-TL-23 veut supprimer. La méthode HTTP est comparée, pas seulement le chemin.",
+        "R2_reecriture": "Toute réécriture de préfixe dans la configuration du proxy de développement du client : clé rewrite, motif replace(/^\\/api/…), clé pathRewrite. Les commentaires sont retirés avant la recherche, pour qu'un motif cité dans un commentaire ne ferme pas la porte. C'est le plus important des deux contrôles : sans lui, le dépôt garde deux sources de vérité pour le préfixe et la prochaine régression sera de nouveau invisible en développement et totale en production."
+      },
+      "ce_qu_elle_ne_detecte_PAS": [
+        "Qu'une route FONCTIONNE. Elle mesure la table de routes, pas les réponses : le service injecté est FACTICE et aucun gestionnaire n'est exécuté. Une route enregistrée au bon chemin qui rendrait 500 passe cette porte. C'est le périmètre des tests du serveur, pas le sien.",
+        "Les schémas de requête et de réponse, les codes de statut, les en-têtes. Elle compare des couples (méthode, chemin) et rien d'autre.",
+        "Le canal temps réel /tr : il n'est pas dans paths et n'est pas une route REST.",
+        "La configuration de PRODUCTION du proxy inverse, qui n'est pas dans le dépôt. R2 ne couvre que la configuration de développement du client — c'est là que l'écart était masqué, c'est tout ce que le dépôt contient.",
+        "Un préfixe appliqué par un reverse-proxy en amont du serveur Fastify : la porte mesure ce que Fastify enregistre, pas ce qu'un intermédiaire ajouterait."
+      ],
+      "preuve_echec_sur_violation_volontaire": {
+        "controle_positif_R1": "Préfixe /api appliqué TEMPORAIREMENT dans applications/serveur/src/http/serveur.ts (un serveur.register(..., { prefix: '/api' })) : la porte rend « mes. R1 — 6 route(s) sur 6 servies sous « /api » », VERDICT CONFORME, code 0. Le correctif temporaire a été retiré, git diff vide sur le fichier.",
+        "R1_surnumeraire": "Avec le préfixe appliqué, ajout d'une route /api/diagnostic/etat : « GET /api/diagnostic/etat est servie par le serveur et n'est déclarée dans AUCUN paths du contrat », 1 divergence alors que les six contractuelles sont servies. L'égalité d'ensembles est donc bien bilatérale. Retirée.",
+        "controle_positif_R2": "Porte lancée avec --client sur une copie de vite.config.ts privée de sa réécriture : « mes. R2 — configuration du client lue (85 lignes), 3 motifs de réécriture recherchés », aucune anomalie R2, les 12 restantes étant toutes R1.",
+        "R2_troisieme_motif": "pathRewrite: { '^/api': '' } ajouté à la copie corrigée : « contient une clé « pathRewrite » (proxy http-proxy-middleware) », porte fermée. Les trois motifs sont donc actifs, pas seulement celui du dépôt.",
+        "constats_retires": true
+      }
+    }
+  ],
+
+  "porte_existante_modifiee": {
+    "nom": "verifier:visibilite — contrôle P9 ajouté, et avertissement de lecture",
+    "commande": "npm run verifier:visibilite",
+    "etat_actuel": "VERTE — VERDICT CONFORME, 0 divergence, code 0.",
+    "pourquoi_elle_etait_rouge": "J'ai ajouté — au nœud précédent — quatre entrées à matrice_visibilite sans les câbler dans outils/visibilite/cartographie.mjs : « total des consolations de la manche », « part de récompense individuelle », « reliquat d'arrondi non distribué », « total distribué de la manche ». Le contrôle P3 refusait à juste titre de prétendre les avoir vérifiées : VERDICT DIVERGENCE — 4 divergence(s).",
+    "pourquoi_une_cartographie_vide_ne_suffisait_pas": "Ces quatre données ont été RETIRÉES du protocole par l'API 1.2.0 (RUP-05, ADR-TL-21). Il n'y a donc aucun champ à cartographier, et une cartographie à `champs: []` aurait fait passer P3 sans RIEN mesurer — exactement le défaut que l'audit a sanctionné. Le risque n'est plus la fuite d'un champ existant, c'est la RÉINTRODUCTION d'un champ supprimé, et aucun des contrôles P1 à P8 ne la voit : ils ne raisonnent que sur ce qui est présent.",
+    "controle_P9": {
+      "P9a": "Une entrée portant jamais_emis_en_public: true doit être déclarée de façon MESURABLE : soit des champs, soit des champs_interdits. Ni l'un ni l'autre ferme la porte.",
+      "P9b": "jamais_emis_en_public: true et un devient_public non nul sont contradictoires ; une cartographie qui déclarerait des événements de publication aussi.",
+      "P9c": "Aucun nom déclaré interdit n'apparaît comme propriété d'AUCUN schéma du contrat. PÉRIMÈTRE ÉLARGI à tous les schémas, et non aux seuls EvtXxx atteignables : le second vecteur de ANO-06, relevé par le tech-lead et non vu par l'audit, faisait voyager les parts dans ResumeManchePublique, un schéma imbriqué.",
+      "P9d": "Un nom déclaré interdit et cartographié ailleurs comme champ, ou déclaré neutre dans CHAMPS_NEUTRES, ferme la porte : deux déclarations contradictoires laissent choisir celle qui arrange."
+    },
+    "effet_de_bord_corrige": "total_consolation a été retiré des champs de l'entrée « clause de la manche ». Le laisser cartographié comme publiable par EvtExecutionResultat AUTORISAIT sa réintroduction, c'est-à-dire la réouverture de ANO-05 : total_paye − 2 × total_consolation donne le nombre exact de paiements impairs.",
+    "preuve_echec_sur_violation_volontaire": "Quatre violations, sur une copie des contrats et sur une copie de la cartographie, constats retirés. (1) parts réintroduit dans EvtExecutionResultat → P9 parle. (2) total_consolation réintroduit dans un schéma NON atteignable depuis un EvtXxx (ApercuSession) → P7 est MUET, P9 parle : la démonstration du périmètre élargi. (3) champs_interdits retiré d'une entrée → « la cartographie ne déclare NI champs NI champs_interdits. Rien n'est mesuré pour cette entrée ». (4) total_consolation remis dans les champs de « clause de la manche » → « deux déclarations contradictoires laissent choisir celle qui arrange ».",
+    "avertissement_de_lecture_ajoute": "L'en-tête de la porte porte désormais l'avertissement de l'ARCHI 1.2.0 : son verdict CONFORME signifie « aucun champ déclaré secret ne figure dans une trame qui ne doit pas le porter », il ne signifie PAS « aucune fuite ». Les six canaux de l'audit l'ont tous franchie au vert. Elle se cite avec verifier:uniformite, jamais seule."
+  },
+
+  "decision_plafond_lignes_des_sondes_audit": {
+    "objet": "qa/sondes/sonde-criteres-d.ts fait 387 lignes comptées pour un plafond taille_fichier_max_lignes de 300. C'était l'unique échec de npm run lint.",
+    "decision": "Désarmer max-lines — et max-lines seul — pour qa/sondes/**/*.ts.",
+    "motif": "taille_fichier_max_lignes est un seuil de MAINTENABILITÉ : il protège du code qui sera relu, modifié et étendu pendant toute la vie du projet. Une sonde d'audit n'est pas cela, c'est un RELEVÉ DE MESURE, écrit pour un audit donné, exécuté, et dont la valeur tient précisément à ce qu'on ne le remanie pas — une sonde remaniée ne mesure plus ce qu'elle a mesuré, et le rapprochement avec le rapport du QA qui la cite est perdu.",
+    "pourquoi_pas_le_decoupage": "sonde-criteres-d.ts parcourt les critères d'acceptation de la série D dans l'ordre du contrat. Couper à 300 lignes placerait une frontière de fichier au milieu d'une énumération, à un endroit sans aucun sens, et rendrait plus difficile le rapprochement entre le rapport et la mesure qui le fonde. Le découpage serait cosmétique et coûterait de la traçabilité.",
+    "pourquoi_pas_ignores": "L'état du dépôt à ma prise de poste inscrivait le fichier dans la liste `ignores` d'ESLint. Ignorer un fichier désarme TOUTES les règles : complexity, max-depth, max-lines-per-function, eqeqeq, no-unused-vars, consistent-type-imports comprises. Une sonde illisible ou qui masque une variable est une sonde qui mesure faux, et la précision d'un instrument d'audit compte plus que celle du code qu'il mesure. J'ai retiré l'entrée d'ignores et posé une surcharge étroite.",
+    "perimetre": "qa/sondes/ uniquement. La règle n'est PAS désarmée pour le code de production, à aucune condition. Précédent de même nature déjà présent au dépôt : **/tests/** désarme max-lines-per-function et no-magic-numbers.",
+    "preuve_seuil_exact": "Un fichier de 301 lignes déposé dans paquets/partage/src/ → « File has too many lines (301). Maximum allowed is 300 », porte fermée. Le MÊME fichier sous qa/sondes/ → aucune erreur. Fichiers d'essai retirés, npm run lint code 0."
+  },
+
+  "scripts_npm": {
+    "verifier:uniformite": "AJOUTÉ — porte d'uniformité de forme, contrôles U1 à U4 et test P-c. Rouge en attente de RUP-01 à RUP-05.",
+    "verifier:uniformite:autoessai": "AJOUTÉ — auto-essai de l'instrument : contrôle positif sur trafic synthétique uniforme, une violation par contrôle, seuil exact sur P-c. Vert, code 0.",
+    "verifier:routes": "AJOUTÉ — six routes sous /api et absence de réécriture de proxy. Rouge en attente du préfixe backend et du retrait de la réécriture frontend.",
+    "verifier": "ÉTENDU — les deux portes nouvelles sont enchaînées EN FIN de chaîne. Décision inscrite dans package.json / _note_ordre_verifier : elles mesurent un COMPORTEMENT là où les précédentes lisent des contrats et du code ; en tête, elles échoueraient avant que types, lint et couches aient dit leur mot et masqueraient l'état des portes vertes."
+  },
+
+  "commandes_verifiees": [
+    {
+      "commande": "npm run verifier:visibilite",
+      "code_sortie": 0,
+      "extrait_sortie": "ok P1/P2 — 30 schémas EvtXxx annotés et contrôlés. | ok P3 — 25 entrées de matrice_visibilite, toutes cartographiées. | ok P4/P5/P6 — 141 occurrences champ×événement confrontées à la matrice. | ok P7 — 151 noms de champs distincts (267 occurrences schéma×champ), tous classés. | ok P8 — 30 valeurs de type ↔ 30 schémas EvtXxx. | ok P9 — 5 données « jamais émises en public », 10 noms de champs interdits confrontés aux 174 noms de propriétés de TOUS les schémas. | VERDICT CONFORME — 0 divergence(s)"
+    },
+    {
+      "commande": "npm run lint",
+      "code_sortie": 0,
+      "extrait_sortie": "eslint . — aucune sortie, aucune erreur, aucun avertissement."
+    },
+    {
+      "commande": "npm run types",
+      "code_sortie": 0,
+      "extrait_sortie": "@gdv/moteur tsc --noEmit | @gdv/partage tsc --noEmit | @gdv/client vue-tsc --noEmit | @gdv/serveur tsc --noEmit — les quatre paquets silencieux."
+    },
+    {
+      "commande": "npm run verifier:uniformite",
+      "code_sortie": 1,
+      "extrait_sortie": "transport — remplissage ABSENT | mes. U3 — 30 schémas EvtXxx contrôlés sur le seul contrat (API 1.2.0) | mes. U1 — 6 joueurs, 275 trames projetées ; nombre NON uniforme, séquence NON alignée, lots NON groupés, 34 rang(s) de taille inégale | mes. U1 — 8 joueurs, 395 trames projetées ; … 33 rang(s) de taille inégale | mes. P-c — 275 puis 395 charges projetées confrontées aux variantes déclarées | mes. U2 — 2/7 paires différentielles invariantes | mes. U4 — 4 type(s) non uniformes mesurés dans le code, 2 exception(s) déclarées au contrat | bilan par contrôle : U1a=2, U1b=9, U1d=2, U1c=2, U2=8, U4=4 | VERDICT DIVERGENCE — 27 divergence(s)"
+    },
+    {
+      "commande": "npm run verifier:uniformite:autoessai",
+      "code_sortie": 0,
+      "extrait_sortie": "17 assertions, toutes OK — « AUTO-ESSAI CONFORME — l'instrument dit oui quand il doit, non quand il doit. »"
+    },
+    {
+      "commande": "npm run verifier:routes",
+      "code_sortie": 1,
+      "extrait_sortie": "mes. R1 — 0 route(s) sur 6 servies sous « /api » ; 6 route(s) enregistrées au total | mes. R2 — configuration du client lue (86 lignes), 3 motifs de réécriture recherchés | ÉCHEC [R1] GET /api/sante déclarée au contrat et NON servie | … les six | ÉCHEC [R1] GET /sante est servie SANS le préfixe « /api » exigé par servers[0].url | … les six | ÉCHEC [R2] vite.config.ts contient une clé « rewrite » | ÉCHEC [R2] … une réécriture replace(/^\\/api/…) | VERDICT DIVERGENCE — 0/6 routes, 14 divergence(s)"
+    }
+  ],
+
+  "observations_pour_le_tech_lead": [
+    {
+      "objet": "Le signal volontairement rouge de contrat-api.test.ts est actuellement EFFACÉ dans l'arbre de travail",
+      "constat": "Ta consigne était de laisser rouge paquets/partage/tests/contrat-api.test.ts, la copie embarquée étant en 1.0.0 contre 1.2.0 à la source, « signal honnête que l'implémentation est en retard ». À ma prise de poste, paquets/partage/src/contrat/api.json était modifié non commité et porte 1.2.0 : la copie a été RESYNCHRONISÉE par un autre agent, et le test passe (2 tests, 0 échec). Au HEAD de git, la copie est bien restée en 1.0.0.",
+      "fait": "Je n'ai pas touché ce fichier et ne l'ai pas commité. Je n'ai pas non plus annulé la modification : annuler le travail en cours d'un autre agent sans son contexte serait pire que le signaler.",
+      "a_trancher": "Si le signal doit rester rouge, l'agent qui a resynchronisé la copie doit l'annuler. Si la resynchronisation accompagne l'implémentation en cours, le signal est levé et c'est légitime — mais il faut le dire, parce qu'en l'état un lecteur du dépôt verra un test vert qui ne prouve rien."
+    },
+    {
+      "objet": "Trois sources ne s'accordent pas sur les numéros de version — le défaut 1.2.1 se reproduit",
+      "constat": "SPEC-GDV-001.json déclare version = « 1.4.0 » et son _historique_versions s'arrête à 1.4.0, alors que ma mission, le commit cf4aca1 et le registre d'orchestration parlent de SPEC 1.4.1 ; la chaîne « 1.4.1 » n'apparaît nulle part dans le fichier. registre.json déclare spec_version = « 1.1.0 » et api_version = « 1.0.0 », quand les contrats portent 1.4.0 et 1.2.0. Le contenu de la SPEC, lui, est à jour : RG-80, RG-81 et les quatre entrées de matrice_visibilite y sont.",
+      "fait": "Rien. SPEC, API, ARCHI et registre.json sont hors de mon périmètre. Je signale.",
+      "a_trancher": "C'est exactement le défaut corrigé en SPEC 1.2.1 — « le champ version indiquait encore 1.0.0 alors que le contenu était à jour, tout agent aval aurait cru la SPEC périmée » — et il est revenu. Si tu le veux mécanisé, c'est une porte de quatre lignes : comparer registre.json / spec_version et api_version aux champs version des contrats, échouer sur l'écart. Je la câble au prochain nœud sur un mot de toi ; je ne l'ai pas inventée de moi-même, ajouter une porte non prescrite est ta décision, pas la mienne."
+    },
+    {
+      "objet": "Un nom de champ « de garde » déclaré par CARTOGRAPHIE.champs n'est contrôlé que sur les EvtXxx, pas sur le contrat entier",
+      "constat": "Trois entrées de matrice_visibilite s'appuient sur des noms de champs qui n'existent dans AUCUN schéma, et c'est leur intention : « identite du porteur de la clause » (porteur_clause_joueur_id, porteur_joueur_id, porteur) porte la note « ces noms ne doivent apparaître dans AUCUN événement », et « jeton_session d'un joueur » barre jeton, jeton_hote, jeton_session_hache. Ces noms sont contrôlés par P5, qui ne parcourt que les schémas atteignables depuis un EvtXxx. Les noms déclarés par champs_interdits, eux, sont contrôlés par P9 sur TOUS les schémas, réponses REST comprises.",
+      "fait": "Rien : je ne les ai pas déplacés. jeton_session EST légitimement une propriété d'une réponse REST, donc le périmètre élargi fermerait la porte à tort pour cette entrée ; et je ne tranche pas seul le statut de porteur_joueur_id.",
+      "a_trancher": "Veux-tu que l'identité du porteur de clause soit barrée du contrat ENTIER et pas seulement des événements ? Si oui, elle passe en champs_interdits et P9 la couvre, en une ligne."
+    },
+    {
+      "objet": "U1d n'était pas dans ta prescription, et je l'ai ajouté",
+      "constat": "Tes contrôles U1 portent sur le nombre, la séquence et la taille. En les mesurant, j'ai constaté que l'égalité des suites de types raisonne par RANG et laisse passer un cas réel : paiement_enregistre est émis au SEUL payeur, et quand les six joueurs paient tous, son compte est [2,2,2,2,2,2]. U1a, U1b et U4 le déclarent uniforme. Il ne l'est pas : la trame part vers un téléphone à l'instant où ce joueur agit.",
+      "fait": "Ajout du contrôle U1d : les N trames de même rang doivent porter N numéros d'ordre CONSÉCUTIFS, ce qui est la conséquence exacte de l'émission de lot de RUP-02. Aucune heuristique de découpage, aucun paramètre à régler. L'auto-essai démontre que U1a reste muet là où U1d parle.",
+      "a_trancher": "Valider l'ajout, ou me dire de le retirer. Je ne choisis pas les seuils ; ici je n'ai pas changé de seuil, j'ai ajouté une dimension que la mesure a rendue nécessaire."
+    },
+    {
+      "objet": "La porte d'uniformité ne couvre pas accuse_reception, qui est l'un des trois contributeurs de ANO-02",
+      "constat": "Le harnais du QA pilote le moteur sans id_correlation : accuse_reception et erreur ne sont jamais projetés. Diagnostic vérifié, 14 types de trame sur 30 apparaissent dans mes scénarios. Or ta propre analyse décompose l'écart de trois trames de J3 en accuse_reception, resultat_enquete et solde_mis_a_jour. La porte voit les deux derniers, pas le premier.",
+      "fait": "Lacune inscrite dans l'en-tête de la porte et dans ce contrat. Je n'ai pas modifié qa/sondes/banc.ts : c'est l'instrument du QA, et le corriger sans lui serait exactement la dérive que ce cycle de correction combat.",
+      "a_trancher": "Assigner au nœud QA l'extension du banc à la corrélation des commandes. Tant qu'elle n'est pas faite, un verdict vert de verifier:uniformite ne couvrira que deux tiers de ANO-02 et devra être cité comme tel."
+    }
+  ],
+
+  "blocages": [
+    {
+      "objet": "verifier:uniformite est ROUGE — 27 divergences",
+      "nature": "attendu à cette itération, pas un défaut de la porte",
+      "detail": "Le backend n'a implémenté aucune des ruptures RUP-01 (séquence par session), RUP-02 (émission à tous), RUP-03 (remplissage par paliers), RUP-04 et RUP-05. La porte reproduit ANO-01 (clause_recue {2,0,1,2,0,0}), ANO-02 (resultat_enquete au seul enquêteur) et les fuites déduites non mesurées (solde_mis_a_jour, transfert_enregistre, prêts). Son auto-essai prouve séparément qu'elle sait dire oui.",
+      "lever_quand": "le nœud backend livre RUP-01 à RUP-05."
+    },
+    {
+      "objet": "verifier:routes est ROUGE — 0/6 routes et 2 réécritures",
+      "nature": "attendu, deux correctifs hors de mon périmètre",
+      "detail": "Le serveur enregistre ses six routes à la RACINE ; le contrat les déclare sous /api. Et applications/client/vite.config.ts réécrit /^\\/api/ → ''. Les deux doivent être corrigés ENSEMBLE : préfixer sans retirer la réécriture casserait le développement alors que la production serait correcte. Le contrôle positif démontre que la porte rend CONFORME 6/6 dès que les deux le sont.",
+      "lever_quand": "le nœud backend préfixe ses routes et le nœud frontend retire la réécriture, dans le même cycle."
+    },
+    {
+      "objet": "npm run verifier sort en code 1",
+      "nature": "état réel du dépôt",
+      "detail": "La chaîne s'arrête au premier échec. Les portes secrets, visibilité, types, lint et couches passent ; test est à vérifier par le nœud concerné ; uniformité et routes sont rouges en fin de chaîne pour les motifs ci-dessus.",
+      "lever_quand": "les deux blocages précédents sont levés."
+    },
+    {
+      "objet": "Les outils en TypeScript ne sont pas couverts par npm run types",
+      "nature": "lacune déclarée, précédent existant",
+      "detail": "npm run types parcourt les workspaces. outils/ et qa/ n'en sont pas, donc ni mes trois nouveaux fichiers TypeScript ni les sondes du QA ne sont vérifiés par tsc. Ils sont en revanche lintés par ESLint, qui applique le socle typescript-eslint recommandé sans projet, et ils sont EXÉCUTÉS à chaque passage de porte — une erreur de type s'y manifeste donc immédiatement, pas silencieusement. Je ne l'ai pas corrigé pour ne pas étendre la portée de npm run types sans décision.",
+      "lever_quand": "décision du tech-lead sur l'ajout d'un tsconfig pour outils/ et qa/ dans la chaîne types."
+    }
+  ],
+
+  "statut": "LIVRE"
+}

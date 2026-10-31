@@ -2,9 +2,13 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Le Génie du Dernier Vœu — protocole client/serveur",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "summary": "Contrat unique entre backend, frontend et QA. Le code n'est jamais la source de vérité ; ce fichier l'est.",
-    "description": "Deux canaux. (1) REST, strictement minimal : tout ce qui doit fonctionner AVANT qu'un jeton de session existe (création, aperçu, adhésion, configuration) plus la sonde de santé. (2) Temps réel sur WebSocket : la totalité du jeu, décrite dans components.schemas et l'extension x-temps-reel.\n\nRÈGLE MAÎTRESSE (RG-01, priorité 1 du registre). Il n'existe AUCUN message d'état global diffusé à tous. Chaque message sortant est une projection calculée pour un destinataire unique par une fonction pure du moteur (ADR-TL-09). L'annotation x-visibilite de chaque schéma EvtXxx déclare la classe de destinataire autorisée ; elle est vérifiée mécaniquement contre matrice_visibilite de SPEC-GDV-001.json par outils/verifier-visibilite.mjs, qui fait échouer l'intégration en cas de divergence.\n\nAucune commande client ne peut déclencher une exécution, une révélation ou une distribution : ces opérations n'existent que côté serveur (CA-50).",
+    "x-historique-versions": [
+      {"version": "1.1.0", "objet": "Séparation de x-visibilite (ce que CONTIENT une trame) et de x-emission (à QUI, QUAND et en QUELLE TAILLE elle part). Émission de toute trame à tous, charge neutre pour les non-destinataires, remplissage par paliers, séquence par session, interdiction de la compression élevée au rang d'exigence de sécurité. Section normative x-temps-reel.uniformite_de_forme. RUPTURE : x-ruptures-de-compatibilite était resté VIDE, alors que le corps du contrat référençait déjà RUP-01 — défaut corrigé en 1.2.0."},
+      {"version": "1.2.0", "objet": "Achèvement de 1.1.0, qui était partielle. QUATRE corrections. (1) x-ruptures-de-compatibilite renseigné : RUP-01 à RUP-05, avec portée séparée pour le backend, le frontend et le QA. (2) NEUF schémas EvtXxx sur 30 ne portaient PAS x-emission — EvtAccusationDeclaree, EvtAccusationResolue, EvtExecutionResultat, EvtSoldeMisAJour, EvtDernierVoeuPropose, EvtDernierVoeuResolu, EvtScoresFinaux, EvtPartieAbandonnee, EvtGroupeMisAJour — ce qui rendait le contrat non conforme à son propre contrôle U3. Les neuf sont annotés. (3) EvtExecutionResultat conformé à la liste fermée de l'étape 16 de SPEC 1.4.0 : retrait de parts, reliquat_non_distribue, total_consolation et bonus_epices_verse (ADR-TL-21, ferme ANO-05 et ANO-06). (4) Préfixe /api et correctif ANO-07 rattachés à des ADR désormais EXISTANTS dans ARCHI 1.2.0."}
+    ],
+    "description": "Deux canaux. (1) REST, strictement minimal : tout ce qui doit fonctionner AVANT qu'un jeton de session existe (création, aperçu, adhésion, configuration) plus la sonde de santé. (2) Temps réel sur WebSocket : la totalité du jeu, décrite dans components.schemas et l'extension x-temps-reel.\n\nRÈGLE MAÎTRESSE (RG-01, priorité 1 du registre). Il n'existe AUCUN message d'état global diffusé à tous. Chaque message sortant est une projection calculée pour un destinataire unique par une fonction pure du moteur (ADR-TL-09). L'annotation x-visibilite de chaque schéma EvtXxx déclare la classe de destinataire autorisée pour le CONTENU ; elle est vérifiée mécaniquement contre matrice_visibilite de SPEC-GDV-001.json par outils/verifier-visibilite.mjs, qui fait échouer l'intégration en cas de divergence.\n\nSECONDE RÈGLE MAÎTRESSE, AJOUTÉE EN 1.1.0 (RG-80, rang 1). La FORME du trafic est une information au même titre que son contenu. x-visibilite gouverne CE QUE contient une trame ; x-emission gouverne À QUI, QUAND et EN QUELLE TAILLE elle est envoyée. Les deux sont normatifs et vérifiés par deux portes distinctes. Les six fuites mesurées par l'audit QA du nœud S6 ont toutes franchi une porte de visibilité verte : aucune ne passait par un champ. Voir x-temps-reel.uniformite_de_forme et ADR-TL-20.\n\nTROISIÈME RÈGLE, AJOUTÉE EN 1.1.0 (RG-81, rang 1). Aucune donnée publiée — agrégée ou individuelle — n'entre dans ce contrat sans une preuve de non-inversibilité inscrite dans ARCHI-GDV-001.json / registre_agregats_publies. Une donnée dont l'inversibilité n'est pas étudiée est réputée inversible et reste privée.\n\nAucune commande client ne peut déclencher une exécution, une révélation ou une distribution : ces opérations n'existent que côté serveur (CA-50).",
     "contact": {"name": "tech-lead", "url": "ARCHI-GDV-001.json"},
     "license": {"name": "Propriétaire", "identifier": "LicenseRef-proprietaire"}
   },
@@ -12,6 +16,15 @@
   "servers": [
     {"url": "https://{hote}/api", "description": "Origine sécurisée obligatoire (ADR-TL-16). Le canal temps réel partage la même origine : wss://{hote}/tr", "variables": {"hote": {"default": "localhost:8443"}}}
   ],
+
+  "x-prefixe-rest": {
+    "_statut": "NORMATIF, tranché en 1.1.0 par ADR-TL-23 après ANO-11 (mesure QA : 0 route sur 6 portait le préfixe).",
+    "prefixe": "/api",
+    "regle": "Les SIX opérations de paths sont servies sous /api et NULLE PART AILLEURS : /api/sante, /api/configuration/defauts, /api/sessions, /api/sessions/{code_adhesion}/apercu, /api/sessions/{code_adhesion}/joueurs, /api/groupes/moi. Le serveur se conforme au contrat ; le contrat n'est pas aligné sur le serveur.",
+    "justification_par_exigence": "Sécurité, rang 1. L'engagement « aucune réponse de /api n'est mise en cache » (ANO-10, et motif de l'arbitrage CONF-10) doit s'exprimer par un prédicat UNIQUE et auditable : url.pathname.startsWith('/api/'). Avec des routes montées à la racine, le même engagement devient une énumération de quatre familles de chemins, qui dérive au premier ajout de route et qui partage son espace de noms avec les routes de navigation du client servi sur la même origine. Ce n'est pas une préférence de style : c'est la condition pour que la garantie de non-mise-en-cache soit vérifiable par une seule ligne.",
+    "interdiction_de_contournement": "La réécriture du proxy de développement (/^\\/api/u → '') est INTERDITE et doit être retirée avec le correctif. Un proxy qui réécrit le préfixe fait du fichier de configuration du client une seconde source de vérité et masque toute régression ultérieure : l'écart serait invisible en développement et total en production, ce qui est exactement ce que le QA a mesuré. Le proxy de développement transmet /api sans modification.",
+    "verification": "Porte npm run verifier:routes — les chemins réellement enregistrés par le serveur, préfixe compris, doivent former un ensemble ÉGAL aux six chemins de paths préfixés par /api, et aucune réécriture de préfixe ne doit figurer dans la configuration du client. Attendu : 6 sur 6."
+  },
 
   "security": [{"jetonSession": []}],
 
@@ -131,7 +144,11 @@
       "sous_protocole": "aucun",
       "format": "JSON UTF-8, une enveloppe par trame texte",
       "taille_max_trame_octets": 4096,
-      "compression": "aucune (permessage-deflate désactivé : aucun gain utile sur des trames de quelques centaines d'octets, et une compression partagée entre champs publics et privés est une mauvaise idée de principe)"
+      "_portee_taille_max": "S'applique aux trames ENTRANTES (client vers serveur). Aucune commande légitime ne dépasse 300 octets.",
+      "taille_max_trame_sortante_octets": 16384,
+      "palier_taille_octets": 1024,
+      "_justification_palier": "RG-80 ajoutée en 1.1.0 : la TAILLE d'une trame est observable même sous TLS. Une charge vide de 12 octets face à une charge pleine de 300 octets laisse fuir exactement le bit que l'émission à tous prétendait masquer. Toute trame sortante est donc complétée par EnveloppeEvenement.remplissage jusqu'au prochain multiple de 1024 octets, et toutes les trames d'un même lot d'émission uniforme sont complétées à la MÊME cible. Coût mesurable et accepté : volume_attendu de ARCHI (environ 1500 messages par partie) porté à environ 12 000 trames de 1 Ko par partie à 8 joueurs, soit de l'ordre de 12 Mo par partie de 30 minutes sur réseau local. Aucun budget de contraintes_perf n'est menacé à ce volume.",
+      "compression": "aucune, et l'interdiction devient une exigence de sécurité et non plus une simple absence de gain : une compression appliquée APRÈS remplissage rendrait la taille compressée dépendante du contenu et annulerait le remplissage. permessage-deflate reste désactivé ; le remplissage est appliqué en dernier, juste avant l'écriture sur le socket."
     },
 
     "authentification": {
@@ -173,8 +190,10 @@
 
     "sequencage": {
       "champ": "sequence",
-      "portee": "Entier monotone croissant PAR DESTINATAIRE, démarrant à 1 après chaque etat_complet_prive. Deux joueurs n'ont ni les mêmes numéros ni le même nombre de messages : c'est la conséquence directe de la projection par destinataire.",
-      "usage": "Le client détecte un trou de séquence et déclenche une reconnexion. Il ne tente jamais de reconstituer l'état lui-même."
+      "portee": "RUPTURE EN 1.1.0 — voir x-ruptures-de-compatibilite / RUP-01. Entier monotone croissant PAR SESSION, et non plus par destinataire. Les huit joueurs d'une session reçoivent les MÊMES numéros de séquence, parce qu'ils reçoivent désormais les mêmes trames en même temps (RG-80, x-emission). L'ancienne portée par destinataire était la trace même de la fuite : « deux joueurs n'ont pas le même nombre de messages » était écrit au contrat comme une conséquence assumée de la projection, et c'est ce que les anomalies ANO-01 et ANO-02 ont exploité.",
+      "remise_a_un": "AUCUNE. etat_complet_prive ne remet plus la séquence à 1 : il porte la valeur courante du compteur de session. Un compteur remis à 1 pour le seul joueur qui se reconnecte rendrait les séquences discernables entre joueurs et réintroduirait le canal.",
+      "usage": "Le client détecte un trou de séquence et déclenche une reconnexion. Il ne tente jamais de reconstituer l'état lui-même.",
+      "controle_offert_au_qa": "L'égalité des séquences entre destinataires est désormais un INVARIANT vérifiable, et c'est le contrôle le moins coûteux de la porte d'uniformité : si deux joueurs d'une même session divergent d'un numéro de séquence à un instant donné, une trame a été adressée sélectivement."
     },
 
     "horloge": {
@@ -199,7 +218,8 @@
     },
 
     "classes_de_destinataire": {
-      "_regle": "Valeurs admises de x-visibilite. Elles déclarent QUI a le droit de recevoir le message. La construction est une PROJECTION (on ajoute ce qui est autorisé), jamais un FILTRE (on retire ce qui est interdit) — voir ADR-TL-09.",
+      "_regle": "Valeurs admises de x-visibilite. Elles déclarent QUI a le droit de recevoir le CONTENU du message. La construction est une PROJECTION (on ajoute ce qui est autorisé), jamais un FILTRE (on retire ce qui est interdit) — voir ADR-TL-09.",
+      "_precision_ajoutee_en_1_1_0": "x-visibilite ne gouverne PLUS l'adressage. Depuis RG-80, toute trame part vers TOUS les joueurs de la session (x-emission) ; x-visibilite détermine lesquels d'entre eux en reçoivent la charge COMPLÈTE, les autres recevant la charge neutre déclarée par x-charge-neutre. Confondre les deux était précisément l'erreur de conception : l'adressage sélectif était le canal de fuite, le contenu sélectif est la règle de sécurité. On garde le second, on supprime le premier.",
       "tous": "Tous les joueurs de la session. Le message est néanmoins RECALCULÉ et envoyé individuellement à chacun : « tous » signifie que la projection se trouve être identique pour tous, pas qu'un objet global est diffusé. Un message de classe tous ne peut contenir que des données classées « visible_par: tous » dans matrice_visibilite.",
       "proprietaire": "Le ou les joueurs désignés propriétaires de la donnée par matrice_visibilite, chacun recevant sa propre projection. Pour un transfert, l'émetteur ET le destinataire sont propriétaires ; pour un prêt, le prêteur ET l'emprunteur. Le champ x-destinataires précise le cas.",
       "enqueteur": "Le seul joueur ayant payé l'enquête. Ni la cible ni la table n'apprennent qu'une enquête a eu lieu (RG-27, CA-19).",
@@ -207,11 +227,87 @@
       "hote": "Le seul joueur portant est_hote. Une seule donnée du produit relève de cette classe : l'état du groupe (compteur de parties, déblocage du mode avancé), qui appartient au porteur du jeton de groupe."
     },
 
+    "uniformite_de_forme": {
+      "_statut": "PARTIE NORMATIVE, ajoutée en 1.1.0. Met RG-80 en forme contractuelle. Tranchée par ADR-TL-20 après l'audit QA du nœud S6 (ANO-01 et ANO-02, bloquantes) et l'arbitrage CONF-13 du chef de projet, qui rouvre et corrige CONF-06.",
+
+      "exigence": "Pour tout couple de joueurs d'une même session, et à tout instant, la suite des trames reçues doit être IDENTIQUE en TYPE, en NOMBRE, en TAILLE et en INSTANT. Seul le CONTENU des charges diffère. Un observateur du trafic — voisin qui compte les rafraîchissements, proxy, ou joueur qui ouvre les outils de développement sur son propre téléphone et compare avec ses camarades — ne doit tirer AUCUNE information de la forme.",
+
+      "regle_unique": {
+        "enonce": "TOUTE trame sortante est émise à TOUS les joueurs de la session. Il n'existe pas d'adressage sélectif. Le serveur calcule une projection distincte par destinataire (RG-01 inchangée) et en envoie une à chacun, dans le même tour de boucle d'événements, complétée à la même taille.",
+        "pourquoi_une_regle_et_pas_une_liste": "Une liste d'événements à uniformiser est une liste à maintenir, donc une liste qui oublie. Les six fuites de l'audit sont nées d'une énumération incomplète : neuf portes vertes et six canaux ouverts. La règle sans exception est plus simple à implémenter — l'adressage disparaît du code au lieu de s'y compliquer — plus simple à vérifier — un seul invariant d'égalité — et vraie par avance pour tout événement ajouté plus tard.",
+        "charge_des_non_destinataires": "Pour un destinataire qui n'appartient pas à la classe x-visibilite de l'événement, la charge contient EXACTEMENT les propriétés listées dans x-charge-neutre du schéma, et rien d'autre. Quand x-charge-neutre vaut [], la charge est l'objet vide {}.",
+        "portee_de_required": "Pour un schéma annoté x-emission, la liste required gouverne la SEULE variante complète. La variante neutre est gouvernée par x-charge-neutre. Un validateur générique ne peut donc pas contrôler la variante neutre : c'est le test mécanique P-c (ARCHI seuils_qualite.interdits_mecaniques) qui le fait, en exigeant que l'ensemble des clés émises soit égal, exactement, soit à la variante complète, soit à x-charge-neutre, soit à une variante déclarée dans x-charge-par-destinataire. Un ensemble intermédiaire est un défaut bloquant."
+      },
+
+      "trois_dimensions": {
+        "nombre": {
+          "exigible_v1": "OUI, strictement. C'est la dimension mesurée en fuite : trames clause_recue = {J3:1, J5:1} livrait « porteur ∪ FAISEUR_CONTRATS » ; trames resultat_enquete = {J3:1} livrait l'enquêteur en violation de RG-27.",
+          "regle": "Pour chaque session et chaque instant, le nombre de trames émises est le même pour tous les joueurs. Corollaire direct : les numéros de séquence sont égaux entre joueurs (voir sequencage)."
+        },
+        "taille": {
+          "exigible_v1": "OUI pour les trames d'un même lot d'émission ; PAR PALIER pour le reste.",
+          "regle": "Les N trames d'un lot d'émission uniforme sont complétées à une cible COMMUNE : le maximum des N longueurs sérialisées, arrondi au prochain multiple de palier_taille_octets. Les trames hors lot (les deux exceptions ci-dessous) sont complétées au prochain multiple du palier.",
+          "residu_declare": "Le palier ne rend pas deux trames hors lot indiscernables si elles tombent dans des paliers différents. Le cas concret est etat_complet_prive, dont la taille dépend de l'historique privé du destinataire — mesure QA : 3593 octets à 6 joueurs. Ce résidu est inscrit en dette assumée dans ARCHI-GDV-001.json, avec sa condition de reprise. Il n'est PAS couvert par la v1 et doit être lu comme tel."
+        },
+        "cadence": {
+          "exigible_v1": "OUI pour la simultanéité d'un lot ; NON pour l'indépendance aux actes.",
+          "regle_v1": "Les N envois d'un lot partent dans le MÊME tour de boucle d'événements, sans attente d'E/S intercalée, sans tri par destinataire et sans échelonnement. Aucun délai artificiel n'est introduit entre eux.",
+          "ce_qui_n_est_PAS_exigible_en_v1": "Une cadence d'émission entièrement INDÉPENDANTE DES ACTES — c'est-à-dire des trames émises uniquement à des instants publiquement connus, par exemple à chaque seconde d'horloge, qu'il se passe quelque chose ou non. C'est la seule forme qui rende l'INSTANT d'une trame non informatif. Elle est REFUSÉE en v1 : elle interdirait l'accusé de réception sous 120 ms exigé par contraintes_perf, et la publication immédiate d'une déclaration exigée par RG-31 et CA-08, c'est-à-dire la simultanéité des déclarations qui est l'exigence de performance de rang 3. Ce qui subsiste est donc : un observateur apprend QU'UN acte a eu lieu à l'instant t, jamais LEQUEL ni DE QUI, l'ensemble de confusion étant les huit joueurs et tous les types d'acte de la phase. Inscrit en dette assumée avec sa condition de reprise."
+        }
+      },
+
+      "exceptions": {
+        "_regle": "Liste FERMÉE. Deux exceptions, et une liste fermée de codes d'erreur. Y ajouter une ligne est une décision d'architecture, pas un ajustement de code : elle exige un ADR.",
+        "EvtEtatCompletPrive": "EXEMPTÉ de l'émission uniforme. Motif : son DÉCLENCHEUR est une (re)connexion, laquelle est déjà publique — EvtJoueurReconnecte est de classe tous et matrice_visibilite classe l'état de connexion visible de tous. Sa présence ne révèle donc rien que la table n'apprenne par ailleurs. Il est émis au seul joueur qui se (re)connecte, et complété au prochain multiple du palier. Contrepartie vérifiée : sa classe x-visibilite doit rester exactement proprietaire, faute de quoi l'exemption tombe.",
+        "erreurs_de_protocole": "EXEMPTÉES de l'émission uniforme, liste fermée de cinq codes : JETON_ABSENT, JETON_INVALIDE, MESSAGE_MALFORME, COMMANDE_INCONNUE, TROP_DE_REQUETES. Motif : ces cinq refus ne sont atteignables que par un client qui viole le protocole, ils décrivent la TRAME et non un acte de jeu, et les deux premiers surviennent sur un socket anonyme qui n'appartient encore à aucune session — il n'existe alors pas de liste de destinataires. Motif secondaire, chiffré : TROP_DE_REQUETES est le seul code qu'un client modifié peut déclencher en rafale ; l'émettre à tous multiplierait l'inondation par le nombre de joueurs, ce qui transformerait une limitation de débit en amplificateur.",
+        "tous_les_autres_refus": "SOUMIS à l'émission uniforme, sans exception : ACTION_HORS_PHASE, ACTION_NON_AUTORISEE_ROLE, ACTION_RESERVEE_HOTE, SOLDE_INSUFFISANT, QUOTA_DEPASSE, USURPATION_IDENTITE, SESSION_PLEINE, EFFECTIF_INSUFFISANT, CIBLE_INVALIDE, MONTANT_INVALIDE, DECLARATION_REQUISE, DEJA_SOUMIS, MODE_AVANCE_INACTIF, ETAT_PARTIE_INCOMPATIBLE, ERREUR_INTERNE. Raison : chacun de ces refus peut sanctionner un acte SECRET. SOLDE_INSUFFISANT sur une enquête est l'exemple exact — un refus adressé au seul enquêteur trahit qu'il a tenté d'enquêter."
+      },
+
+      "revue_des_30_evenements": {
+        "_methode": "Les 30 types de EnveloppeEvenement.type passés en revue un par un. La question posée n'est pas « contient-il un secret ? » — la porte de visibilité y répond déjà — mais « sa PRÉSENCE, son ABSENCE ou sa TAILLE révèlent-elles quelque chose ? ». Deux de ces fuites ont été mesurées par le QA ; les sept autres sont déduites du même raisonnement et n'étaient pas mesurées.",
+        "fuite_mesuree_par_le_qa": [
+          {"type": "clause_recue", "canal": "présence — seuls le porteur et les FAISEUR_CONTRATS la recevaient", "mesure": "{J0:0,J1:0,J2:0,J3:1,J4:0,J5:1} (ANO-01, bloquant)", "correctif": "émission uniforme, charge neutre {numero_manche}"},
+          {"type": "resultat_enquete", "canal": "présence — seul l'enquêteur la recevait", "mesure": "{J3:1, autres 0} et profil global 28 contre 25 (ANO-02, bloquant)", "correctif": "émission uniforme, charge neutre {numero_manche}. L'émission reste IMMÉDIATE et n'est pas reportée à la clôture de phase comme le suggérait le QA : l'enquêteur a payé pour une certitude et doit l'obtenir tout de suite, et l'émission uniforme suffit à fermer le canal sans toucher à l'expérience de jeu."}
+        ],
+        "fuite_deduite_non_mesuree": [
+          {"type": "solde_mis_a_jour", "canal": "présence — n'était émis qu'au joueur dont le solde bougeait", "ce_qu_elle_revele": "qu'un joueur a payé, enquêté, transféré ou reçu. C'est le principal contributeur au profil global 28 contre 25 relevé par le QA : l'écart de trois trames de J3 se décompose en accuse_reception, resultat_enquete et solde_mis_a_jour. Uniformiser resultat_enquete seul n'aurait donc PAS fermé ANO-02.", "correctif": "émission uniforme, charge neutre {}"},
+          {"type": "accuse_reception", "canal": "présence — n'était émis qu'à l'auteur de la commande", "ce_qu_elle_revele": "qu'un joueur donné a émis une commande dans la phase. En phase ENQUETES_ACCUSATIONS, un joueur qui n'a pas accusé publiquement et qui a néanmoins reçu un accusé a enquêté : c'est exactement le bit que RG-27 protège.", "correctif": "émission uniforme, charge neutre {}"},
+          {"type": "erreur", "canal": "présence — n'était émis qu'à l'auteur du refus", "ce_qu_elle_revele": "qu'un joueur a TENTÉ un acte, y compris secret, et a été refusé (SOLDE_INSUFFISANT sur enquête, QUOTA_DEPASSE sur seconde enquête).", "correctif": "émission uniforme hors les cinq codes de protocole, charge neutre {}"},
+          {"type": "paiement_enregistre", "canal": "présence — n'était émis qu'au payeur", "ce_qu_elle_revele": "QUI a déjà payé. CONF-12 a explicitement refusé toute pastille publique « a payé » au motif que « savoir QUI a déjà payé renseignerait sur le comportement de la table » ; la présence de la trame reconstituait ce compteur à l'insu de cet arbitrage. Le QA a mesuré la charge propre et a conclu « aucun indicateur public a payé » — ce qui est vrai du CONTENU et faux de la FORME.", "correctif": "émission uniforme, charge neutre {numero_manche}"},
+          {"type": "transfert_enregistre", "canal": "présence — n'était émis qu'à l'émetteur et au destinataire", "ce_qu_elle_revele": "qu'un transfert a eu lieu ENTRE CES DEUX JOUEURS. matrice_visibilite classe le transfert visible du serveur, de l'émetteur et du destinataire précisément parce que le publier permettrait de recouper les soldes.", "correctif": "émission uniforme, charge neutre {}"},
+          {"type": "pret_propose", "canal": "présence — n'était émis qu'aux deux parties", "ce_qu_elle_revele": "qu'un prêt existe, et donc que l'un des deux détient le rôle PRETEUR, qui est secret.", "correctif": "émission uniforme, charge neutre {}"},
+          {"type": "pret_resolu", "canal": "identique à pret_propose", "ce_qu_elle_revele": "identique, plus l'acceptation ou le refus.", "correctif": "émission uniforme, charge neutre {}"},
+          {"type": "pret_preleve", "canal": "présence — n'était émis qu'aux deux parties ; et conjonction de champs (ANO-07)", "ce_qu_elle_revele": "l'existence du prêt, et le solde exact de l'emprunteur par la conjonction montant_preleve et reliquat_du.", "correctif": "émission uniforme, charge neutre {} ; et charge RÉDUITE pour le prêteur — voir EvtPretPreleve.x-charge-par-destinataire et ADR-TL-22"},
+          {"type": "revelation", "canal": "ABSENCE — l'événement n'était pas émis quand aucun gabarit n'était éligible (CA-15)", "ce_qu_elle_revele": "la condition qui déclenche l'absence, c'est-à-dire l'état de l'ensemble des suspects. L'absence est la même pour les huit joueurs, donc elle ne discrimine AUCUN joueur et n'est pas une violation de RG-80 au sens strict ; elle relève de RG-81. Elle est néanmoins fermée ici parce que le coût est nul : RG-80 énonce qu'« un champ ne peut pas être publié dans certaines manches et omis dans d'autres ».", "correctif": "émission à CHAQUE manche en phase REVELATION, charge neutre {numero_manche} quand aucun gabarit n'est éligible"},
+          {"type": "dernier_voeu_propose", "canal": "présence — émis « à chaque marchand individuellement »", "ce_qu_elle_revele": "rien si tous les joueurs sont marchands, mais la formulation de RG-52 n'en donne pas la garantie et le MARCHAND_DEJA_LIE occupe role_secret (ECART-S4-01). L'uniformité lève la question au lieu de la supposer.", "correctif": "émission uniforme, charge neutre {}"},
+          {"type": "groupe_mis_a_jour", "canal": "présence — émis au seul hôte", "ce_qu_elle_revele": "qui est l'hôte, donnée déjà publique (est_hote). AUCUNE fuite. Soumis à la règle unique par souci de ne pas maintenir une liste d'exceptions, pas par nécessité de sécurité.", "correctif": "émission uniforme, charge neutre {}"}
+        ],
+        "uniformes_par_construction": {
+          "_note": "Ces événements sont déjà de classe tous avec une charge identique pour tous, ou bien émis à chacun exactement une fois. Leur annotation x-emission est posée pour que la porte d'uniformité puisse les contrôler, pas pour signaler un défaut.",
+          "types": ["etat_partie_change", "joueur_rejoint", "joueur_quitte", "joueur_reconnecte", "partie_demarree", "attribution_privee", "voeu_annonce", "phase_changee", "declaration_publiee", "revelation_ecart_total", "accusation_declaree", "accusation_resolue", "execution_resultat", "dernier_voeu_resolu", "scores_finaux", "partie_abandonnee"],
+          "attribution_privee": "Cas à noter : sa classe est proprietaire et sa charge est pleinement différente pour chaque joueur, mais CHAQUE joueur en reçoit exactement une à la distribution. Le nombre est donc déjà uniforme et la mesure du QA le confirme (CA-05 conforme, et la permutation des rôles laisse le flux d'un tiers rigoureusement inchangé). Seule la TAILLE restait variable, le MARCHAND_DEJA_LIE n'ayant pas de mission : le remplissage au palier la rend égale.",
+          "joueur_reconnecte": "Émis désormais à TOUS, le joueur concerné compris, et non plus « à tous les autres ». Un destinataire de moins est une trame de moins, donc une divergence de dénombrement."
+        }
+      },
+
+      "verification": {
+        "_principe": "La porte de visibilité raisonne par CHAMP : c'est son angle mort exact et elle ne doit pas être étendue pour couvrir autre chose que ce qu'elle sait faire. L'uniformité de forme est contrôlée par une porte SÉPARÉE, qui ne regarde jamais le contenu d'une charge.",
+        "porte": "npm run verifier:uniformite — spécifiée dans ARCHI-GDV-001.json / seuils_qualite.interdits_mecaniques, contrôles U1 à U4.",
+        "U1_profil_de_forme": "Sur une partie complète à 6 puis à 8 joueurs, à graine fixée : pour chaque joueur, la suite des triplets (type, taille_octets, sequence) des trames émises. Les N suites doivent être ÉGALES terme à terme. Attendu : 0 divergence. C'est un invariant TOTAL : il attrape les événements qu'une énumération aurait oubliés, y compris ceux qui n'existent pas encore.",
+        "U2_invariance_differentielle": "Pour chaque acte secret d'une liste fermée — montant payé différent, enquête lancée, transfert, prêt proposé, prêt accepté, signature du Dernier Vœu, identité du porteur de clause, permutation des rôles secrets — deux parties à graine IDENTIQUE ne différant que par cet acte. Pour chaque joueur, le profil de forme doit être identique entre les deux variantes, l'acteur compris : sa charge peut différer, sa forme non. Attendu : 0 divergence. Harnais prêt à l'emploi : qa/sondes/sonde-differentielle-secrets.ts et la section (II) de qa/sondes/sonde-canaux-indirects.ts.",
+        "U3_statique": "Lecture du seul contrat, sans exécution : tout schéma EvtXxx porte x-emission ; tout schéma annoté x-emission=uniforme porte x-charge-neutre ; x-charge-neutre est un sous-ensemble des propriétés déclarées ; aucun champ de x-charge-neutre n'est rattaché par outils/visibilite/cartographie.mjs à une donnée dont visible_par n'est pas « tous ». Une charge neutre qui porterait un secret serait sinon une porte dérobée déclarée.",
+        "U4_exceptions_fermees": "La liste des exceptions lue dans ce contrat est comparée à celle câblée dans le serveur. Toute exception présente dans le code et absente du contrat ferme la porte.",
+        "mesure_de_recette_ANO_01": "Rejouer la section (II) de qa/sondes/sonde-canaux-indirects.ts : la ligne « trames clause_recue par joueur » doit rendre 1 pour les six joueurs.",
+        "mesure_de_recette_ANO_02": "Même sonde : « trames resultat_enquete par joueur » doit rendre la même valeur pour les six joueurs, ET le « profil global » doit rendre le même nombre total de trames pour les six."
+      }
+    },
+
     "codes_erreur": {
       "ACTION_HORS_PHASE": {"quand": "Commande reçue en dehors de la phase qui l'autorise (RG-30, CA-43)", "http_equivalent": 409, "etat_modifie": false},
       "ACTION_NON_AUTORISEE_ROLE": {"quand": "proposer_pret émis par un joueur qui n'a pas le rôle PRETEUR (RG-29, CA-33)", "http_equivalent": 403, "etat_modifie": false},
       "ACTION_RESERVEE_HOTE": {"quand": "definir_ordre_places, demarrer_partie, avancer_phase ou abandonner_partie émis par un non-hôte", "http_equivalent": 403, "etat_modifie": false},
-      "SOLDE_INSUFFISANT": {"quand": "Enquête, transfert ou déclaration dont le coût excède le solde (RG-26, RG-41, CA-21). Refus a priori, jamais de solde négatif.", "http_equivalent": 409, "etat_modifie": false},
+      "SOLDE_INSUFFISANT": {"quand": "Enquête, transfert ou déclaration dont le coût excède le solde DE L'AUTEUR (RG-26, RG-41, CA-21). Refus a priori, jamais de solde négatif.", "http_equivalent": 409, "etat_modifie": false, "restriction_ajoutee_en_1_1_0": "Ce code ne peut JAMAIS être rendu pour un solde insuffisant appartenant à UN AUTRE joueur que l'auteur de la commande. Un refus ne renseigne que sur l'état de son destinataire. Le cas du prêteur appauvri entre la proposition et l'acceptation se rend désormais PRET_INDISPONIBLE (ANO-08)."},
+      "PRET_INDISPONIBLE": {"quand": "AJOUTÉ EN 1.1.0 (ANO-08). repondre_pret sur un prêt qui n'est plus honorable ou plus adressable : prêteur devenu insolvable, prêt déjà résolu, prêt expiré, prêt inexistant, ou prêt adressé à un autre joueur. Message imposé : « Ce prêt n'est plus disponible. »", "http_equivalent": 409, "etat_modifie": "Le prêt passe au statut CADUC lorsqu'il existait et qu'il devient inhonorable.", "justification": "Le couple code/message précédent — SOLDE_INSUFFISANT, « Le prêteur n'a plus le principal disponible. » — apprenait à l'emprunteur que solde(prêteur) < principal, et lui permettait d'encadrer ce solde par dichotomie en faisant varier le principal (ANO-08, majeur). Ce code remplace AUSSI la discrimination CIBLE_INVALIDE / USURPATION_IDENTITE sur repondre_pret, qui constituait un oracle d'existence d'identifiant de prêt (ANO-09, mineur) : les deux cas deviennent indiscernables. Un refus ne qualifie pas sa cause."},
       "QUOTA_DEPASSE": {"quand": "Seconde accusation dans la manche (RG-19, CA-24) ou seconde enquête sur la même cible dans la manche (RG-28)", "http_equivalent": 409, "etat_modifie": false},
       "JETON_INVALIDE": {"quand": "Jeton inconnu, révoqué ou session terminée", "http_equivalent": 401, "code_fermeture_ws": 4401},
       "JETON_ABSENT": {"quand": "Trame reçue avant authentifier", "http_equivalent": 401, "code_fermeture_ws": 4401},
@@ -281,7 +377,7 @@
       {"besoin": "revelation(gabarit, texte, cibles)", "couvert_par": "EvtRevelation", "ecart": "ÉCART ASSUMÉ — ADR-TL-12 : pas de champ texte. Le message porte gabarit, variante_formulation, cibles et valeurs ; le client compose la phrase depuis son fichier de contenu (RG-25, RG-61, ESC-01)."},
       {"besoin": "resultat_enquete(cible_joueur_id, montant_paye)", "couvert_par": "EvtResultatEnquete", "ecart": "aucun"},
       {"besoin": "accusation_declaree(accusateur, accuse) + accusation_resolue(verdict)", "couvert_par": "EvtAccusationDeclaree, EvtAccusationResolue", "ecart": "SCINDÉ en deux schémas, conformément à l'énoncé du besoin."},
-      {"besoin": "execution_resultat(reussi, total_paye, recompense, parts, clause_revelee, amendes_liquidees)", "couvert_par": "EvtExecutionResultat", "ecart": "RESTREINT — les montants de consolation individuels NE sont PAS publiés : plancher(montant_paye_i / 2) révélerait le paiement secret de chacun. Seuls l'activation de la clause et le total consolé sont publics ; chaque joueur apprend sa part par EvtSoldeMisAJour, qui est privé."},
+      {"besoin": "execution_resultat(reussi, total_paye, recompense, parts, clause_revelee, amendes_liquidees)", "couvert_par": "EvtExecutionResultat", "ecart": "RESTREINT, et la restriction s'ÉLARGIT en 1.2.0 (ADR-TL-21, RUP-05). Ne sont publiés NI les parts, NI le reliquat non distribué, NI la consolation sous aucune forme — ni individuelle ni agrégée (RG-74) — NI le bonus d'épices. Le besoin « parts » n'est donc PAS couvert publiquement, et c'est délibéré : les parts publiées désignaient l'argmax des paiements secrets et démasquaient cinq joueurs sur six (ANO-06, bloquant, mesuré). Chaque joueur apprend sa part et sa consolation par EvtSoldeMisAJour, qui est privé. Ce qui reste public est l'écart total_declare / total_paye, qui est la vérification dont le jeu a besoin."},
       {"besoin": "solde_mis_a_jour(solde, derniers_mouvements)", "couvert_par": "EvtSoldeMisAJour", "ecart": "aucun"},
       {"besoin": "dernier_voeu_propose(montant)", "couvert_par": "EvtDernierVoeuPropose", "ecart": "aucun"},
       {"besoin": "dernier_voeu_resolu(nb_signataires, consequence, genie_libere)", "couvert_par": "EvtDernierVoeuResolu", "ecart": "aucun — l'identité des signataires n'y figure pas (RG-54, CA-39)."},
@@ -320,7 +416,7 @@
 
       "CodeErreur": {
         "type": "string",
-        "enum": ["ACTION_HORS_PHASE", "ACTION_NON_AUTORISEE_ROLE", "ACTION_RESERVEE_HOTE", "SOLDE_INSUFFISANT", "QUOTA_DEPASSE", "JETON_INVALIDE", "JETON_ABSENT", "USURPATION_IDENTITE", "SESSION_PLEINE", "EFFECTIF_INSUFFISANT", "SESSION_INTROUVABLE", "CODE_ADHESION_INVALIDE", "ORDRE_PLACES_INVALIDE", "CIBLE_INVALIDE", "MONTANT_INVALIDE", "DECLARATION_REQUISE", "DEJA_SOUMIS", "PSEUDO_INDISPONIBLE", "MODE_AVANCE_INACTIF", "ETAT_PARTIE_INCOMPATIBLE", "MESSAGE_MALFORME", "COMMANDE_INCONNUE", "TROP_DE_REQUETES", "ERREUR_INTERNE"]
+        "enum": ["ACTION_HORS_PHASE", "ACTION_NON_AUTORISEE_ROLE", "ACTION_RESERVEE_HOTE", "SOLDE_INSUFFISANT", "PRET_INDISPONIBLE", "QUOTA_DEPASSE", "JETON_INVALIDE", "JETON_ABSENT", "USURPATION_IDENTITE", "SESSION_PLEINE", "EFFECTIF_INSUFFISANT", "SESSION_INTROUVABLE", "CODE_ADHESION_INVALIDE", "ORDRE_PLACES_INVALIDE", "CIBLE_INVALIDE", "MONTANT_INVALIDE", "DECLARATION_REQUISE", "DEJA_SOUMIS", "PSEUDO_INDISPONIBLE", "MODE_AVANCE_INACTIF", "ETAT_PARTIE_INCOMPATIBLE", "MESSAGE_MALFORME", "COMMANDE_INCONNUE", "TROP_DE_REQUETES", "ERREUR_INTERNE"]
       },
       "Erreur": {
         "type": "object", "additionalProperties": false,
@@ -350,7 +446,7 @@
       "CleClause": {"type": "string", "enum": ["GENIE_GARDE_UN_TIERS", "TRESOR_DES_HONNETES", "LE_PLUS_GENEREUX", "CONSOLATION", "PRIME_AU_DELATEUR"]},
       "CleGabarit": {"type": "string", "enum": ["ECART_TOTAL", "COMPTAGE", "VOISINAGE", "EXONERATION", "COMPARAISON", "PASSE"]},
       "Verdict": {"type": "string", "enum": ["MENTEUR", "HONNETE"]},
-      "StatutPret": {"type": "string", "enum": ["PROPOSE", "REFUSE", "ACTIF", "SOLDE", "EXPIRE"]},
+      "StatutPret": {"type": "string", "enum": ["PROPOSE", "REFUSE", "ACTIF", "SOLDE", "EXPIRE", "CADUC"], "description": "CADUC ajouté en 1.1.0 (ANO-08) : prêt proposé devenu inhonorable avant sa résolution, typiquement parce que le prêteur s'est appauvri entre-temps. Statut distinct de REFUSE, qui est une décision de l'emprunteur, et de EXPIRE, qui est une échéance atteinte."},
       "MotifMouvement": {
         "type": "string",
         "enum": ["dotation_initiale", "paiement_voeu", "part_recompense", "bonus_epices", "amende_recue", "amende_payee", "penalite_fausse_accusation_payee", "penalite_fausse_accusation_recue", "cout_enquete", "transfert_emis", "transfert_recu", "pret_emis", "pret_recu", "remboursement_pret", "consolation", "signature_dernier_voeu", "sanction_contrat_conteste"]
@@ -487,15 +583,7 @@
           "montant_du": {"$ref": "#/components/schemas/Pieces"}
         }
       },
-      "PartRecompense": {
-        "type": "object", "additionalProperties": false,
-        "required": ["joueur_id", "part", "exclu_du_partage"],
-        "properties": {
-          "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
-          "part": {"$ref": "#/components/schemas/Pieces"},
-          "exclu_du_partage": {"type": "boolean", "description": "Vrai si le joueur a été démasqué dans la manche (RG-15, poids nul)."}
-        }
-      },
+      "_PartRecompense_SUPPRIME_1_2_0": "SCHÉMA SUPPRIMÉ EN 1.2.0 (ADR-TL-21, RUP-05). Il portait {joueur_id, part, exclu_du_partage} et n'avait plus que deux consommateurs, tous deux retirés : EvtExecutionResultat.parts et ResumeManchePublique.parts. Il est supprimé plutôt que laissé orphelin, pour une raison précise : un schéma public inutilisé est une invitation à le réutiliser. Le champ exclu_du_partage disparaît avec lui, et c'est voulu — il indiquait qu'un joueur avait été démasqué dans la manche et recevait un poids nul (RG-15), ce qui, croisé avec la clause révélée, est une information de même nature que celle que RUP-05 retire. ATTENTION au dev-backend : la notion de part de récompense CONTINUE D'EXISTER dans le moteur et dans mouvements_pieces, au motif part_recompense. C'est le SCHÉMA DE PUBLICATION qui est supprimé, pas le calcul. Un joueur apprend sa part, et sa part seule, par EvtSoldeMisAJour ; après reconnexion, par son journal privé de mouvements déjà porté par EvtEtatCompletPrive.",
       "RevelationPublique": {
         "type": "object", "additionalProperties": false,
         "description": "ADR-TL-12 : ne porte aucun texte. Le client compose la phrase depuis son fichier de contenu, à partir de (gabarit, variante_formulation) et des valeurs.",
@@ -509,6 +597,7 @@
       },
       "ResumeManchePublique": {
         "type": "object", "additionalProperties": false,
+        "_retrait_1_2_0_parts": "Le champ parts est RETIRÉ EN 1.2.0 (ADR-TL-21, RUP-05). SECOND VECTEUR DE ANO-06, NON RELEVÉ PAR L'AUDIT et découvert en appliquant le retrait : ce résumé est porté par EvtEtatCompletPrive, dont la classe est proprietaire — ce qui est exact du DESTINATAIRE et trompeur sur le CONTENU, puisque le tableau parts portait les parts de TOUS les joueurs, pour TOUTES les manches closes. Retirer parts du seul EvtExecutionResultat aurait donc laissé ANO-06 ouverte par le chemin de la reconnexion, et dans une version PIRE : non plus une manche, mais l'historique complet, rejouable à volonté en rouvrant l'application. Clé de lecture générale, à retenir au-delà de ce champ : une classe de visibilité proprietaire ne dit RIEN de la propriété des données qu'une structure imbriquée transporte. C'est l'angle mort de RG-80 transposé de la forme à la COMPOSITION DE SCHÉMAS. Le contrôle U3 doit être lu en conséquence, et le registre_agregats_publies de ARCHI porte l'exigence correspondante.",
         "required": ["numero", "objectif", "cloture"],
         "properties": {
           "numero": {"type": "integer", "minimum": 1},
@@ -521,8 +610,7 @@
           "clause_revelee": {"anyOf": [{"$ref": "#/components/schemas/CleClause"}, {"type": "null"}], "description": "Nul tant que l'étape 16 de l'exécution n'a pas eu lieu."},
           "declarations": {"type": "array", "items": {"$ref": "#/components/schemas/DeclarationPublique"}},
           "revelations": {"type": "array", "items": {"$ref": "#/components/schemas/RevelationPublique"}},
-          "accusations": {"type": "array", "items": {"$ref": "#/components/schemas/AccusationPublique"}},
-          "parts": {"type": "array", "items": {"$ref": "#/components/schemas/PartRecompense"}}
+          "accusations": {"type": "array", "items": {"$ref": "#/components/schemas/AccusationPublique"}}
         }
       },
 
@@ -623,14 +711,15 @@
       },
       "EnveloppeEvenement": {
         "type": "object", "additionalProperties": false,
-        "description": "Enveloppe de toute trame serveur vers client. Produite par projeterEvenement(etat, effet, destinataire) — une par destinataire, jamais un objet partagé.",
+        "description": "Enveloppe de toute trame serveur vers client. Produite par projeterEvenement(etat, effet, destinataire) — une par destinataire, jamais un objet partagé. Le remplissage est appliqué par le TRANSPORT, en dernier, juste avant l'écriture sur le socket : la taille d'une trame est une préoccupation de transport, jamais de charge de jeu. C'est aussi pourquoi aucune charge EvtXxx ne porte de champ de remplissage — un seul point d'application, donc un seul endroit où se tromper, et la couverture est automatique pour tout événement ajouté plus tard.",
         "required": ["type", "sequence", "emis_a", "charge"],
         "properties": {
           "type": {"type": "string", "enum": ["accuse_reception", "erreur", "etat_complet_prive", "etat_partie_change", "joueur_rejoint", "joueur_quitte", "joueur_reconnecte", "partie_demarree", "attribution_privee", "voeu_annonce", "clause_recue", "phase_changee", "declaration_publiee", "paiement_enregistre", "transfert_enregistre", "pret_propose", "pret_resolu", "pret_preleve", "revelation_ecart_total", "revelation", "resultat_enquete", "accusation_declaree", "accusation_resolue", "execution_resultat", "solde_mis_a_jour", "dernier_voeu_propose", "dernier_voeu_resolu", "scores_finaux", "partie_abandonnee", "groupe_mis_a_jour"]},
-          "sequence": {"type": "integer", "minimum": 1, "description": "Monotone PAR DESTINATAIRE. Remis à 1 après chaque etat_complet_prive."},
+          "sequence": {"type": "integer", "minimum": 1, "description": "RUPTURE 1.1.0 (RUP-01) : monotone PAR SESSION, jamais remis à 1. Les joueurs d'une même session portent les mêmes numéros — c'est la trace vérifiable de l'uniformité du nombre de trames."},
           "emis_a": {"$ref": "#/components/schemas/Horodatage"},
           "id_correlation": {"type": ["string", "null"], "format": "uuid"},
-          "charge": {"type": "object"}
+          "charge": {"type": "object"},
+          "remplissage": {"type": "string", "description": "AJOUTÉ EN 1.1.0 (RG-80, RUP-06). Chaîne de complément appliquée par le transport pour porter la trame sérialisée à sa taille cible : la cible commune du lot pour une émission uniforme, le prochain multiple de palier_taille_octets sinon. Le client l'IGNORE sans la lire. Elle ne porte aucune information et ne doit jamais en porter : son contenu est un caractère de remplissage répété, jamais une valeur dérivée de l'état."}
         }
       },
 
@@ -685,7 +774,7 @@
         "type": "object", "additionalProperties": false,
         "required": ["pret_id", "accepte"],
         "properties": {"pret_id": {"$ref": "#/components/schemas/Identifiant"}, "accepte": {"type": "boolean"}},
-        "x-autorisation": "phase = NEGOCIATION ; émetteur = emprunteur désigné du prêt ; statut du prêt = PROPOSE. Refus : CIBLE_INVALIDE, DEJA_SOUMIS, ACTION_HORS_PHASE. Un joueur répondant à un prêt qui ne lui est pas adressé reçoit USURPATION_IDENTITE.",
+        "x-autorisation": "phase = NEGOCIATION ; émetteur = emprunteur désigné du prêt ; statut du prêt = PROPOSE. AMENDÉ EN 1.1.0 (ANO-08, ANO-09) : les cas « prêt inexistant », « prêt adressé à un autre joueur », « prêt déjà résolu ou expiré » et « prêteur devenu insolvable » rendent TOUS le même refus PRET_INDISPONIBLE avec le même message, et aucun ne rend ni CIBLE_INVALIDE, ni USURPATION_IDENTITE, ni SOLDE_INSUFFISANT. Deux refus discernables sur un identifiant sont un oracle d'existence ; un refus qui nomme le solde d'autrui est un oracle de solde. Autres refus possibles : ACTION_HORS_PHASE, DEJA_SOUMIS.",
         "x-reponse": "EvtAccuseReception, puis EvtPretResolu et EvtSoldeMisAJour aux deux parties."
       },
       "CmdDeclarerContribution": {
@@ -741,7 +830,10 @@
         "type": "object", "additionalProperties": false,
         "x-visibilite": "proprietaire",
         "x-destinataires": "L'auteur de la commande, et lui seul.",
-        "x-justification-visibilite": "Un accusé de réception confirme un acte qui peut être secret (paiement, enquête, signature). Le diffuser trahirait l'acte lui-même.",
+        "x-justification-visibilite": "Un accusé de réception confirme un acte qui peut être secret (paiement, enquête, signature). Le diffuser trahirait l'acte lui-même ; ne l'émettre qu'à son auteur trahissait l'auteur. La réponse est d'émettre la TRAME à tous et la CHARGE à son seul auteur.",
+        "x-emission": "uniforme",
+        "x-charge-neutre": [],
+        "x-justification-emission": "RG-80. La présence d'un accusé révélait qu'un joueur donné avait émis une commande dans la phase. En ENQUETES_ACCUSATIONS, un joueur qui n'a pas accusé publiquement et qui reçoit néanmoins un accusé a enquêté : c'est exactement le bit que RG-27 protège. La charge neutre est l'objet vide : un non-auteur n'a pas à connaître l'id_correlation d'autrui, qui serait un identifiant de corrélation exploitable.",
         "description": "Confirme la PRISE EN COMPTE d'une commande. Ne contient aucune valeur de jeu : les conséquences arrivent par des événements distincts.",
         "required": ["id_correlation", "type_commande", "accepte"],
         "properties": {
@@ -755,6 +847,9 @@
         "x-visibilite": "proprietaire",
         "x-destinataires": "L'auteur de la commande refusée, et lui seul.",
         "x-justification-visibilite": "Un refus révèle une tentative (enquête sans solde, accusation en double). Le diffuser renseignerait la table sur les actes secrets d'un joueur.",
+        "x-emission": "uniforme_sauf_erreurs_de_protocole",
+        "x-charge-neutre": [],
+        "x-justification-emission": "RG-80. La présence d'un refus révélait qu'un joueur avait TENTÉ un acte, y compris secret : SOLDE_INSUFFISANT sur une enquête, QUOTA_DEPASSE sur une seconde enquête. Exemption en liste fermée de cinq codes de protocole — JETON_ABSENT, JETON_INVALIDE, MESSAGE_MALFORME, COMMANDE_INCONNUE, TROP_DE_REQUETES — justifiée dans x-temps-reel.uniformite_de_forme.exceptions : ils décrivent la trame et non un acte de jeu, les deux premiers surviennent sur un socket anonyme sans liste de destinataires, et TROP_DE_REQUETES émis à tous transformerait la limitation de débit en amplificateur.",
         "description": "Refus typé. Aucune modification d'état n'a eu lieu (CA-43).",
         "required": ["code", "message"],
         "properties": {
@@ -769,7 +864,9 @@
         "x-visibilite": "proprietaire",
         "x-destinataires": "Le joueur authentifié, et lui seul. Chaque joueur reçoit une projection DIFFÉRENTE.",
         "x-justification-visibilite": "RG-73 / CA-42 : à la reconnexion, le serveur renvoie l'état projeté complet pour ce joueur seul, historiques compris, sans aucun secret d'autrui. C'est le message le plus riche du protocole, donc le plus surveillé : il est construit par projeterVuePrivee(etat, joueurId), fonction pure couverte à 100 %.",
-        "description": "Émis à la connexion et à la reconnexion. Remet la séquence à 1. Aucun rejeu n'intervient : ce message REMPLACE tout état client antérieur.",
+        "x-emission": "exempte",
+        "x-justification-emission": "EXCEPTION DÉCLARÉE, une des deux seules (x-temps-reel.uniformite_de_forme.exceptions). Son DÉCLENCHEUR est une (re)connexion, laquelle est déjà publique : EvtJoueurReconnecte est de classe tous et matrice_visibilite classe l'état de connexion visible de tous. Sa présence ne révèle donc rien que la table n'apprenne par ailleurs, et l'émettre à tous remettrait huit clients à zéro pour la reconnexion d'un seul. Contrepartie vérifiée par la porte : x-visibilite doit rester exactement proprietaire. Résidu assumé et déclaré : sa TAILLE dépend de l'historique privé du destinataire (3593 octets mesurés à 6 joueurs) ; elle est complétée au palier et le résidu inter-palier est inscrit en dette.",
+        "description": "Émis à la connexion et à la reconnexion. NE REMET PLUS la séquence à 1 depuis 1.1.0 (RUP-01) : il porte la valeur courante du compteur de session. Aucun rejeu n'intervient : ce message REMPLACE tout état client antérieur.",
         "required": ["session", "moi", "joueurs", "manche_courante", "historique_manches", "mes_mouvements"],
         "properties": {
           "session": {
@@ -830,6 +927,7 @@
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs de la session, chacun recevant sa propre projection.",
         "x-justification-visibilite": "L'état de la partie est une donnée publique : tout le monde est assis autour de la même table et voit la partie avancer.",
+        "x-emission": "uniforme_charge_identique",
         "required": ["etat_partie"],
         "properties": {
           "etat_partie": {"$ref": "#/components/schemas/EtatPartie"},
@@ -839,24 +937,30 @@
       "EvtJoueurRejoint": {
         "type": "object", "additionalProperties": false,
         "x-visibilite": "tous",
-        "x-destinataires": "Tous les joueurs déjà présents.",
+        "x-destinataires": "Tous les joueurs de la session, le joueur qui rejoint compris.",
         "x-justification-visibilite": "matrice_visibilite : pseudo, position et état de connexion sont visibles de tous.",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "AMENDÉ EN 1.1.0 : émis à tous, y compris au joueur concerné, et non plus « aux joueurs déjà présents ». Un destinataire de moins est une trame de moins, donc une divergence de dénombrement — même quand la donnée elle-même est publique.",
         "required": ["joueur", "nb_joueurs"],
         "properties": {"joueur": {"$ref": "#/components/schemas/JoueurPublic"}, "nb_joueurs": {"type": "integer", "minimum": 1}}
       },
       "EvtJoueurQuitte": {
         "type": "object", "additionalProperties": false,
         "x-visibilite": "tous",
-        "x-destinataires": "Tous les joueurs restants.",
+        "x-destinataires": "Tous les joueurs de la session encore connectés.",
         "x-justification-visibilite": "matrice_visibilite : état de connexion visible de tous. La partie continue : le joueur n'est jamais éliminé (RG-46) et ses actions non soumises valent 0 (RG-32).",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "Cas particulier NON couvert par l'uniformité, et il doit être nommé : le joueur qui vient de se déconnecter ne reçoit rien, par impossibilité matérielle et non par choix d'adressage. Sa déconnexion est de toute façon publique. Aucun secret n'est en jeu.",
         "required": ["joueur_id", "nb_connectes"],
         "properties": {"joueur_id": {"$ref": "#/components/schemas/Identifiant"}, "nb_connectes": {"type": "integer", "minimum": 0}}
       },
       "EvtJoueurReconnecte": {
         "type": "object", "additionalProperties": false,
         "x-visibilite": "tous",
-        "x-destinataires": "Tous les autres joueurs. Le reconnecté reçoit, lui, un EvtEtatCompletPrive.",
+        "x-destinataires": "AMENDÉ EN 1.1.0 : tous les joueurs, le reconnecté COMPRIS. Il reçoit en outre un EvtEtatCompletPrive.",
         "x-justification-visibilite": "matrice_visibilite : état de connexion visible de tous.",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "RG-80. « Tous les autres joueurs » était un adressage sélectif de plus : le reconnecté recevait N−1 trames là où ses camarades en recevaient N. Il en reçoit désormais N, dont une qui le concerne lui-même.",
         "required": ["joueur_id", "nb_connectes"],
         "properties": {"joueur_id": {"$ref": "#/components/schemas/Identifiant"}, "nb_connectes": {"type": "integer", "minimum": 0}}
       },
@@ -865,6 +969,7 @@
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs.",
         "x-justification-visibilite": "matrice_visibilite : l'ordre des places est visible de tous — il est de toute façon physiquement visible dans la pièce. Ce message ne contient AUCUN rôle ni mission : ceux-ci partent par EvtAttributionPrivee.",
+        "x-emission": "uniforme_charge_identique",
         "required": ["ordre_cercle", "nb_joueurs", "mode_avance_actif"],
         "properties": {
           "ordre_cercle": {"type": "array", "items": {"$ref": "#/components/schemas/Identifiant"}, "description": "Cyclique : le dernier est voisin du premier (RG-06)."},
@@ -877,6 +982,9 @@
         "x-visibilite": "proprietaire",
         "x-destinataires": "Le joueur concerné, et lui seul.",
         "x-justification-visibilite": "matrice_visibilite : role_secret et mission_secrete sont visibles du serveur et du propriétaire uniquement, jusqu'à l'écran de scores (RG-58). CA-05 : aucun message reçu par A ne contient le rôle ou la mission d'un autre.",
+        "x-emission": "uniforme",
+        "x-charge-neutre": [],
+        "x-justification-emission": "Déjà uniforme en NOMBRE avant 1.1.0 : chaque joueur en reçoit exactement une à la distribution, et la sonde différentielle du QA a mesuré que la permutation des rôles laisse le flux d'un tiers rigoureusement inchangé. Seule la TAILLE variait, le MARCHAND_DEJA_LIE n'ayant pas de mission (RG-51, ECART-S4-01) : une charge sans mission_secrete est plus courte, et à 1 trame par joueur émise au même instant, la comparaison des tailles désignait ce joueur. Le remplissage au palier la rend égale. x-charge-neutre vaut [] et ne sert jamais ici, puisqu'il n'existe aucun non-destinataire : il est déclaré pour que le contrôle statique U3 trouve l'annotation là où il l'attend.",
         "description": "US-04. Un message par joueur, chacun ne contenant que SA propre attribution. Il n'existe aucune variante de ce message listant plusieurs joueurs.",
         "required": ["role_secret", "mission_secrete", "solde_initial"],
         "properties": {
@@ -890,6 +998,7 @@
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs.",
         "x-justification-visibilite": "RG-07 : l'objectif du vœu est annoncé publiquement en phase VOEU. Ce message ne mentionne NI la clause, NI son porteur.",
+        "x-emission": "uniforme_charge_identique",
         "required": ["numero_manche", "objectif", "nb_manches"],
         "properties": {
           "numero_manche": {"type": "integer", "minimum": 1},
@@ -900,14 +1009,18 @@
       "EvtClauseRecue": {
         "type": "object", "additionalProperties": false,
         "x-visibilite": "porteur_clause_et_faiseur",
-        "x-destinataires": "Le porteur de clause tiré au sort ET tout joueur de rôle FAISEUR_CONTRATS. Personne d'autre (CA-12).",
+        "x-destinataires": "CHARGE COMPLÈTE : le porteur de clause tiré au sort ET tout joueur de rôle FAISEUR_CONTRATS, personne d'autre (CA-12). TRAME : tous les joueurs de la session, sans exception (RG-80).",
         "x-justification-visibilite": "matrice_visibilite : la clause est visible du serveur, du porteur tiré au sort et de tout FAISEUR_CONTRATS, et devient publique à l'étape 16 de l'exécution. L'identité du porteur n'est révélée à personne, jamais, en v1 — y compris au FAISEUR_CONTRATS : le message ne dit pas QUI porte la clause.",
+        "x-emission": "uniforme",
+        "x-charge-neutre": ["numero_manche"],
+        "x-justification-emission": "CORRECTIF DE ANO-01, BLOQUANT. Mesure du QA : trames clause_recue par joueur = {J0:0, J1:0, J2:0, J3:1, J4:0, J5:1} — l'ensemble « porteur ∪ FAISEUR_CONTRATS » se lisait dans le seul dénombrement, sans qu'aucun champ secret ne fuie. La porte de visibilité rendait CONFORME, et elle avait raison : la fuite n'était pas dans un champ. Émission à TOUS à l'ouverture de la phase VOEU, dans un lot unique, trames complétées à la même taille. La charge neutre porte numero_manche et RIEN d'autre : ni clause, ni je_suis_porteur — un je_suis_porteur à false envoyé à tous serait une charge honnête mais inutile, et un champ de moins est une occasion de fuite de moins. Un client non destinataire affiche « Aucun pli ne t'a été confié », ce que le frontend fait déjà sans condition (RG-77). Arbitrage : CONF-13, qui rouvre et corrige CONF-06 ; la demande initiale venait de l'ux-ui-designer au nœud S2 et elle était juste.",
         "description": "US-07. Information monnayable : la dire, la vendre, la taire ou mentir.",
         "required": ["clause", "numero_manche", "je_suis_porteur"],
+        "_portee_required": "Gouverne la variante COMPLÈTE uniquement. La variante neutre est gouvernée par x-charge-neutre (voir x-temps-reel.uniformite_de_forme.regle_unique.portee_de_required).",
         "properties": {
           "clause": {"$ref": "#/components/schemas/CleClause"},
           "numero_manche": {"type": "integer", "minimum": 1},
-          "je_suis_porteur": {"type": "boolean", "description": "Indique au destinataire s'il est le porteur tiré au sort ou s'il reçoit la clause au titre de son rôle. Ne désigne jamais un autre joueur."}
+          "je_suis_porteur": {"type": "boolean", "description": "Indique au destinataire s'il est le porteur tiré au sort ou s'il reçoit la clause au titre de son rôle. Ne désigne jamais un autre joueur. Absent de la charge neutre."}
         }
       },
       "EvtPhaseChangee": {
@@ -915,6 +1028,8 @@
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs.",
         "x-justification-visibilite": "RG-72 : le serveur est l'unique horloge. phase_fin_at est une date absolue ; le décompte client en est dérivé et purement décoratif.",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "Contrainte supplémentaire ajoutée en 1.1.0 : actions_autorisees doit être IDENTIQUE pour les huit destinataires, c'est-à-dire la liste des actions de la phase et non celle des actions ouvertes à ce joueur-là. Une liste personnalisée selon le rôle — proposer_pret visible du seul PRETEUR — ferait de ce champ un oracle de rôle, et ferait varier la taille de la trame avec un secret.",
         "required": ["phase", "phase_fin_at", "numero_manche"],
         "properties": {
           "phase": {"$ref": "#/components/schemas/Phase"},
@@ -928,6 +1043,7 @@
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs, auteur compris.",
         "x-justification-visibilite": "matrice_visibilite : montant_declare est visible de tous dès sa soumission (RG-31, CA-08). C'est une ANNONCE, opposée au paiement qui ne l'est jamais.",
+        "x-emission": "uniforme_charge_identique",
         "required": ["joueur_id", "montant_declare", "nb_declarations", "nb_joueurs"],
         "properties": {
           "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
@@ -941,6 +1057,9 @@
         "x-visibilite": "proprietaire",
         "x-destinataires": "Le payeur, et lui seul.",
         "x-justification-visibilite": "matrice_visibilite : montant_paye est visible du serveur, du propriétaire et de l'enquêteur ayant payé une enquête. CA-10 : la valeur ne doit apparaître dans AUCUN message reçu par un autre joueur, sous aucune forme ni aucun nom de champ. Ce message ne porte donc AUCUN montant, même pour son propriétaire : il vient de le saisir, et un champ de montant en moins est une occasion de fuite en moins.",
+        "x-emission": "uniforme",
+        "x-charge-neutre": ["numero_manche"],
+        "x-justification-emission": "RG-80, fuite DÉDUITE et non mesurée. L'absence de compteur public de paiements est un arbitrage explicite (CONF-12 : « savoir QUI a déjà payé renseignerait sur le comportement de la table »), et le QA a mesuré que la CHARGE est propre — projetée au seul payeur, sans montant ni identité. Mais la PRÉSENCE de la trame reconstituait exactement le compteur que CONF-12 avait refusé : qui a payé, et qui n'a pas encore payé. Émission à tous, charge neutre {numero_manche}. Le champ enregistre reste réservé au payeur : un enregistre à true envoyé à tous serait faux pour sept destinataires sur huit.",
         "description": "Accusé de prise en compte du paiement. Aucun compteur public de paiements n'existe : savoir QUI a déjà payé renseignerait sur le comportement de la table.",
         "required": ["numero_manche", "enregistre"],
         "properties": {
@@ -953,6 +1072,9 @@
         "x-visibilite": "proprietaire",
         "x-destinataires": "L'émetteur ET le destinataire du transfert, chacun recevant sa propre projection. Aucun autre joueur.",
         "x-justification-visibilite": "matrice_visibilite : un transfert est visible du serveur, de l'émetteur et du destinataire. Le publier permettrait de recouper les soldes et de remonter aux paiements.",
+        "x-emission": "uniforme",
+        "x-charge-neutre": [],
+        "x-justification-emission": "RG-80, fuite DÉDUITE et non mesurée. La présence de la trame révélait qu'un transfert avait eu lieu ENTRE CES DEUX JOUEURS — exactement le recoupement de soldes que matrice_visibilite interdit. Émission à tous, charge vide pour les six autres.",
         "required": ["emetteur_joueur_id", "destinataire_joueur_id", "montant"],
         "properties": {
           "emetteur_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
@@ -965,6 +1087,9 @@
         "x-visibilite": "proprietaire",
         "x-destinataires": "L'emprunteur sollicité ET le prêteur émetteur. Aucun autre joueur.",
         "x-justification-visibilite": "matrice_visibilite : un prêt est visible du serveur, du prêteur et de l'emprunteur. Le publier révélerait aussi qui détient le rôle PRETEUR, qui est secret.",
+        "x-emission": "uniforme",
+        "x-charge-neutre": [],
+        "x-justification-emission": "RG-80, fuite DÉDUITE et non mesurée. La présence de la trame révélait qu'un prêt existait, et donc que l'un des deux destinataires détient le rôle PRETEUR — un rôle secret. Émission à tous, charge vide pour les autres.",
         "required": ["pret"],
         "properties": {"pret": {"$ref": "#/components/schemas/PretVuPartie"}}
       },
@@ -973,19 +1098,35 @@
         "x-visibilite": "proprietaire",
         "x-destinataires": "Le prêteur ET l'emprunteur.",
         "x-justification-visibilite": "Identique à EvtPretPropose.",
+        "x-emission": "uniforme",
+        "x-charge-neutre": [],
+        "x-justification-emission": "Identique à EvtPretPropose, plus l'acceptation ou le refus. Un refus par CADUC (ANO-08) emprunte le même chemin : la trame part à tous, la charge ne part qu'aux deux parties.",
         "required": ["pret", "accepte"],
         "properties": {"pret": {"$ref": "#/components/schemas/PretVuPartie"}, "accepte": {"type": "boolean"}}
       },
       "EvtPretPreleve": {
         "type": "object", "additionalProperties": false,
         "x-visibilite": "proprietaire",
-        "x-destinataires": "Le prêteur ET l'emprunteur.",
+        "x-destinataires": "CHARGE COMPLÈTE : l'EMPRUNTEUR seul. CHARGE RÉDUITE : le PRÊTEUR. TRAME : tous les joueurs de la session.",
         "x-justification-visibilite": "Étape 15 du pipeline. Le prélèvement est plafonné au solde ; le reliquat reste dû et sera prélevé aux exécutions suivantes (RG-29, CA-34). Information strictement bilatérale.",
-        "required": ["pret", "montant_preleve", "reliquat_du"],
+        "x-emission": "uniforme",
+        "x-charge-neutre": [],
+        "x-charge-par-destinataire": {
+          "emprunteur": ["numero_manche", "pret_id", "statut", "pret", "montant_preleve", "reliquat_du"],
+          "preteur": ["numero_manche", "pret_id", "statut"],
+          "autres": []
+        },
+        "x-justification-emission": "DEUX correctifs cumulés. (1) RG-80 : la présence de la trame révélait l'existence du prêt et donc le rôle PRETEUR, secret. (2) CORRECTIF DE ANO-07, majeur, RG-81 : la trame portait montant_preleve 3 ET reliquat_du 6 ; comme reliquat_du > 0, le prélèvement était nécessairement plafonné par le solde, donc montant_preleve ÉTAIT le solde exact de l'emprunteur — déduit 3, réel 3. La charge du prêteur est donc réduite à l'identifiant du prêt et à son statut : il apprend si le prêt est encore ACTIF ou s'il est SOLDE, et rien de plus. Le champ pret est retiré de sa charge parce que PretVuPartie porte du_total et rembourse, dont la différence rend le même oracle que reliquat_du : retirer montant_preleve seul, comme le proposait le QA, n'aurait PAS fermé le canal — le prêteur aurait recalculé l'incrément par rembourse_nouveau moins rembourse_ancien.",
+        "x-fuite-residuelle-declaree": "LA CORRECTION CI-DESSUS NE FERME PAS ANO-07, ET IL FAUT LE DIRE. Le prêteur reçoit de toute façon un EvtSoldeMisAJour portant un mouvement de motif remboursement_pret et de delta égal au montant encaissé : l'incrément lui est donc connu par son PROPRE journal de pièces, que RG-42 rend non supprimable (solde = somme des mouvements, égalité testée). L'oracle n'est pas dans le protocole, il est dans la RÈGLE : un transfert plafonné dont le bénéficiaire voit son propre crédit révèle le solde du débiteur. C'est exactement le motif déjà assumé par CONF-02 pour les amendes, où montant_liquide et montant_du sont tous deux PUBLICS et où l'inférence porte sur les huit joueurs au lieu de deux. Le seul correctif structurel — mettre le prélèvement en séquestre et ne créditer le prêteur qu'à la clôture du prêt — modifie RG-29 et invalide CA-34 tel que mesuré ; il n'appartient pas au tech-lead. Escalade inscrite dans ARCHI-GDV-001.json / escalades_vers_le_chef_de_projet, et résidu inscrit en dette_assumee.",
+        "required": ["numero_manche", "pret_id", "statut"],
+        "_portee_required": "Gouverne le noyau commun aux variantes emprunteur et prêteur. Les variantes sont déclarées dans x-charge-par-destinataire et contrôlées par le test P-c.",
         "properties": {
-          "pret": {"$ref": "#/components/schemas/PretVuPartie"},
-          "montant_preleve": {"$ref": "#/components/schemas/Pieces"},
-          "reliquat_du": {"$ref": "#/components/schemas/Pieces"}
+          "numero_manche": {"type": "integer", "minimum": 1},
+          "pret_id": {"$ref": "#/components/schemas/Identifiant"},
+          "statut": {"$ref": "#/components/schemas/StatutPret"},
+          "pret": {"anyOf": [{"$ref": "#/components/schemas/PretVuPartie"}, {"type": "null"}], "description": "Variante EMPRUNTEUR uniquement. Nul ou absent pour le prêteur : du_total et rembourse y rendraient l'incrément de prélèvement, donc le solde plafonné de l'emprunteur."},
+          "montant_preleve": {"anyOf": [{"$ref": "#/components/schemas/Pieces"}, {"type": "null"}], "description": "Variante EMPRUNTEUR uniquement. C'est son propre solde qui est en cause : il a le droit de le connaître."},
+          "reliquat_du": {"anyOf": [{"$ref": "#/components/schemas/Pieces"}, {"type": "null"}], "description": "Variante EMPRUNTEUR uniquement. Ce qu'il reste à devoir."}
         }
       },
       "EvtRevelationEcartTotal": {
@@ -993,6 +1134,9 @@
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs.",
         "x-justification-visibilite": "matrice_visibilite : total_paye de la manche devient public en phase REVELATION. Agrégat sur toute la table : il ne désigne personne (CA-14).",
+        "x-emission": "uniforme_charge_identique",
+        "x-agregats-publies": ["total_declare", "total_paye"],
+        "x-justification-agregats": "RG-81 : les deux agrégats sont inscrits au registre_agregats_publies de ARCHI-GDV-001.json avec leur preuve de non-inversibilité. Résumé : à n joueurs, total_paye fixe une somme et laisse n−1 degrés de liberté ; il ne devient inversible qu'à n = 1, effectif exclu par RG-02 (joueurs_min). C'est l'information que la SPEC veut rendre publique — c'est le ressort du jeu.",
         "description": "Émis SYSTÉMATIQUEMENT à l'ouverture de la phase REVELATION, hors catalogue de sélection.",
         "required": ["numero_manche", "total_declare", "total_paye", "objectif"],
         "properties": {
@@ -1007,21 +1151,29 @@
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs.",
         "x-justification-visibilite": "Une révélation est publique par nature : c'est son objet. Elle est soumise aux trois lois du génie — vraie (RG-20, revérifiée par une fonction distincte de celle qui l'a sélectionnée), jamais complète (RG-21, au moins 2 suspects restants après émission, CA-16), provocatrice (RG-22). Si aucun gabarit n'est éligible, ce message n'est PAS émis : le génie n'invente jamais un énoncé de remplacement (CA-15).",
+        "x-emission": "uniforme_par_manche",
+        "x-charge-neutre": ["numero_manche"],
+        "x-justification-emission": "RG-80 : « un champ ne peut pas être publié dans certaines manches et omis dans d'autres, car son absence révélerait alors la condition qui la déclenche. » Avant 1.1.0, aucune trame revelation n'était émise quand aucun gabarit n'était éligible (CA-15, CL-15 mesurés conformes) : l'ABSENCE renseignait sur l'état de l'ensemble des suspects. Cette absence étant la même pour les huit joueurs, elle ne discrimine aucun joueur et n'est donc pas une violation de RG-80 au sens strict — elle relève de RG-81. Elle est fermée ici parce que le coût est nul : la trame est désormais émise à CHAQUE manche en phase REVELATION, avec la charge neutre {numero_manche} quand le génie n'a rien à dire. CA-15 reste satisfait à la lettre : le génie n'invente aucun énoncé de remplacement, il se tait — mais son silence a maintenant la même forme que sa parole.",
         "description": "ADR-TL-12 : ne porte AUCUN texte. Le client compose la phrase depuis son fichier de contenu, à partir de (gabarit, variante_formulation) et des valeurs. Trancher l'univers (ESC-01) ne touche donc ni le serveur, ni ce contrat.",
-        "required": ["numero_manche", "revelation", "suspects_restants"],
+        "required": ["numero_manche"],
+        "_portee_required": "La variante COMPLÈTE exige en outre revelation et suspects_restants. La variante neutre, émise quand aucun gabarit n'est éligible, est gouvernée par x-charge-neutre.",
         "properties": {
           "numero_manche": {"type": "integer", "minimum": 1},
-          "revelation": {"$ref": "#/components/schemas/RevelationPublique"},
-          "suspects_restants": {"type": "integer", "minimum": 2, "description": "RG-21 gravé dans le schéma : une valeur inférieure à 2 est structurellement non représentable."}
+          "revelation": {"anyOf": [{"$ref": "#/components/schemas/RevelationPublique"}, {"type": "null"}], "description": "Nul ou absent quand aucun gabarit n'est éligible (CA-15)."},
+          "suspects_restants": {"anyOf": [{"type": "integer", "minimum": 2}, {"type": "null"}], "description": "RG-21 gravé dans le schéma : une valeur inférieure à 2 reste structurellement non représentable. Nul seulement dans la variante neutre, où aucune révélation n'est émise."}
         }
       },
       "EvtResultatEnquete": {
         "type": "object", "additionalProperties": false,
         "x-visibilite": "enqueteur",
-        "x-destinataires": "Le seul joueur ayant payé l'enquête.",
-        "x-justification-visibilite": "matrice_visibilite : l'existence même de l'enquête et son résultat sont visibles du serveur et de l'enquêteur uniquement. La cible ne sait PAS qu'elle a été enquêtée — c'est ce qui rend le chantage possible (RG-27, CA-19). Aucun message n'est émis vers la cible ni vers la table, ni maintenant ni plus tard.",
+        "x-destinataires": "CHARGE COMPLÈTE : le seul joueur ayant payé l'enquête. TRAME : tous les joueurs de la session.",
+        "x-justification-visibilite": "matrice_visibilite : l'existence même de l'enquête et son résultat sont visibles du serveur et de l'enquêteur uniquement. La cible ne sait PAS qu'elle a été enquêtée — c'est ce qui rend le chantage possible (RG-27, CA-19). Aucune CHARGE n'est projetée vers la cible ni vers la table, ni maintenant ni plus tard.",
+        "x-emission": "uniforme",
+        "x-charge-neutre": ["numero_manche"],
+        "x-justification-emission": "CORRECTIF DE ANO-02, BLOQUANT. Mesure du QA : trames resultat_enquete par joueur = {J3:1, tous les autres 0}, et profil global 28 trames pour J3 contre 25 pour J0 et J4. Le CONTENU de RG-27 était respecté — la cible ne reçoit rien, mesuré à 0 trame — mais pas son INTENTION : l'existence de l'enquête devait n'être connue que de l'enquêteur, et son volume de trafic la trahissait. Émission à tous à l'instant de l'enquête, charge neutre {numero_manche} pour les sept autres. DIVERGENCE ASSUMÉE AVEC LA PRESCRIPTION DU QA, qui proposait de REPORTER l'émission à la clôture de la phase : l'enquêteur a payé pour une certitude et doit l'obtenir immédiatement, et l'émission uniforme ferme le canal sans toucher à l'expérience de jeu. AVERTISSEMENT : uniformiser ce seul événement n'aurait pas suffi — l'écart de trois trames mesuré sur J3 se décompose en accuse_reception, resultat_enquete et solde_mis_a_jour. Les trois sont uniformisés.",
         "description": "US-09. Achat d'une certitude.",
         "required": ["cible_joueur_id", "montant_paye", "cout_paye", "numero_manche"],
+        "_portee_required": "Gouverne la variante COMPLÈTE uniquement. La variante neutre est gouvernée par x-charge-neutre.",
         "properties": {
           "cible_joueur_id": {"$ref": "#/components/schemas/Identifiant"},
           "montant_paye": {"$ref": "#/components/schemas/Pieces", "description": "Montant RÉELLEMENT payé par la cible. Seule circonstance où le paiement d'autrui sort du serveur avant l'écran de scores."},
@@ -1035,6 +1187,8 @@
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs.",
         "x-justification-visibilite": "matrice_visibilite : accusation et verdict sont visibles de tous dès la soumission.",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "Classe tous, charge rigoureusement identique pour les N destinataires. Annoté en 1.2.0 pour que le contrôle U3 puisse l'inspecter : U3 exige que TOUT schéma EvtXxx porte x-emission, et neuf schémas n'en portaient pas en 1.1.0 — dont celui-ci.",
         "required": ["accusation_id", "accusateur_joueur_id", "accuse_joueur_id", "numero_manche"],
         "properties": {
           "accusation_id": {"$ref": "#/components/schemas/Identifiant"},
@@ -1048,6 +1202,8 @@
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs.",
         "x-justification-visibilite": "RG-43 / ADR-CP-06 : le verdict est public immédiatement, la liquidation monétaire est différée à l'EXECUTION. Ce message NE CONTIENT PAS ampleur_mensonge ni montant d'amende : l'ampleur révélerait le montant payé de l'accusé, et le montant révélerait la clause PRIME_AU_DELATEUR avant l'étape 16.",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "Classe tous, charge identique. Annoté en 1.2.0 pour U3.",
         "required": ["accusation_id", "verdict"],
         "properties": {
           "accusation_id": {"$ref": "#/components/schemas/Identifiant"},
@@ -1059,8 +1215,18 @@
         "type": "object", "additionalProperties": false,
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs.",
-        "x-justification-visibilite": "Étape 16 du pipeline : publication de reussi/echoue, total_paye, recompense, parts par joueur, clause révélée et son effet, verdicts et amendes liquidées. DEUX RESTRICTIONS imposées par RG-01 : (1) les montants de consolation INDIVIDUELS ne sont pas publiés — plancher(montant_paye_i / 2) révélerait le paiement de chacun ; seul le total consolé l'est, chaque joueur apprenant sa part par EvtSoldeMisAJour qui est privé. (2) L'identité du porteur de clause n'est pas publiée (matrice_visibilite : jamais en v1). Inférence sanctionnée par la SPEC et consignée dans dette_assumee de ARCHI-GDV-001.json : avec la clause LE_PLUS_GENEREUX révélée, la comparaison des parts aux déclarations désigne le plus gros payeur réel.",
-        "required": ["numero_manche", "reussi", "total_declare", "total_paye", "objectif", "clause_revelee", "parts", "amendes_liquidees"],
+        "x-justification-visibilite": "Étape 16 du pipeline. RÉÉCRIT EN 1.2.0 : la charge est désormais EXACTEMENT la liste fermée de l'étape 16 de SPEC 1.4.0, qui se termine par « RIEN D'AUTRE ». QUATRE champs sont RETIRÉS du public par ADR-TL-21 — parts, reliquat_non_distribue, total_consolation, bonus_epices_verse. Les deux premiers retraits ferment ANO-06 (bloquant, mesuré), le troisième ferme ANO-05 (bloquant, mesuré). Chaque joueur apprend sa part de récompense et sa consolation par EvtSoldeMisAJour, qui est privé et dont les motifs part_recompense et consolation portent l'information : le canal privé existe déjà, aucun mécanisme n'est à inventer. L'identité du porteur de clause n'est toujours pas publiée (matrice_visibilite : jamais en v1).",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "Classe tous, charge rigoureusement identique pour les N destinataires après le retrait des quatre champs différenciés. AVANT 1.2.0, parts rendait la charge DIFFÉRENCIÉE sans que le schéma le déclare : c'est précisément l'écart que le contrôle U3 et le test P-c attrapent désormais.",
+        "x-agregats-publies": ["total_declare", "total_paye", "objectif", "recompense", "multiplicateur_applique"],
+        "x-justification-agregats": "RG-81 : les cinq agrégats restants sont inscrits au registre_agregats_publies de ARCHI-GDV-001.json avec leur preuve de non-inversibilité. Résumé : total_declare est une somme de données DÉJÀ publiques (RG-31, chaque déclaration est publiée à sa soumission) et n'ajoute donc rien ; total_paye laisse n−1 degrés de liberté à n >= 5 joueurs (RG-02) ; objectif est une constante de configuration fois l'effectif, tous deux publics ; recompense et multiplicateur_applique sont DÉRIVABLES du couple (clause_revelee, total_paye) déjà publié, donc les publier n'ajoute aucune information — c'est le critère explicite de la SPEC pour les avoir conservés.",
+        "x-retraits-1-2-0": {
+          "parts": "RETIRÉ. ANO-06, bloquant, MESURÉ : les parts [J0:10, cinq autres:5] sous clause LE_PLUS_GENEREUX désignaient J0 comme argmax des paiements secrets (déduit [J0], réel [J0]), et la conjonction avec des déclarations toutes égales à 4 prouvait que les CINQ autres avaient menti, par l'implication payé(i) < payé(argmax) <= déclaré(i). Un seul agrégat public démasquait cinq joueurs sur six. Remplacement : canal privé EvtSoldeMisAJour, motif part_recompense.",
+          "reliquat_non_distribue": "RETIRÉ. Pas de mesure propre, retrait par DÉDUCTION et par la liste fermée de l'étape 16 : recompense − reliquat_non_distribue redonne la somme des parts, donc le champ restitue par soustraction ce que le retrait de parts vient d'ôter. Le conserver aurait laissé ANO-06 ouverte par un second chemin. Conséquence assumée : la table perd la vérification « somme des parts + reliquat = récompense » ; chaque joueur conserve la vérification de SA part, et la table conserve l'écart total_declare − total_paye, qui est la vérification qui porte le jeu.",
+          "total_consolation": "RETIRÉ. ANO-05, bloquant, MESURÉ : nb_impairs = total_paye − 2 × total_consolation rend le nombre exact de paiements impairs (charge réelle total_paye 16 et total_consolation 5, donc 6 ; réel 6). Les six déclarations publiques valant toutes 4, un nombre pair, tout joueur de paiement impair avait nécessairement menti : les six joueurs étaient prouvés menteurs par le seul public. RG-74 de SPEC 1.4.0 interdit désormais la publication « NI INDIVIDUELLEMENT NI EN TOTAL ». Seul consolation_appliquee, booléen, subsiste.",
+          "bonus_epices_verse": "RETIRÉ, et c'est le seul des quatre retraits qui ne corrige AUCUNE fuite. Motif : il n'est pas dans la liste fermée de l'étape 16, et cette liste se termine par « RIEN D'AUTRE ». Preuve de non-nuisance inscrite au registre : l'étape 10 verse le bonus « pour tout joueur de rôle MARCHAND_EPICES » et RG-04 garantit les quatre rôles présents, donc le booléen vaut identiquement reussi, qui est publié juste à côté — il n'apportait rien et son retrait ne coûte rien. Observation remontée au chef de projet : son omission de la liste fermée est probablement involontaire, le QA l'ayant cité comme le MODÈLE de publication propre. Si le chef de projet le réintègre, il entre avec la preuve ci-dessus et non par défaut."
+        },
+        "required": ["numero_manche", "reussi", "total_declare", "total_paye", "objectif", "clause_revelee", "amendes_liquidees"],
         "properties": {
           "numero_manche": {"type": "integer", "minimum": 1},
           "reussi": {"type": "boolean"},
@@ -1071,12 +1237,8 @@
           "multiplicateur_applique": {"type": "integer", "minimum": 0, "description": "Révélé ici seulement : il trahirait sinon la clause TRESOR_DES_HONNETES avant l'étape 16."},
           "clause_revelee": {"$ref": "#/components/schemas/CleClause"},
           "effet_clause": {"type": "string", "description": "Clé technique neutre de l'effet appliqué. Le libellé affiché vit dans le fichier de contenu du client (RG-61)."},
-          "parts": {"type": "array", "items": {"$ref": "#/components/schemas/PartRecompense"}},
-          "reliquat_non_distribue": {"$ref": "#/components/schemas/Pieces", "description": "RG-14 : le reliquat d'arrondi n'est pas distribué, le génie le garde. Publié pour que la table puisse vérifier que la somme des parts plus le reliquat égale la récompense."},
-          "consolation_appliquee": {"type": "boolean"},
-          "total_consolation": {"anyOf": [{"$ref": "#/components/schemas/Pieces"}, {"type": "null"}], "description": "Total agrégé UNIQUEMENT. Le détail par joueur n'est jamais publié."},
-          "amendes_liquidees": {"type": "array", "items": {"$ref": "#/components/schemas/AmendeLiquidee"}},
-          "bonus_epices_verse": {"type": "boolean", "description": "Indique qu'au moins un MARCHAND_EPICES a touché son bonus, sans jamais nommer qui : le rôle est secret (étape 10)."}
+          "consolation_appliquee": {"type": "boolean", "description": "Activation de la clause CONSOLATION, et RIEN de plus. Aucun montant, ni individuel ni agrégé (RG-74, ANO-05)."},
+          "amendes_liquidees": {"type": "array", "items": {"$ref": "#/components/schemas/AmendeLiquidee"}}
         }
       },
       "EvtSoldeMisAJour": {
@@ -1084,7 +1246,10 @@
         "x-visibilite": "proprietaire",
         "x-destinataires": "Le propriétaire du solde, et lui seul.",
         "x-justification-visibilite": "ADR-CP-05 : un solde public permettrait de déduire le paiement secret par différence. CA-36 : le message qui porte un solde ne contient QUE le solde du destinataire et SES propres mouvements. Il n'existe aucune variante listant les soldes de plusieurs joueurs.",
-        "description": "US-13. Seul vecteur par lequel un joueur apprend sa consolation, son bonus d'épices, son amende ou son prélèvement de prêt.",
+        "description": "US-13. Seul vecteur par lequel un joueur apprend sa PART DE RÉCOMPENSE, sa consolation, son bonus d'épices, son amende ou son prélèvement de prêt. En 1.2.0 ce rôle s'élargit : part_recompense et consolation ne transitent plus que par ici (ADR-TL-21).",
+        "x-emission": "uniforme",
+        "x-charge-neutre": [],
+        "x-justification-emission": "FUITE DÉDUITE, NON MESURÉE EN TANT QUE TELLE, mais identifiée par le QA comme le PRINCIPAL contributeur du profil global 28 contre 25 : l'événement n'était émis qu'au joueur dont le solde bougeait, donc sa seule présence révélait qu'il avait payé, enquêté, transféré ou reçu. Uniformiser resultat_enquete seul n'aurait PAS fermé ANO-02 pour cette raison. La charge neutre est vide : solde_pieces et derniers_mouvements sont tous deux secrets au titre de matrice_visibilite, aucun des deux ne peut figurer dans une charge neutre sans violer le contrôle U3.",
         "required": ["solde_pieces", "derniers_mouvements"],
         "properties": {
           "solde_pieces": {"$ref": "#/components/schemas/Pieces"},
@@ -1097,6 +1262,9 @@
         "x-destinataires": "Chaque marchand individuellement.",
         "x-justification-visibilite": "RG-52 : le Vœu de liberté est proposé EN PRIVÉ à chaque marchand. La proposition étant identique pour tous, elle reste néanmoins projetée individuellement — et surtout, aucune réponse d'autrui n'y figure.",
         "description": "US-14. Phase DV_PROPOSITION.",
+        "x-emission": "uniforme",
+        "x-charge-neutre": [],
+        "x-justification-emission": "FUITE DÉDUITE, NON MESURÉE. L'événement était émis « à chaque marchand individuellement ». Si tous les joueurs sont marchands, le dénombrement est uniforme et il n'y a pas de fuite — mais la formulation de RG-52 n'en donne pas la garantie et MARCHAND_DEJA_LIE occupe role_secret (ECART-S4-01). L'uniformité LÈVE la question au lieu de la supposer, ce qui est moins coûteux que de la trancher. Charge neutre vide : phase_fin_at est public mais le non-destinataire l'obtient déjà par EvtPhaseChangee, et le faire figurer ici créerait une seconde source pour la même échéance.",
         "required": ["montant_propose", "phase_fin_at"],
         "properties": {
           "montant_propose": {"$ref": "#/components/schemas/Pieces"},
@@ -1108,6 +1276,8 @@
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs.",
         "x-justification-visibilite": "RG-54 / CA-39 : sont publics le NOMBRE de signataires et la conséquence appliquée. L'identité des signataires n'est révélée qu'à l'écran de scores finaux. Ce message ne porte donc aucun identifiant de signataire, ni aucun montant individuel de sanction.",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "Classe tous, charge identique. Annoté en 1.2.0 pour U3.",
         "required": ["nb_signataires", "consequence", "genie_libere"],
         "properties": {
           "nb_signataires": {"type": "integer", "minimum": 0},
@@ -1121,6 +1291,8 @@
         "x-destinataires": "Tous les joueurs.",
         "x-justification-visibilite": "RG-58 : l'écran de scores finaux est le SEUL moment où tous les secrets deviennent publics — rôles, missions et leur réussite, paiements réels de chaque manche, signataires du Dernier Vœu. Une seule exception maintenue : l'identité du porteur de clause reste non révélée (matrice_visibilite : jamais en v1). C'est le seul message de classe tous qui contienne des données auparavant secrètes, et il n'est émis que dans l'état SCORES.",
         "description": "US-15. Permet de vérifier a posteriori qui a menti et de constater que le génie ne pouvait pas tricher.",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "Classe tous, charge identique. Annoté en 1.2.0 pour U3. C'est la trame la plus VOLUMINEUSE du protocole — classement et paiements_historiques à 8 joueurs sur 5 manches — mais sa taille est identique pour tous les destinataires, donc elle ne porte aucune information de forme. Elle reste complétée au prochain multiple du palier et doit tenir sous taille_max_trame_sortante_octets. ESTIMATION, NON MESURÉE, au pire cas de 8 joueurs et 5 manches : paiements_historiques = 40 entrées d'environ 110 octets sérialisés, soit environ 4,4 Ko ; classement = 8 entrées d'environ 200 octets, soit environ 1,6 Ko ; total d'environ 6,5 Ko, complété à 7168 octets. Le plafond de 16384 octets tient avec un facteur 2,3. Si une configuration portait nb_manches au-delà d'environ 13, le plafond serait franchi : c'est une borne à vérifier au nœud de mesure, pas un défaut aujourd'hui.",
         "required": ["classement", "vainqueurs", "genie_libere", "paiements_historiques"],
         "properties": {
           "classement": {
@@ -1165,6 +1337,8 @@
         "x-visibilite": "tous",
         "x-destinataires": "Tous les joueurs.",
         "x-justification-visibilite": "Information publique. Aucun secret n'est révélé par un abandon : la SPEC réserve la révélation à l'écran de scores d'une partie TERMINEE. Le compteur du groupe n'est pas incrémenté (RG-59, CA-48).",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "Classe tous, charge identique. Annoté en 1.2.0 pour U3.",
         "required": ["motif"],
         "properties": {
           "motif": {"type": "string", "enum": ["ABANDON_HOTE", "INACTIVITE_DEPASSEE"]},
@@ -1177,11 +1351,77 @@
         "x-destinataires": "Le seul joueur portant est_hote.",
         "x-justification-visibilite": "US-18 / CA-47. L'état du groupe appartient au porteur du jeton de groupe, c'est-à-dire à l'hôte. C'est la seule donnée du produit relevant de la classe hote. Aucun autre joueur n'a de raison de connaître l'historique de parties du groupe de l'hôte.",
         "description": "Émis au passage en TERMINEE, quand parties_terminees est incrémenté.",
+        "x-emission": "uniforme",
+        "x-charge-neutre": [],
+        "x-justification-emission": "AUCUNE FUITE à corriger, et c'est dit explicitement. L'événement n'était émis qu'à l'hôte, ce qui révèle qui est l'hôte — donnée DÉJÀ publique par est_hote (matrice_visibilite : pseudo, position, état de connexion visibles de tous). Il est néanmoins soumis à la règle unique, par application de ADR-TL-20 : le coût d'une exception est une ligne de liste à maintenir, et c'est précisément une énumération incomplète qui a produit les six fuites de l'audit. Soumis par discipline de règle, pas par nécessité de sécurité.",
         "required": ["groupe"],
         "properties": {"groupe": {"$ref": "#/components/schemas/EtatGroupe"}}
       }
     }
   },
 
-  "x-ruptures-de-compatibilite": []
+  "x-ruptures-de-compatibilite": [
+    {
+      "id": "RUP-01",
+      "intitule": "Portée du numéro de séquence : par destinataire devient par session",
+      "introduite_en": "1.1.0",
+      "gravite": "MAJEURE",
+      "avant": "x-temps-reel.sequencage.champ sequence était un entier monotone PAR DESTINATAIRE. Deux joueurs d'une même session avaient des numéros différents au même instant, et EvtEtatCompletPrive remettait le compteur à 1 pour le joueur qui se reconnectait.",
+      "apres": "sequence est un entier monotone PAR SESSION. Les N joueurs reçoivent les mêmes numéros aux mêmes trames. AUCUNE remise à 1 : EvtEtatCompletPrive porte la valeur courante du compteur de session.",
+      "pourquoi_c_est_une_rupture_et_pas_un_ajustement": "Un client qui conserve son dernier numéro reçu et le compare au suivant continue de fonctionner. Mais tout code qui SUPPOSE que la séquence repart à 1 après reconnexion verra un saut de plusieurs centaines et déclenchera une reconnexion en boucle. C'est un défaut de disponibilité, pas de confidentialité, et il ne se manifeste qu'à la première reconnexion en partie réelle — donc au playtest, pas en test unitaire.",
+      "portee_backend": "OBLIGATOIRE. Le compteur migre de la structure de connexion vers la structure de session. sessions.sequence_journal existe déjà en base (modele_donnees) et sert de source. Le générateur de numéro doit être un point UNIQUE par session : deux appelants qui incrémentent deux compteurs distincts recréeraient la divergence que RUP-01 supprime. Retirer tout code de remise à 1 dans le chemin de reconnexion.",
+      "portee_frontend": "OBLIGATOIRE. Retirer toute hypothèse de remise à 1 après reconnexion. La détection de trou de séquence reste la seule logique autorisée ; le client ne reconstitue JAMAIS l'état lui-même.",
+      "portee_qa": "La vérification devient MOINS coûteuse, pas plus : l'égalité des séquences entre destinataires est un invariant d'égalité directe, qui est le contrôle le moins cher de la porte d'uniformité (U1). Si deux joueurs d'une même session divergent d'un numéro à un instant donné, une trame a été adressée sélectivement.",
+      "gain_qui_justifie_le_cout": "L'ancienne portée était la TRACE de la fuite, pas seulement sa conséquence : « deux joueurs n'ont pas le même nombre de messages » était inscrit au contrat comme une conséquence assumée de la projection par destinataire, et c'est exactement ce que ANO-01 et ANO-02 ont exploité. Supprimer la portée par destinataire transforme un angle mort en invariant vérifiable à coût nul."
+    },
+    {
+      "id": "RUP-02",
+      "intitule": "Toute trame est émise à tous : l'adressage sélectif disparaît du transport",
+      "introduite_en": "1.1.0",
+      "gravite": "MAJEURE",
+      "avant": "Le serveur choisissait ses destinataires événement par événement : clause_recue au porteur et aux FAISEUR_CONTRATS, resultat_enquete à l'enquêteur, solde_mis_a_jour au seul joueur concerné, pret_propose aux deux parties, groupe_mis_a_jour à l'hôte.",
+      "apres": "Il n'existe plus d'adressage sélectif. Toute trame part à TOUS les joueurs de la session, dans le même tour de boucle. Le non-destinataire reçoit la charge déclarée par x-charge-neutre du schéma, vide le plus souvent. Deux exceptions seulement, en liste FERMÉE : EvtEtatCompletPrive et cinq codes d'erreur de protocole.",
+      "portee_backend": "OBLIGATOIRE et STRUCTURANTE. C'est la rupture la plus coûteuse des quatre. La signature de diffusion change : là où le code appelait envoyerA(joueurId, evenement) pour un sous-ensemble choisi, il appelle désormais une émission de lot qui projette N fois et écrit N fois. ATTENTION, l'interdit mécanique existant demeure et n'est pas assoupli : aucune fonction nommée diffuser, broadcast, emitAll ni toAll ne peut être déclarée, et la primitive unitaire reste envoyerA(joueurId, evenement). L'émission à tous est une BOUCLE sur N projections distinctes, et non une diffusion d'une charge unique — la distinction n'est pas cosmétique, c'est elle qui préserve RG-01 : si une seule charge était sérialisée puis envoyée N fois, le premier événement de classe proprietaire fuiterait vers les sept autres.",
+      "portee_frontend": "OBLIGATOIRE mais faible. Le client doit accepter de recevoir tout type d'événement avec une charge neutre et NE RIEN AFFICHER dans ce cas. Piège à éviter nommément : traiter une charge neutre comme une charge malformée, ou comme un état à vider. Une charge neutre n'est ni une erreur ni une absence de donnée, c'est une trame qui ne lui est pas destinée et qu'il doit ignorer silencieusement.",
+      "portee_qa": "Les sondes qui comptaient les trames par destinataire pour établir une fuite deviennent les sondes qui vérifient l'égalité. qa/sondes/sonde-canaux-indirects.ts section (II) sert de mesure de recette sans modification.",
+      "gain_qui_justifie_le_cout": "Ferme ANO-01 et ANO-02, toutes deux bloquantes et mesurées, et sept canaux de même nature déduits mais non mesurés. L'exigence est RG-80, rang 1 du registre."
+    },
+    {
+      "id": "RUP-03",
+      "intitule": "Remplissage obligatoire des trames sortantes à paliers de 1024 octets, et interdiction de la compression",
+      "introduite_en": "1.1.0",
+      "gravite": "MINEURE pour les clients, MAJEURE pour la configuration du transport",
+      "avant": "Aucun remplissage. Taille de trame libre, strictement fonction du contenu sérialisé. permessage-deflate désactivé par simple absence de gain mesuré.",
+      "apres": "EnveloppeEvenement.remplissage complète toute trame sortante au prochain multiple de 1024 octets, et les N trames d'un même lot sont complétées à une cible COMMUNE égale au maximum des N longueurs arrondi au palier. La compression devient INTERDITE au rang d'exigence de sécurité.",
+      "pourquoi_la_compression_change_de_statut": "Ce n'est plus « elle n'apporte rien », c'est « elle annule le correctif ». Appliquée APRÈS remplissage, elle rend la taille compressée fonction du CONTENU : une charge neutre faite de 1000 octets de remplissage se comprime beaucoup mieux qu'une charge pleine complétée à la même taille, et l'écart de taille sur le fil réapparaît — exactement le canal que RUP-03 ferme. L'ordre est donc imposé : le remplissage est appliqué EN DERNIER, juste avant l'écriture sur le socket.",
+      "portee_backend": "OBLIGATOIRE. Vérifier explicitement que permessage-deflate est désactivé dans la configuration de ws, et que rien en amont (proxy inverse, terminaison TLS) ne réintroduit une compression au niveau du cadre WebSocket. Ce dernier point sort du code et relève de l'ingenieur-devops : une compression ajoutée par un proxy annulerait silencieusement le correctif, sans qu'aucun test du dépôt ne le voie.",
+      "portee_frontend": "FAIBLE mais non nulle. Le client doit IGNORER le champ remplissage et ne jamais le valider comme une donnée métier. Il ne doit pas non plus le journaliser : un kilooctet de remplissage par trame dans la console rendrait les journaux du playtest illisibles.",
+      "cout_accepte": "Volume porté à un ordre de 12 Mo par partie de 30 minutes à 8 joueurs dans le pire cas. Confrontation aux budgets de contraintes_perf faite dans ARCHI-GDV-001.json / contraintes_perf._confrontation_cout_remplissage : aucun budget n'est menacé.",
+      "residu_declare": "Le palier ne rend indiscernables que les trames qui tombent dans le MÊME palier. EvtEtatCompletPrive, exempté de l'émission de lot, a une taille qui dépend de l'historique privé du destinataire — 3593 octets mesurés à 6 joueurs. Deux reconnexions d'historiques très différents peuvent tomber dans deux paliers distincts. NON COUVERT en v1, inscrit en dette assumée avec sa condition de reprise."
+    },
+    {
+      "id": "RUP-04",
+      "intitule": "Les six routes REST passent sous le préfixe /api",
+      "introduite_en": "1.1.0, confirmée et tranchée en 1.2.0",
+      "gravite": "MAJEURE côté serveur, NULLE côté client",
+      "avant": "Le contrat déclarait servers = https://{hote}/api depuis la version 1.0.0, mais le serveur enregistrait les six routes à la RACINE : /sante, /configuration/defauts, /sessions, /sessions/:code_adhesion/apercu, /sessions/:code_adhesion/joueurs, /groupes/moi. Mesure QA : 0 route sur 6 portait le préfixe. L'écart était masqué en développement par une réécriture du proxy Vite.",
+      "apres": "Les six opérations sont servies sous /api et NULLE PART AILLEURS. La réécriture du proxy est retirée. Voir x-prefixe-rest, normatif.",
+      "pourquoi_c_est_le_serveur_qui_bouge": "Le contrat prime, et ici il a en outre raison sur le fond : voir x-prefixe-rest.justification_par_exigence. Le client, lui, attend déjà /api — le QA a vérifié que les six chemins du contrat et les six chemins attendus par le client coïncident. La rupture est donc à sens unique.",
+      "portee_backend": "OBLIGATOIRE. Enregistrer les six routes sous /api. À grouper avec ANO-10, dont le prédicat de non-mise-en-cache dépend du préfixe réellement servi : corriger l'un sans l'autre laisse le prédicat faux.",
+      "portee_frontend": "AUCUN changement d'appel — mais une SUPPRESSION obligatoire : retirer la réécriture /^\\/api/u → '' du proxy de développement. Tant qu'elle est en place, le dépôt a deux sources de vérité pour le préfixe et la régression reste invisible en développement.",
+      "piege_nomme": "Si le backend préfixe et que le frontend garde la réécriture, les appels partent vers /sante et le serveur ne sert plus que /api/sante : tout casse en développement alors que la production serait correcte. Les deux corrections doivent être livrées ENSEMBLE, dans le même commit ou dans deux commits consécutifs non séparés par une livraison."
+    },
+    {
+      "id": "RUP-05",
+      "intitule": "Retrait de quatre champs publics de execution_resultat",
+      "introduite_en": "1.2.0",
+      "gravite": "MAJEURE",
+      "avant": "EvtExecutionResultat publiait parts (et parts figurait dans required), reliquat_non_distribue, total_consolation et bonus_epices_verse.",
+      "apres": "Les quatre champs sont RETIRÉS de la charge publique. parts et required sont amputés d'autant. Chaque joueur apprend sa part de récompense et sa consolation par EvtSoldeMisAJour, privé, aux motifs part_recompense et consolation.",
+      "portee_backend": "OBLIGATOIRE. L'étape 16 du pipeline ne compose plus ces quatre champs dans la charge publique. Les montants continuent d'EXISTER dans le moteur et dans mouvements_pieces — c'est leur PUBLICATION qui cesse, pas leur calcul. Piège nommé : ne pas supprimer le calcul des parts en croyant supprimer le champ, la part conditionne le solde.",
+      "portee_frontend": "OBLIGATOIRE et VISIBLE À L'ÉCRAN. L'écran de résultat d'exécution ne peut plus afficher le tableau des parts par joueur ni le total consolé. Il affiche l'écart total_declare / total_paye, la clause révélée et son effet, les amendes liquidées, et le booléen d'activation de la consolation. La part personnelle du joueur s'affiche depuis son propre canal de solde. C'est une PERTE FONCTIONNELLE assumée par la SPEC 1.4.0, pas un oubli de maquette : le dev-frontend ne doit pas la reconstituer par un calcul local, ce qui recréerait la fuite côté client pour tout joueur curieux.",
+      "portee_qa": "Mesure de recette : rejouer qa/sondes/sonde-fuite-agregats.ts. La ligne « nb_impairs DÉDUIT du public » doit devenir INCALCULABLE, et « joueurs à poids doublé déduits » INDÉTERMINABLE depuis la charge publique.",
+      "gain_qui_justifie_le_cout": "Ferme ANO-05 et ANO-06, toutes deux bloquantes et MESURÉES. Un seul agrégat public démasquait cinq joueurs sur six."
+    }
+  ]
 }
