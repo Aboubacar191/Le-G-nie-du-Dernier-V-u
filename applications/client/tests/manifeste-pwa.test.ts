@@ -105,15 +105,26 @@ test('la règle « /api jamais en cache » S’APPLIQUE à une URL réelle', () 
 
 // RUP-04 — la réécriture du proxy et le préfixe servi par le serveur forment un
 // COUPLE : préfixer sans retirer casse le développement, retirer sans préfixer
-// le casse aussi. Le backend n'a pas encore préfixé ; la réécriture doit donc
-// rester, et ce test interdit de la retirer seule par inadvertance.
-test('la réécriture /api du proxy de développement est TOUJOURS là (RUP-04)', () => {
-  assert.match(
-    configurationVite,
-    /rewrite:\s*\(chemin\)\s*=>\s*chemin\.replace\(\/\^\\\/api\/u,\s*''\)/u,
-    'retirer la réécriture avant que le serveur ne préfixe ses routes casse les six ' +
-      'routes REST en développement : les deux changements vont ENSEMBLE (RUP-04)',
+// le casse aussi. Le serveur préfixe désormais ses six routes sous /api
+// (applications/serveur/src/http/serveur.ts, PREFIXE_REST), donc la réécriture
+// est RETIRÉE et doit le rester. Le sens de ce test est INVERSÉ par rapport à
+// l'itération précédente, et c'est la livraison conjointe des deux correctifs
+// qui l'autorise : x-prefixe-rest.interdiction_de_contournement est normatif,
+// « la réécriture est INTERDITE et doit être retirée avec le correctif ».
+test('la réécriture /api du proxy de développement est RETIRÉE (RUP-04)', () => {
+  assert.ok(
+    !/rewrite\s*:/u.test(configurationVite),
+    'une réécriture de préfixe dans le proxy de développement fait de vite.config.ts une ' +
+      'seconde source de vérité : l’écart redeviendrait invisible en développement et ' +
+      'total en production, ce qui est exactement ANO-11',
   );
+  assert.ok(
+    !/pathRewrite/u.test(configurationVite),
+    'pathRewrite est la même réécriture sous un autre nom',
+  );
+  // Le proxy doit bien rester déclaré : l'absence de réécriture ne doit pas
+  // être obtenue en supprimant le proxy, ce qui casserait le développement.
+  assert.match(configurationVite, /'\/api':\s*\{/u);
 });
 
 test('la mise à jour du service worker est en mode « prompt »', () => {

@@ -23,6 +23,8 @@
 
 import { WebSocket } from 'ws';
 
+import { PREFIXE_REST } from '@gdv/partage';
+
 import { creerClientTempsReel } from '../applications/client/src/transport/client-ws.ts';
 import { appliquerEvenement } from '../applications/client/src/magasin/reducteurs.ts';
 import { etatInitial } from '../applications/client/src/magasin/etat.ts';
@@ -33,7 +35,9 @@ const argument = (nom, defaut) => {
 };
 
 const HOTE = argument('--hote', '127.0.0.1:8444');
-const BASE = `http://${HOTE}`;
+// RUP-04 : les six routes REST sont servies sous /api et nulle part ailleurs.
+// Le préfixe est celui du contrat, lu par @gdv/partage, jamais un littéral.
+const BASE = `http://${HOTE}${PREFIXE_REST}`;
 const NB_JOUEURS = 6;
 const COURTE = 3;
 const PSEUDOS = ['Hote', 'Awa', 'Koffi', 'Moussa', 'Fatou', 'Yao'];

@@ -32,6 +32,7 @@ export interface SchemaContrat {
 
 interface ContratApi {
   readonly info: { readonly version: string };
+  readonly servers?: readonly { readonly url?: string }[];
   readonly components: { readonly schemas: Readonly<Record<string, SchemaContrat>> };
 }
 
@@ -39,6 +40,36 @@ export const CONTRAT_API = contratBrut as unknown as ContratApi;
 
 /** info.version fait foi (ARCHI standards.versionnement_protocole). */
 export const VERSION_PROTOCOLE: string = CONTRAT_API.info.version;
+
+/**
+ * Préfixe des routes REST, DÉRIVÉ de servers[0].url (RUP-04, ADR-TL-23).
+ *
+ * Le préfixe n'est écrit en littéral NI ici NI dans le serveur : un littéral
+ * serait la troisième source de vérité que ADR-TL-23 supprime, après le contrat
+ * et la réécriture du proxy de développement. ANO-11 a été mesurée à 0 route
+ * sur 6 précisément parce que rien ne reliait le serveur à cette valeur.
+ *
+ * Un contrat sans serveur déclaré ferme la porte au chargement du module : un
+ * préfixe vide par défaut remonterait silencieusement les six routes à la
+ * racine, c'est-à-dire exactement le défaut à fermer.
+ */
+export const PREFIXE_REST: string = (() => {
+  const url = CONTRAT_API.servers?.[0]?.url;
+  if (typeof url !== 'string' || url.length === 0) {
+    throw new Error(
+      'API-GDV-001.json : servers[0].url absent. Le préfixe des routes REST est ' +
+        'indéterminable, et aucune valeur par défaut n\'est admise — « / » remonterait ' +
+        'les six routes à la racine, ce qui est le défaut ANO-11.',
+    );
+  }
+  const chemin = url.replace(/^[a-z]+:\/\/[^/]*/u, '').replace(/\/$/u, '');
+  if (!chemin.startsWith('/')) {
+    throw new Error(
+      `API-GDV-001.json : servers[0].url « ${url} » ne porte aucun chemin de préfixe.`,
+    );
+  }
+  return chemin;
+})();
 
 export const SCHEMAS_CONTRAT: Readonly<Record<string, SchemaContrat>> =
   CONTRAT_API.components.schemas;

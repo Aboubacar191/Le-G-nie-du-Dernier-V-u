@@ -88,15 +88,15 @@ export default defineConfig({
     // c'est l'hypothèse du contrat (servers : https://{hote}/api, canal
     // wss://{hote}/tr) et c'est aussi ce que la CSP de index.html autorise.
     //
-    // La réécriture retire le préfixe /api : le serveur du nœud S4 enregistre
-    // ses routes à la RACINE alors que API-GDV-001 / servers les déclare sous
-    // /api. L'écart est consigné dans RAPPORT-FRONTEND-001, pas corrigé ici :
-    // le serveur n'est pas dans le périmètre de ce nœud.
+    // Le proxy transmet /api SANS MODIFICATION (RUP-04, ADR-TL-23). La
+    // réécriture /^\/api/ → '' qui vivait ici est RETIRÉE : le serveur sert
+    // désormais ses six routes sous /api, et une réécriture ferait du présent
+    // fichier une seconde source de vérité pour le préfixe — c'est elle qui
+    // rendait ANO-11 invisible en développement et totale en production.
     proxy: {
       '/api': {
         target: `http://127.0.0.1:${PORT_SERVEUR}`,
         changeOrigin: false,
-        rewrite: (chemin) => chemin.replace(/^\/api/u, ''),
       },
       '/tr': {
         target: `ws://127.0.0.1:${PORT_SERVEUR}`,
