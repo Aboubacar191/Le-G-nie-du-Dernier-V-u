@@ -1,0 +1,477 @@
+{
+  "cible": "GDV-001",
+  "iteration": 1,
+  "noeud": "S5'",
+  "auteur": "dev-frontend",
+  "date": "2026-10-31",
+  "branche_git": "main",
+  "portee": "Deux chantiers en un passage : application du thème Zafyr tranché (DESIGN-GDV-001.json v1.1.0, ESC-01), et correction des failles relevées côté client — ANO-10, ANO-12, ANO-UX-01, ANO-UX-02 — plus l'implémentation réelle du dispositif anti-regard-du-voisin et le remplacement du test tautologique qui le « validait ».",
+
+  "_resume_en_une_phrase": "Les quatre anomalies sont corrigées et vérifiées ; le thème est propagé et ses deux règles de fond rendues effectives ; la fenêtre de lecture du secret était bien consommée par un composant — contrairement à l'énoncé de la mission — mais son enveloppe n'était bornée par AUCUNE règle CSS, ce qui est le défaut réel, désormais corrigé et mesuré par un test de consommation effective.",
+
+  "rectification_de_l_enonce_de_mission": {
+    "_pourquoi_cette_section": "La mission affirmait deux faits que la mesure contredit. Les reprendre tels quels aurait produit un rapport faux et une correction mal ciblée. Le défaut de fond existe bel et bien, mais il n'est pas là où il était annoncé.",
+    "affirmation_1": "« Ces deux jetons sont consommés par ZÉRO composant »",
+    "mesure_1": "FAUX. applications/client/src/composants/VoileSecret.vue consommait --gdv-secret-largeur-fenetre (ligne 261 avant correction) et --gdv-secret-hauteur-fenetre (lignes 150 et 262), et ce composant était employé par les 11 écrans porteurs d'un secret.",
+    "affirmation_2": "« ne sont même pas émis en variables CSS »",
+    "mesure_2": "FAUX. jetons.css émettait --gdv-secret-largeur-fenetre: 96px et --gdv-secret-hauteur-fenetre: 64px. Le compilateur les renomme explicitement (outils/compiler-jetons.mjs, RENOMMAGES_EXPLICITES) et n'exclut du CSS que secret.ancrage_vertical, secret.cote_dominant_par_defaut et secret.surface_lisible_max_ratio, qui ne sont pas des longueurs.",
+    "le_defaut_reel": "Le CSS déclarait « inline-size » et « min-block-size ». Une largeur fixe, et une hauteur MINIMALE. Un minimum ne borne rien : il autorise la croissance. Aucune règle ne confinait le contenu. Une clause de 100 caractères transformait donc 96 × 64 en 96 × 200 et plus sans qu'une seule ligne de code ne s'en aperçoive. L'enveloppe annoncée n'était tenue que pour un nombre court — 3 des 8 catégories de données secrètes — et les 5 catégories TEXTUELLES ne tenaient dans la lucarne que parce que chaque écran rapetissait sa police à 12 ou 14 px, c'est-à-dire en contournant M4 (« on réduit l'empreinte physique et l'angle utile, pas la lisibilité ») et le plancher de 16 px de typographie.role._regle_mobile.",
+    "conclusion": "Le diagnostic de la mission — « la protection n'existe pas » — était juste dans sa conclusion et inexact dans sa cause. La protection existait en apparence et ne tenait rien en pratique, ce qui est pire qu'une absence : un commentaire du composant affirmait « 96 × 64 sur 360 × 640 = 2,7 % de la surface » que le CSS ne garantissait pas.",
+    "escalade_introuvable": "La mission renvoyait à « l'escalade sur la fenêtre de lecture » dans registre.json. Je ne l'y ai pas trouvée : escalades_humaines_en_attente ne contient que ESC-01, ESC-02 et ESC-03, et aucune entrée de conflits_arbitres ne porte sur la fenêtre. Signalé sans conséquence sur le travail."
+  },
+
+  "chantier_a_theme": {
+    "jetons_propages": {
+      "commande": "npm run jetons",
+      "sortie": "JETONS COMPILÉS — 29 couleurs × 2 thèmes, 101 dimensions, durées et seuils.",
+      "fichiers": [
+        "applications/client/src/styles/jetons.css (98 insertions, 89 suppressions)",
+        "applications/client/src/styles/jetons.ts (INCHANGÉ à l'octet — aucune valeur de thème n'y vit)"
+      ],
+      "jetons_neufs_de_la_v1_1_0": [
+        "--gdv-famille-titre",
+        "--gdv-graisse-tres-gras",
+        "--gdv-interligne-voix-genie",
+        "--gdv-suivi-titre",
+        "--gdv-suivi-surtitre-capitales",
+        "--gdv-suivi-aucun",
+        "--gdv-hauteur-badge-lampe",
+        "--gdv-largeur-badge-lampe",
+        "--gdv-largeur-glyphe-lampe"
+      ]
+    },
+    "litteral_corrige": {
+      "fichier": "applications/client/src/app.vue",
+      "avant": "letter-spacing: 0.01em",
+      "apres": "letter-spacing: var(--gdv-suivi-aucun)",
+      "jeton": "typographie.suivi.aucun, valeur prescrite par le designer et confirmée par typographie.suivi._regle_corps_sans_suivi"
+    },
+    "feuille_d_appoint_supprimee": {
+      "_gravite": "C'est la correction la plus lourde du chantier A, et elle n'était pas au périmètre de la mission.",
+      "fichier": "applications/client/src/styles/theme-prototype.css (50 lignes, non versionné, trouvé dans l'arbre de travail)",
+      "ce_qu_il_faisait": "Importé par main.ts APRÈS jetons.css, il redéfinissait les 29 jetons de couleur en hexadécimal écrit à la main, plus deux familles typographiques, sur le sélecteur « :root, [data-theme='clair'], [data-theme='sombre'] ». Les deux thèmes étaient donc écrasés par un seul jeu de valeurs littérales : la couleur affichée ne venait plus du contrat, et une recompilation des jetons n'avait aucun effet visible.",
+      "pourquoi_la_porte_ne_l_a_pas_vu": "zero-valeur-litterale.test.ts n'analysait que les fichiers .vue et .ts. Une feuille .css portant 30 couleurs en dur traversait la porte sans l'émouvoir. Le trou était dans la MESURE, pas dans la règle.",
+      "correction": "Fichier supprimé, import retiré, périmètre du test étendu à toute feuille de style du client (jetons.css excepté, qui EST les valeurs). Remplacé par styles/global.css, qui ne contient aucune valeur de thème."
+    },
+    "polices": {
+      "fichiers_embarques": [
+        "applications/client/public/polices/cinzel-latin.woff2 — 25 904 o",
+        "applications/client/public/polices/cinzel-latin-ext.woff2 — 14 540 o",
+        "applications/client/public/polices/dm-sans-latin.woff2 — 36 932 o",
+        "applications/client/public/polices/dm-sans-latin-ext.woff2 — 18 228 o"
+      ],
+      "total_mesure": "95 604 octets, soit 93,4 ko",
+      "provenance": "Extraits du manifeste gzippé de « Le Génie du Dernier Vœu — Prototype mobile.html », woff2 NON MODIFIÉS, provenance Google Fonts, exactement comme polices.familles[].provenance le déclare.",
+      "licence": "applications/client/public/polices/POLICES-LICENCES.txt — 10 324 o. Contient les deux notices de copyright reproduites à l'identique depuis l'en-tête du prototype, le texte intégral de la SIL Open Font License 1.1 pour chaque famille, la mention des noms réservés, et la table des quatre fichiers. Distribué AVEC les woff2 dans public/, donc présent dans dist/polices/ après construction : l'OFL 1.1 l'exige, et un livrable sans ce fichier est en infraction, pas en retard.",
+      "sous_ensembles": "latin ET latin-ext embarqués pour les deux familles, découpés par unicode-range repris à l'octet du prototype. latin-ext est obligatoire au contrat et il est livré.",
+      "declarations": "10 blocs @font-face pour 4 fichiers, déclarés UNE SEULE FOIS dans styles/global.css, jamais dans un composant (variables_css.regle_polices). font-display: swap sur les deux familles. famille.chiffres ne déclare aucun @font-face : les chiffres sont hors du chemin de chargement des polices, par construction.",
+      "prechargement": "Les deux sous-ensembles « latin » sont préchargés dans index.html : ils servent sur tous les écrans. « latin-ext » ne se charge que si un pseudonyme ou un libellé en sort.",
+      "decision_budget": {
+        "decision": "LES DEUX FAMILLES SONT CONSERVÉES. Le repli prescrit — abandonner DM Sans — n'est PAS appliqué.",
+        "motif": "Le contrat annonce « sept fichiers woff2 pour environ 125 ko » et subordonne le repli à un coût « jugé excessif ». La mesure réelle donne QUATRE fichiers et 93,4 ko, soit 25 % sous le plafond annoncé. La condition du repli n'est pas remplie, donc le repli n'a pas lieu d'être appliqué : le contrat le prescrit d'avance, il ne le prescrit pas inconditionnellement.",
+        "pourquoi_l_ecart": "Cinzel et DM Sans sont des polices VARIABLES. Google Fonts sert un seul fichier par sous-ensemble, et déclare un bloc @font-face par graisse demandée pointant tous vers ce même fichier. Les 10 déclarations du prototype reposent donc sur 4 fichiers distincts, pas 7. Le contrat a compté des déclarations, non des octets.",
+        "verrou": "habillage-zafyr.test.ts mesure la somme réelle des quatre fichiers contre le plafond de 125 ko : si une graisse statique était ajoutée demain, la décision serait réexaminée par la porte et non par la mémoire."
+      }
+    },
+    "badge_lampe": {
+      "fichier": "applications/client/src/composants/BadgeLampe.vue (neuf)",
+      "trace": "Les sept tracés de la lampe et les deux de la fumée sont relevés à l'identique du prototype, zone de dessin 150 × 150. AUCUNE couleur dans le tracé : chaque groupe hérite de currentColor, posé par un jeton dans la feuille scopée, pour que la bascule clair / sombre ne casse pas. Les 2,5 px du prototype sont ramenés à trait.moyen, seules 1, 2 et 3 px étant des épaisseurs autorisées.",
+      "geometrie": "Médaillon composant.largeur.badge_lampe (192 px), glyphe composant.largeur.glyphe_lampe (128 px), rayon pilule, fond surface-primaire, bordure trait.fin bordure-structurante.",
+      "perimetre": "ECR-01 seul. Proscrit des 30 écrans de jeu, et la porte le vérifie : habillage-zafyr.test.ts échoue si un second composant importe BadgeLampe. L'état de chargement de premier démarrage est celui de ECR-01, où le badge est présent dès le premier rendu.",
+      "accessibilite": "role=\"img\" et texte alternatif « Le Génie du Dernier Vœu » quand le badge est seul ; aria-hidden quand un h1 répète le nom dans le même bloc — c'est le cas sur ECR-01, et l'écran le DÉCLARE par la propriété requise titre-adjacent, sans valeur par défaut devinée. Les trois pastilles sont décoratives et aria-hidden : un lecteur d'écran qui les annonce annonce une progression qui n'existe pas. Le texte alternatif vient du fichier de contenu (RG-61), pas du composant. Aucune animation."
+    },
+    "regle_or_rendue_effective": {
+      "regle": "couleur._regle_or_jamais_en_texte_courant — l'or n'est admis que sur titre-ecran, titre-section, voix-genie, les bordures, les pastilles pleines et les tracés d'icône. Interdit sur corps, étiquette, méta et TOUS les rôles numériques.",
+      "violations_trouvees_et_corrigees": [
+        "BoutonAction.vue / .bouton--secondaire : libellé en accent-action → texte-principal. Conséquence voulue (Von Restorff) : l'aplat d'or du bouton PRINCIPAL redevient le seul or actionnable de l'écran.",
+        "EtatVide.vue / .vide__action : libellé en accent-action → texte-principal.",
+        "TableauScores.vue / .scores__section : libellé au rôle étiquette en accent-action → texte-principal.",
+        "EcranPaiementSecret.vue / .paiement__marque : « Secret » au rôle méta en marque-prive sur surface-secondaire. Double faute — l'or en texte à 12 px, ET une distinction public / privé reposant sur la seule TEINTE, ce que couleur._regle_jamais_la_couleur_seule interdit explicitement. Devenue une pastille PLEINE (fond marque-prive, texte texte-sur-accent), par opposition à la pastille sur surface-secondaire de EcranDeclaration.vue / .declaration__marque pour le public. L'opposition porte désormais sur le REMPLISSAGE, doublée du libellé persistant."
+      ],
+      "exemption_mesuree": "Un bloc déclarant stroke-width ou fill est un tracé d'icône, où l'or est explicitement admis : c'est le cas de .badge__lampe. L'exemption est portée par un marqueur objectif dans le test, pas par une liste de noms."
+    },
+    "regle_chiffres_rendue_effective": {
+      "regle": "typographie.famille._regle_chiffres_jamais_en_serif — famille.chiffres est la pile système monospace, ni Cinzel ni DM Sans, et ne doit jamais pointer sur famille.titre.",
+      "verifie": "La valeur du contrat part de ui-monospace et ne contient aucune police embarquée ; le CSS compilé est autonome, sans var() ; aucun @font-face n'existe pour elle.",
+      "rôles_numeriques_corriges": [
+        "BulleGenie.vue / .bulle__valeur : rôle nombre-secondaire SANS famille ni largeur tabulaire — il héritait donc de DM Sans. Corrigé en famille.chiffres + tabular-nums.",
+        "IncrementeurMontant.vue / .incrementeur__pas : rôle nombre-secondaire en famille.interface. Corrigé.",
+        "VoileSecret.vue / .voile__substitut : rôle nombre-principal sans famille. Corrigé — et c'est aussi une exigence de M7 : une empreinte différente entre état masqué et état révélé trahirait la bascule au voisin."
+      ],
+      "verrou": "habillage-zafyr.test.ts exige famille.chiffres ET font-variant-numeric sur TOUT bloc portant un rôle nombre-principal, nombre-secondaire ou minuteur."
+    },
+    "couleur_d_interface_du_navigateur": {
+      "index_html": "Les gris neutres d'attente d'ESC-01 sont remplacés par deux balises theme-color sous requête de média : surface-fond clair (#F4EEDF) et sombre (#0B0A18).",
+      "manifeste": "theme_color et background_color passent à #0B0A18, valeur de tokens.couleur.theme_sombre.surface-fond. Ce sont les SEULES copies littérales d'un jeton de couleur dans tout le client, et elles sont inévitables : un manifeste PWA est lu par le système d'exploitation avant tout CSS, et l'attribut content d'une balise meta n'accepte ni var() ni requête de média. Les deux copies sont désormais COMPARÉES au contrat par manifeste-pwa.test.ts, qui échoue si le contrat bouge seul.",
+      "test_perime_remplace": "« les couleurs du manifeste sont des gris neutres (ESC-01 ouverte) » exigeait un écart RVB inférieur à 16. ESC-01 est tranchée : l'exigence est périmée et a été remplacée par son contraire utile."
+    }
+  },
+
+  "chantier_b_fenetre_de_lecture": {
+    "statut": "IMPLÉMENTÉE ET MESURÉE sur les 11 écrans et les 8 catégories. Aucun périmètre partiel n'a été nécessaire.",
+    "composant": "applications/client/src/composants/VoileSecret.vue",
+    "quatre_declarations_solidaires": [
+      "max-inline-size: var(--gdv-secret-largeur-fenetre) — borne de largeur, dérivée du jeton et de lui seul.",
+      "max-block-size: var(--gdv-secret-hauteur-fenetre) — borne de hauteur. C'est la déclaration qui MANQUAIT, et la seule qui empêche un libellé long de dilater la lucarne.",
+      "overflow: hidden auto — le contenu qui dépasse DÉFILE dans la lucarne au lieu de la dilater. Aucune information perdue, aucune police rapetissée : on réduit l'empreinte physique et l'angle utile, pas la lisibilité.",
+      "overscroll-behavior: contain — sans lui, le défilement interne se propage à la page, et le défilement de page remasque (M3) : le joueur perdrait sa lecture au milieu d'une phrase."
+    ],
+    "ancrage_implemente": "margin-block-start: auto pousse la lucarne au bas de la zone de contenu, juste au-dessus de la zone de maintien — là où la main qui tient l'appareil et le pouce qui appuie font écran au voisin. C'est la lecture littérale de « ancrage : tiers inférieur, côté secret.cote_dominant_par_defaut ». align-self: flex-end porte le côté, inversable pour les gauchers par [data-cote-dominant='gauche'].",
+    "surfaces_mesurees": {
+      "lucarne_nominale": "96 × 64 = 6 144 px² sur 360 × 640 = 230 400 px², soit 2,67 %",
+      "variante_choix": "96 × 112 = 10 752 px², soit 4,67 %",
+      "plafond": "secret.surface_lisible_max_ratio = 9 %, soit 20 736 px²",
+      "_comment_c_est_mesure": "Les deux chiffres sont RECALCULÉS par le test depuis les déclarations CSS réelles, en résolvant chaque var() dans jetons.css et en évaluant les calc(). Ils ne sont pas recopiés du contrat."
+    },
+    "plancher_de_lisibilite": {
+      "defaut": "Neuf écrans rapetissaient le texte du secret à role.meta (12 px) ou role.etiquette (14 px) pour le faire entrer dans la lucarne, sous le plancher de 16 px de typographie.role._regle_mobile. C'est un contournement de M4, pas une application : M4 dit explicitement qu'on ne dégrade pas la lisibilité pour cacher.",
+      "corriges": [
+        "EcranAttributionPrivee.vue / .attribution__valeur",
+        "EcranPliGenie.vue / .pli__contenu",
+        "EcranAnnonceVoeu.vue / .voeu__pli",
+        "EcranPropositionPret.vue / .pret__remboursement",
+        "EcranReponsePret.vue / .reponse__montants",
+        "EcranEnquetesAccusations.vue / .enquetes__cout",
+        "EcranResultatEnquete.vue / .resultat__contenu",
+        "EcranDvProposition.vue / .dv-proposition__montant",
+        "EcranDvSignature.vue / .signature__option"
+      ],
+      "tous_a": "var(--gdv-role-corps)"
+    },
+    "ecrans_ou_la_fenetre_est_ACTIVE": [
+      { "ecran": "ECR-09 EcranAttributionPrivee.vue", "categories": "role_secret, mission_secrete", "voiles": 2, "variante": "lecture" },
+      { "ecran": "ECR-11 EcranPliGenie.vue", "categories": "clause reçue (porteur et FAISEUR_CONTRATS)", "voiles": 1, "variante": "lecture" },
+      { "ecran": "ECR-10 EcranAnnonceVoeu.vue", "categories": "montant du vœu annoncé en privé", "voiles": 1, "variante": "lecture" },
+      { "ecran": "ECR-17 EcranPaiementSecret.vue", "categories": "montant_paye en cours de saisie et après validation", "voiles": 1, "variante": "saisie" },
+      { "ecran": "ECR-13 EcranTransfert.vue", "categories": "montant transféré (mouvement de solde)", "voiles": 1, "variante": "saisie" },
+      { "ecran": "ECR-14 EcranPropositionPret.vue", "categories": "montant prêté", "voiles": 1, "variante": "saisie" },
+      { "ecran": "ECR-15 EcranReponsePret.vue", "categories": "conditions du prêt reçu", "voiles": 1, "variante": "lecture" },
+      { "ecran": "ECR-19 EcranEnquetesAccusations.vue", "categories": "existence même de l'enquête (M8)", "voiles": 1, "variante": "lecture" },
+      { "ecran": "ECR-20 EcranResultatEnquete.vue", "categories": "résultat d'enquête", "voiles": 1, "variante": "lecture" },
+      { "ecran": "ECR-23 EcranDvProposition.vue", "categories": "proposition privée du Dernier Vœu", "voiles": 1, "variante": "lecture" },
+      { "ecran": "ECR-25 EcranDvSignature.vue", "categories": "choix de signature du Dernier Vœu (M7-b)", "voiles": 1, "variante": "choix" }
+    ],
+    "_note_solde": "La huitième catégorie — solde_pieces et historique des mouvements — passe par le composant PanneauPriveSolde.vue, lui-même bâti sur VoileSecret, employé par ECR-28 Mon or. Elle est donc couverte par la même lucarne, par construction.",
+    "preuve_que_les_jetons_sont_CONSOMMES": {
+      "fichier_de_test": "applications/client/tests/fenetre-de-lecture.test.ts",
+      "controles": [
+        "(1) les deux jetons sont ÉMIS en variables CSS — en TypeScript seul, ils ne peignent aucun pixel : une feuille de style ne lit pas jetons.ts.",
+        "(2) les deux jetons sont CONSOMMÉS par au moins un composant, et nommément par VoileSecret.vue.",
+        "(3) la lucarne est BORNÉE sur les deux axes, par ces jetons et non en dur — et une borne seulement MINIMALE est explicitement rejetée, puisque c'était le défaut.",
+        "(4) le contenu est CONFINÉ : overflow déclaré et effectif, overscroll-behavior: contain exigé.",
+        "(5) la surface tient sous le plafond, RECALCULÉE depuis le CSS écrit, var() résolus dans jetons.css et calc() évalués. Toute variante qui redéfinit la géométrie est mesurée elle aussi : une variante non bornée serait une porte dérobée.",
+        "(6) les 11 écrans porteurs d'un secret passent tous par VoileSecret.",
+        "(7) aucun écran ne rend une valeur secrète hors d'un créneau #secret ou #saisie.",
+        "(8) la lucarne est poussée au bas de la carte, du côté dominant, et le côté est inversable.",
+        "(9) aucun texte de lecture du secret ne descend sous taille.16."
+      ],
+      "echec_d_abord_comme_prescrit": {
+        "_consigne": "Le tech-lead prescrit que ce test échoue d'abord. Il a échoué.",
+        "resultat_avant_correction": "9 tests, 4 verts, 5 ROUGES",
+        "echecs_litteraux": [
+          "✖ la fenêtre est bornée sur les DEUX axes, par les jetons et non en dur — « aucune borne de hauteur sur la fenêtre de lecture : la surface exposée est libre »",
+          "✖ le contenu est CONFINÉ : un débordement ne dilate pas la fenêtre — « sans overflow déclaré, un contenu plus grand que la fenêtre la déborde VISIBLEMENT »",
+          "✖ la surface lisible tient sous le plafond, CALCULÉE depuis le CSS écrit — « la géométrie de .voile__fenetre n'est pas mesurable : ou une borne manque, ou une valeur ne dérive d'aucun jeton »",
+          "✖ la lucarne est poussée au BAS de la carte, du côté dominant — « la fenêtre doit être poussée au bas de la carte »",
+          "✖ aucun texte de lecture du secret ne descend sous taille.16 — 9 écrans listés, de role-meta et role-etiquette"
+        ],
+        "resultat_apres_correction": "9 tests, 9 verts, 0 rouge"
+      }
+    },
+    "test_tautologique_retire": {
+      "fichier": "applications/client/tests/jetons-generes.test.ts",
+      "test_retire": "« la fenêtre de lecture du secret tient sous le plafond de surface »",
+      "ce_qu_il_faisait": "Il lisait SECRET['largeur-fenetre-lecture'] (96), SECRET['hauteur-fenetre-lecture'] (64) et SECRET['surface-lisible-max-ratio'] (0,09) depuis jetons.ts, calculait (96 × 64) / (360 × 640) = 2,67 % et le comparait à 9 %.",
+      "pourquoi_c_etait_vide": "Les trois nombres sortaient du MÊME contrat de conception. 96 × 64 tient sous 9 % parce que le designer a écrit 96, 64 et 0,09 : l'assertion vérifiait que le designer n'avait pas contredit le designer. Elle ne touchait AUCUNE ligne de code applicatif. Elle ne pouvait pas échouer, et elle a donné un vert franc à un dispositif dont l'enveloppe n'était bornée par rien — elle validait précisément le cas qu'elle prétendait exclure.",
+      "ce_qui_reste_a_sa_place": "Un contrôle qui relève bien du contrat et de sa compilation : que les deux jetons de géométrie soient des longueurs en pixels, et qu'ils SORTENT en CSS. Sans cela aucune feuille de style ne pourrait les lire. Le reste est passé dans fenetre-de-lecture.test.ts.",
+      "lecon": "Un test qui ne peut pas rougir n'est pas une porte, c'est une décoration. Le critère de recevabilité d'une assertion n'est pas qu'elle passe, c'est qu'elle puisse échouer pour une raison qui compte."
+    }
+  },
+
+  "anomalies": [
+    {
+      "id": "ANO-UX-01",
+      "gravite": "majeur",
+      "statut": "CORRIGÉ et vérifié",
+      "diagnostic_confirme": "EcranAccueil.vue sondait /api/sante une seule fois au montage (onMounted) et figeait serveurInjoignable ; les deux boutons portaient :desactive=\"serveurInjoignable\". Rien ne revérifiait jamais.",
+      "correctif": "applications/client/src/composables/sonde-sante.ts — sonde périodique avec reprise automatique.",
+      "detail": [
+        "Cadence REPRISE du canal temps réel : delaiAvecGigue et DELAIS_RECONNEXION_MS (0,5 / 1 / 2 / 4 / 8 s, gigue de 20 %). Aucun intervalle nouveau n'est inventé.",
+        "La GIGUE n'est pas décorative ici : huit téléphones qui perdent le Wi-Fi au même instant et le retrouvent au même instant reviendraient tous sur /api/sante ensemble — la sonde de disponibilité deviendrait la cause de l'indisponibilité. C'est la raison principale de réemployer cette politique plutôt que d'écrire un setInterval.",
+        "En échec, la relance part de 0,5 s : la reprise est quasi immédiate dès que le serveur revient. En succès, la surveillance se stabilise au palier de 8 s : une panne qui survient pendant que le joueur lit l'accueil est vue en 8 s au plus.",
+        "Deux relances IMMÉDIATES en plus du rythme : retour au premier plan (visibilitychange) et retour du réseau (online). C'est le cas réel — le joueur déverrouille son téléphone, ou le Wi-Fi se raccroche.",
+        "Un état « inconnu » distinct de « injoignable » : tant que la première réponse n'est pas arrivée, rien ne permet d'affirmer la panne. Annoncer « le génie ne répond pas » avant d'avoir attendu la réponse est un faux négatif, et c'est ce faux négatif qui fait conclure que l'application est cassée.",
+        "Correction connexe non demandée : @reprendre du bandeau d'alerte faisait « serveurInjoignable = false » — il masquait le symptôme et réactivait les boutons devant un serveur toujours absent. Il SONDE maintenant."
+      ],
+      "preuve": "applications/client/tests/sonde-sante.test.ts — 10 cas, temps et aléa injectés, aucune minuterie réelle. Couvre : l'état initial « inconnu », la relance armée après un échec, la REPRISE AUTOMATIQUE sans geste du joueur, la progression 0,5 → 1 → 2 s, le plafonnement à 8 s, la détection d'une panne survenue après la reprise, la dispersion réelle de la gigue sur cinq graines, la reprise explicite qui sonde, et l'absence de minuterie survivante après arrêt.",
+      "lecon_de_methode": "Les 531 tests existants mesuraient tous un INSTANT ; aucun ne mesurait la SUITE du temps. Chacun des 10 cas ci-dessus fait passer plusieurs pas de temps et vérifie l'état APRÈS. C'est le défaut de méthode qui est corrigé, pas seulement le défaut de code."
+    },
+    {
+      "id": "ANO-UX-02",
+      "gravite": "mineur",
+      "statut": "CORRIGÉ",
+      "diagnostic_approfondi": "La raison existait bien, et l'utilisateur ne l'a pas lue. Trois causes, dont une seule relevait du libellé.",
+      "causes": [
+        "1. Placement et poids : la raison était SOUS le bouton, en role.meta (12 px) et texte-secondaire — le texte le plus discret de l'écran, exactement au moment où le regard est sur le bouton.",
+        "2. Aucun aria-describedby ne la reliait au bouton : un lecteur d'écran annonçait « Rejoindre une partie, indisponible » et rien de plus.",
+        "3. LA VRAIE CAUSE — un bouton `disabled` ne reçoit NI clic NI focus. L'appui ne produisait strictement RIEN. Ce n'était pas l'absence de message, c'était l'absence de RÉACTION : l'utilisateur a appuyé, rien n'a bougé, il a conclu que c'était cassé."
+      ],
+      "correctif": [
+        "La raison est DANS le bouton, sous le libellé, à l'endroit exact où le doigt appuie. Rôle étiquette au lieu de méta : la raison d'un blocage n'est pas une mention légale. Elle hérite la couleur du bouton désactivé, qui est une paire dessinée (texte-desactive sur surface-desactivee).",
+        "aria-describedby relie le bouton à sa raison, par un identifiant stable (useId).",
+        "L'ENVELOPPE capte l'appui même quand le bouton est désactivé — un élément disabled ne reçoit aucun événement de pointeur — et met la raison en évidence pendant duree.lente. Un appui refusé RÉPOND toujours. La mise en évidence passe par la COULEUR et la GRAISSE, jamais par un mouvement : elle doit rester lisible sous prefers-reduced-motion."
+      ]
+    },
+    {
+      "id": "ANO-10",
+      "gravite": "majeur",
+      "statut": "CORRIGÉ et vérifié dans la sortie de construction",
+      "avant": "urlPattern: /^\\/api\\//",
+      "apres": "urlPattern: ({ url }) => url.pathname.startsWith('/api/')",
+      "fichier": "applications/client/vite.config.ts — le MOTIF seul",
+      "verification_dans_le_service_worker_genere": "dist/sw.js contient « e.registerRoute(({url:e})=>e.pathname.startsWith(\"/api/\"),new e.NetworkOnly,\"GET\") ». La règle est donc réellement enregistrée avec un prédicat qui s'applique.",
+      "piege_evite_et_documente": "workbox-build SÉRIALISE la fonction urlPattern dans sw.js (lib/runtime-caching-converter.js, ligne 126 : « const matcher = entry.urlPattern »). Elle doit rester AUTONOME : pas d'import, pas de constante extérieure, pas de fermeture. J'ai envisagé d'extraire le prédicat dans un module partagé avec BASE_REST de src/transport/rest.ts, et je l'ai écarté : l'identifiant importé serait devenu un ReferenceError dans le service worker, c'est-à-dire la même panne silencieuse d'un cran plus loin. Le littéral '/api/' est donc écrit sur place, et le test prouve l'autonomie.",
+      "test_qui_encodait_le_defaut": "manifeste-pwa.test.ts contenait « assert.match(configurationVite, /urlPattern:\\s*\\/\\^\\\\\\/api/) » : il vérifiait la PRÉSENCE du motif bogué. Il est remplacé par une ÉVALUATION du prédicat, extrait du fichier et instancié par new Function — qui n'offre que la portée globale, ce qui prouve l'autonomie en même temps que le comportement. Les trois URL mesurées par le QA rendent true, et deux URL hors périmètre (racine, police) rendent false, contre le faux positif.",
+      "server_proxy_non_touche": "La réécriture /^\\/api/u → '' est CONSERVÉE, conformément à l'interdiction explicite. Un test neuf — « la réécriture /api du proxy de développement est TOUJOURS là (RUP-04) » — interdit de la retirer seule par inadvertance : préfixer sans retirer casse le développement, retirer sans préfixer le casse aussi.",
+      "consequence_a_reexaminer": "CONF-10 refusait la rétrogradation de workbox 7.4.1 vers 5.1.4 au motif que « workbox est précisément la brique qui applique cet engagement de sécurité ». L'engagement est désormais OPÉRANT, et le motif de CONF-10 tient donc sur une garantie effective. La décision n'a pas à changer, mais sa justification est maintenant exacte. Je le signale sans trancher : CONF-10 appartient au tech-lead."
+    },
+    {
+      "id": "ANO-12",
+      "gravite": "majeur",
+      "statut": "CORRIGÉ pour la part qui m'appartient ; une part est CONSIGNÉE et escaladée",
+      "avant": "connect-src 'self' wss:",
+      "apres": "connect-src 'self'",
+      "pourquoi_self_suffit": "Le canal temps réel est construit à partir de location.host, JAMAIS d'un hôte reçu du serveur : src/magasin/session.ts / origineParDefaut() choisit wss: ou ws: selon location.protocol et concatène location.host, et url_temps_reel du serveur n'est employé que comme CHEMIN. La socket est donc same-origin par construction, en ws:// derrière le proxy de développement comme en wss:// en production, et CSP niveau 3 fait correspondre 'self' aux variantes ws et wss de l'origine du document.",
+      "mieux_que_l_action_requise": "L'action requise prescrivait « connect-src 'self' wss://<hote-de-deploiement>, l'hôte étant injecté à la construction ». Puisque l'origine est toujours locale, 'self' seul suffit : aucun hôte n'a besoin d'être injecté, ce qui retire une variable de construction et une occasion de divergence entre environnements. Le déploiement est par ailleurs hors périmètre (ADR-CP-02).",
+      "durci_en_plus": "font-src 'self' explicité, les polices étant désormais embarquées — il reposait jusqu'ici sur le repli vers default-src.",
+      "preuve": "applications/client/tests/surface-exfiltration.test.ts — 4 cas. Aucune directive n'autorise un schéma nu (data: toléré sur img-src seul, où il sert au code QR et ne permet aucune exfiltration) ; connect-src vaut exactement 'self' ; les quatre verrous existants sont conservés ; et l'origine de la socket vient de location, jamais du serveur. Ce dernier cas est essentiel : si quelqu'un se mettait à faire confiance à une URL absolue envoyée par le serveur, 'self' casserait le jeu au lieu de le protéger — l'hypothèse est donc verrouillée en même temps que la politique.",
+      "non_corrige_et_escalade": [
+        "Le jeton de session vit en localStorage sous la clé gdv.session. Le déplacer vers un cookie Secure, HttpOnly, SameSite=Strict changerait le contrat d'authentification du canal temps réel : la première trame du socket est la commande authentifier portant jeton_session (API-GDV-001 / x-temps-reel), et un cookie HttpOnly n'est pas lisible par le script qui compose cette trame. Le passage exigerait que le serveur authentifie la poignée de main WebSocket sur le cookie. C'est une décision d'architecture, et ANO-12 la co-assigne au tech-lead. Je ne l'ai pas prise.",
+        "'unsafe-inline' sur style-src reste nécessaire : c'est le compromis de Vue pour les styles de composant.",
+        "Une balise meta ne couvre ni frame-ancestors ni les documents d'erreur du serveur. L'en-tête HTTP reste à servir côté serveur, comme le commentaire de index.html le disait déjà et comme ARCHI conventions.securite_operationnelle l'exige."
+      ]
+    }
+  ],
+
+  "defauts_de_contrat_releves_sans_correction": [
+    {
+      "contrat": "DESIGN-GDV-001.json",
+      "chemin": "composants.VoileSecret.etats.revele_maintenu.fenetre_lecture + regles_antifuite_visuelle.mesures[M4]",
+      "constat": "La fenêtre de lecture est spécifiée à 96 × 64, en typographie.famille.chiffres et au rôle nombre-principal (40 px) : c'est la géométrie d'un NOMBRE. Or variantes.lecture.usage lui confie « role, mission, clause, resultat d'enquete, solde, historique, proposition du Dernier Voeu » — cinq catégories de TEXTE sur huit. Mesure : la clause la plus longue du fichier de contenu fait 23 caractères, sa description 78, soit 104 caractères avec le séparateur. À 16 px, plancher de role._regle_mobile, une lucarne de 96 px de large affiche environ 2 lignes de 10 caractères : la lecture exige un défilement interne.",
+      "impact": "La mesure M4 reste APPLIQUÉE — l'enveloppe est tenue, le plafond de 9 % respecté, la lisibilité préservée — mais au prix d'un défilement dans une lucarne de 96 px, ce qui est médiocre pour une phrase. Le dispositif protège ; l'ergonomie de la lecture d'un texte long n'est pas résolue.",
+      "pourquoi_je_ne_corrige_pas": "tokens.secret._note dit que ces valeurs « doivent être réglables au playtest sans toucher au code des composants ». J'ai donc rendu le MÉCANISME réel et entièrement piloté par les deux jetons : le designer peut retuner 96 × 64, ou introduire une mesure distincte pour les catégories textuelles, et les 11 écrans suivront sans une ligne de code. Choisir une seconde géométrie à sa place serait inventer une décision visuelle.",
+      "demande": "Au designer : soit une hauteur de lucarne propre aux catégories textuelles, soit la confirmation que le défilement interne est acceptable, mesuré au playtest."
+    },
+    {
+      "contrat": "DESIGN-GDV-001.json",
+      "chemin": "composants.VoileSecret.etats.revele_maintenu.fenetre_lecture.hauteur, croisé avec variantes[choix] et cible.minimale",
+      "constat": "La variante « choix » doit porter DEUX options actionnables dans la lucarne — M7-b l'exige, puisque le côté de l'écran touché trahirait le choix si les options vivaient dehors. Deux cibles de cible.minimale (48 px) plus leur écart ne tiennent pas dans 64 px.",
+      "ce_que_j_ai_fait": "La hauteur de cette seule variante est COMPOSÉE de jetons — 2 × cible.minimale + espacement.8 + 2 × espacement.4 = 112 px — et jamais d'une valeur inventée. Elle reste mesurée contre le seul critère que le contrat rend vérifiable, secret.surface_lisible_max_ratio : 96 × 112 = 4,67 %, pour un plafond de 9 %.",
+      "demande": "Au designer : entériner cette géométrie dérivée, ou en fixer une autre. La cible tactile de 44 px est normative et bloquante ; la hauteur de 64 px ne l'est pas."
+    },
+    {
+      "contrat": "DESIGN-GDV-001.json",
+      "chemin": "variables_css._convention",
+      "constat": "« La v1.1.0 ne change que des VALEURS [...] donc une seule exécution de npm run jetons suffit à propager le thème. Aucun des 29 noms n'a bougé, aucun sélecteur n'a bougé, aucun composant n'est à retoucher. » C'est vrai des 29 couleurs. C'est FAUX des jetons NEUFS : la v1.1.0 ajoute famille.titre, graisse.tres-gras, interligne.voix-genie et les trois jetons de suivi. Un jeton que personne ne consomme ne produit aucun pixel — avant cette itération, --gdv-famille-titre était défini et employé par zéro composant, donc les 21 titres du client restaient composés en DM Sans.",
+      "ce_que_j_ai_fait": "L'affectation est posée en UN point, sur h1/h2/h3 dans styles/global.css, parce que la famille est une fonction du RÔLE et que le rôle est porté par le niveau de titre. Les 21 titres du client ont été inventoriés : tous portent un rôle titre-ecran ou titre-section, aucun un rôle de corps. Ni couleur ni taille n'y sont imposées.",
+      "demande": "Au designer : la prochaine révision devrait distinguer « valeurs changées » de « jetons ajoutés ». Les secondes exigent toujours du code."
+    },
+    {
+      "contrat": "DESIGN-GDV-001.json",
+      "chemin": "polices.sous_ensembles",
+      "constat": "« latin-ext est OBLIGATOIRE : [...] le titre lui-même contient « Voeu » écrit avec la ligature oe (U+0153), qui est hors du sous-ensemble latin de base. » C'est inexact. Le sous-ensemble « latin » de Google Fonts déclare U+0152-0153 : la ligature œ y EST. Relevé littéralement dans les unicode-range du prototype, reproduits à l'octet dans global.css.",
+      "impact": "Aucun sur le livrable : latin-ext est embarqué comme le contrat l'exige. La justification seule est fausse. La vraie raison reste valable — les pseudonymes peuvent porter des accents hors Latin-1 (U+0100 et au-delà), hors du sous-ensemble latin.",
+      "demande": "Au designer : corriger la justification, pas la prescription."
+    },
+    {
+      "contrat": "DESIGN-GDV-001.json",
+      "chemin": "polices.budget",
+      "constat": "« Les sept fichiers woff2 du prototype pèsent environ 125 ko au total. » Mesure réelle : QUATRE fichiers distincts, 95 604 octets, 93,4 ko. Le prototype déclare 10 blocs @font-face, mais Cinzel et DM Sans sont des polices VARIABLES : un seul fichier par sous-ensemble sert toutes les graisses. Le contrat a compté des déclarations, non des octets.",
+      "impact": "La condition du repli — « si le coût est jugé excessif » — n'est pas remplie. Les deux familles sont conservées, et la décision est verrouillée par une mesure dans habillage-zafyr.test.ts plutôt que par un souvenir."
+    },
+    {
+      "contrat": "DESIGN-GDV-001.json",
+      "chemin": "typographie.suivi._regle_corps_sans_suivi croisé avec les écrans existants",
+      "constat": "« TOUS les nombres reçoivent suivi.aucun » et « un interlettrage positif sur des chiffres tabulaires annule le bénéfice de la largeur fixe ». Or EcranInvitation.vue / .invitation__code pose letter-spacing: var(--gdv-espacement-8) sur le code d'adhésion, qui est au rôle nombre-principal, avec le commentaire « le code est relu à voix haute : chiffres tabulaires, lettres espacées ».",
+      "ce_que_j_ai_fait": "RIEN. Je n'ai pas touché. C'est une décision de lisibilité délibérée, prise pour un code énoncé à voix haute une seule fois, et non pour un nombre qui varie sous contrainte de temps — la situation que la règle vise. La valeur employée est un jeton, donc il n'y a aucune valeur brute à corriger. Trancher entre la règle et l'intention relève du designer, pas de moi.",
+      "demande": "Au designer : exempter explicitement le code d'adhésion, ou demander son alignement. Idem pour VoileSecret.vue / .voile__substitut, qui espace ses trois points médians."
+    },
+    {
+      "contrat": "DESIGN-GDV-001.json",
+      "chemin": "composants.VoileSecret.etats.revele_maintenu.reste_de_la_carte",
+      "constat": "« inchangé et sans valeur : rien d'autre que la fenêtre n'est lisible ». Dans l'implémentation, le substitut « ··· » DISPARAÎT à la révélation et la lucarne prend sa place : la carte change donc d'aspect entre masqué et révélé. L'exigence littérale demanderait que le reste de la carte soit strictement inchangé.",
+      "ce_que_j_ai_fait": "RIEN, et je le signale. La lucarne et le substitut occupent désormais la même famille, la même taille et la même largeur tabulaire, du même côté dominant : l'empreinte est comparable. Mais « identique au pixel » n'est pas atteint, et M7.verifiable demande des captures identiques au pixel entre deux joueurs de situations OPPOSÉES — ce qui est bien vérifié par etat-masque-indiscernable.test.ts — et non entre états masqué et révélé du même joueur. La lecture est défendable ; je ne la tranche pas seul.",
+      "demande": "Au designer ou au QA : préciser si « reste_de_la_carte inchangé » porte une exigence mesurable, et laquelle."
+    },
+    {
+      "contrat": "QA-GDV-001.json",
+      "chemin": "ANO-10.action_requise et qa/sondes/sonde-client-et-transport.ts, section (A)",
+      "constat": "L'action requise demande de « contrôler en rejouant la section (A) : les trois URL de la mesure doivent rendre true ». C'est impossible en l'état : la sonde extrait le motif par /urlPattern:\\s*(\\/[^,]+\\/)\\s*,/ — qui n'attrape qu'un littéral d'expression régulière — puis teste les URL contre une constante MOTIF_API = /^\\/api\\// CODÉE EN DUR dans la sonde, et non contre le motif lu. Rejouer la sonde après correction affichera donc « urlPattern déclaré : null » et le même verdict NON_CONFORME, quel que soit le contenu de vite.config.ts.",
+      "ce_que_j_ai_fait": "Je n'ai pas touché à qa/, qui n'est pas mon périmètre. La preuve équivalente est portée côté client par manifeste-pwa.test.ts, qui extrait le prédicat réel et l'évalue sur les trois mêmes URL.",
+      "demande": "Au QA : réexprimer la section (A) pour évaluer le motif LU au lieu d'une copie en dur. Une sonde qui mesure une constante locale ne mesure pas le dépôt."
+    }
+  ],
+
+  "defauts_de_mesure_corriges_dans_les_portes": [
+    {
+      "porte": "applications/client/tests/zero-valeur-litterale.test.ts",
+      "trou": "Le périmètre se limitait aux fichiers .vue et .ts. Une feuille .css autonome dans src/styles, importée par main.ts et surchargeant les 29 jetons de couleur en hexadécimal, traversait la porte sans l'émouvoir.",
+      "correction": "Le périmètre inclut désormais toute feuille de style du client, jetons.css excepté puisqu'il EST les valeurs compilées."
+    },
+    {
+      "porte": "applications/client/tests/jetons-generes.test.ts",
+      "trou": "Un test tautologique sur la surface de la fenêtre de lecture — détaillé ci-dessus.",
+      "correction": "Retiré, remplacé par un contrôle de consommation effective dans un fichier dédié."
+    },
+    {
+      "porte": "applications/client/tests/manifeste-pwa.test.ts",
+      "trous": [
+        "« aucune réponse de /api n'est mise en cache » vérifiait la PRÉSENCE du motif bogué : il encodait le défaut au lieu de le détecter.",
+        "« les couleurs du manifeste sont des gris neutres (ESC-01 ouverte) » était périmé par la clôture d'ESC-01, et n'aurait jamais détecté une divergence avec le contrat."
+      ],
+      "correction": "Le premier évalue le prédicat sur les URL mesurées ; le second compare les deux copies littérales au contrat. Un troisième cas, neuf, interdit de retirer seule la réécriture du proxy (RUP-04)."
+    }
+  ],
+
+  "portes_neuves": [
+    "applications/client/tests/fenetre-de-lecture.test.ts — 9 cas. Consommation effective des jetons de la lucarne, enveloppe bornée, contenu confiné, surface recalculée depuis le CSS, 11 écrans, ancrage, plancher de lisibilité.",
+    "applications/client/tests/habillage-zafyr.test.ts — 12 cas. Les deux règles de thème non négociables, le périmètre du badge, la licence des polices, le budget mesuré, et l'interdiction de toute feuille d'appoint surchargeant les jetons.",
+    "applications/client/tests/sonde-sante.test.ts — 10 cas. Relance, reprise automatique, cadence, plafonnement, gigue réelle, arrêt propre.",
+    "applications/client/tests/surface-exfiltration.test.ts — 4 cas. Aucun schéma nu dans la CSP, connect-src restreint, verrous conservés, origine de la socket locale."
+  ],
+
+  "fichiers_produits": {
+    "neufs": [
+      "applications/client/src/composants/BadgeLampe.vue",
+      "applications/client/src/composables/sonde-sante.ts",
+      "applications/client/src/styles/global.css",
+      "applications/client/public/polices/cinzel-latin.woff2",
+      "applications/client/public/polices/cinzel-latin-ext.woff2",
+      "applications/client/public/polices/dm-sans-latin.woff2",
+      "applications/client/public/polices/dm-sans-latin-ext.woff2",
+      "applications/client/public/polices/POLICES-LICENCES.txt",
+      "applications/client/tests/fenetre-de-lecture.test.ts",
+      "applications/client/tests/habillage-zafyr.test.ts",
+      "applications/client/tests/sonde-sante.test.ts",
+      "applications/client/tests/surface-exfiltration.test.ts"
+    ],
+    "supprimes": [
+      "applications/client/src/styles/theme-prototype.css"
+    ],
+    "modifies": [
+      "applications/client/index.html",
+      "applications/client/vite.config.ts (le MOTIF de cache seul — server.proxy intact)",
+      "applications/client/public/manifest.webmanifest",
+      "applications/client/src/main.ts",
+      "applications/client/src/app.vue",
+      "applications/client/src/styles/jetons.css (GÉNÉRÉ)",
+      "applications/client/src/composants/VoileSecret.vue",
+      "applications/client/src/composants/BoutonAction.vue",
+      "applications/client/src/composants/BulleGenie.vue",
+      "applications/client/src/composants/EtatVide.vue",
+      "applications/client/src/composants/IncrementeurMontant.vue",
+      "applications/client/src/composants/TableauScores.vue",
+      "applications/client/src/vues/EcranAccueil.vue",
+      "applications/client/src/vues/EcranAttributionPrivee.vue",
+      "applications/client/src/vues/EcranPliGenie.vue",
+      "applications/client/src/vues/EcranAnnonceVoeu.vue",
+      "applications/client/src/vues/EcranPaiementSecret.vue",
+      "applications/client/src/vues/EcranPropositionPret.vue",
+      "applications/client/src/vues/EcranReponsePret.vue",
+      "applications/client/src/vues/EcranEnquetesAccusations.vue",
+      "applications/client/src/vues/EcranResultatEnquete.vue",
+      "applications/client/src/vues/EcranDvProposition.vue",
+      "applications/client/src/vues/EcranDvSignature.vue",
+      "applications/client/tests/jetons-generes.test.ts",
+      "applications/client/tests/zero-valeur-litterale.test.ts",
+      "applications/client/tests/manifeste-pwa.test.ts"
+    ]
+  },
+
+  "commandes_verifiees": [
+    {
+      "commande": "npm run jetons",
+      "verdict": "VERT",
+      "sortie": "JETONS COMPILÉS — 29 couleurs × 2 thèmes, 101 dimensions, durées et seuils.\\n  D:\\\\Le Génie du Dernier Vœu\\\\applications\\\\client\\\\src\\\\styles\\\\jetons.css\\n  D:\\\\Le Génie du Dernier Vœu\\\\applications\\\\client\\\\src\\\\styles\\\\jetons.ts"
+    },
+    {
+      "commande": "npm run types",
+      "verdict": "VERT",
+      "sortie": "4 paquets, aucune erreur : @gdv/moteur (tsc --noEmit), @gdv/partage (tsc --noEmit), @gdv/client (vue-tsc --noEmit), @gdv/serveur (tsc --noEmit)."
+    },
+    {
+      "commande": "npm run lint",
+      "verdict": "VERT",
+      "sortie": "eslint . — aucune sortie, 0 problème."
+    },
+    {
+      "commande": "npm run test",
+      "verdict": "VERT",
+      "sortie": "ℹ tests 567\\nℹ suites 0\\nℹ pass 567\\nℹ fail 0\\nℹ cancelled 0\\nℹ skipped 0\\nℹ todo 0\\nℹ duration_ms 60007.3141",
+      "_note": "567 contre 531 avant l'itération : 35 cas neufs, et un test tautologique retiré remplacé par un contrôle réel. Le rouge annoncé comme connu sur paquets/partage/tests/contrat-api.test.ts est VERT dans l'état actuel du dépôt : « la copie du contrat de protocole est identique à l'original, octet à octet » passe. Je ne l'ai pas touché."
+    },
+    {
+      "commande": "npm run verifier:visibilite",
+      "verdict": "VERT",
+      "sortie": "VERDICT CONFORME — 0 divergence(s). P1/P2 30 schémas, P3 25 entrées, P4/P5/P6 141 occurrences, P7 151 noms, P8 30 valeurs, P9 5 données et 10 noms interdits."
+    },
+    {
+      "commande": "npm run construire",
+      "verdict": "VERT",
+      "sortie": "dist/index.html 2,77 kB · dist/assets/index-BFOlSDvO.css 68,08 kB · dist/assets/index-CYcfLOSZ.js 422,86 kB\\n✓ built in 11.10s\\nPWA v1.3.0 — mode generateSW — precache 11 entries (582.67 KiB)\\n@gdv/serveur : tsc -p tsconfig.construire.json, aucune erreur."
+    }
+  ],
+
+  "deux_rouges_connus_non_de_mon_ressort": [
+    {
+      "commande": "npm run verifier:uniformite",
+      "verdict": "DIVERGENCE — 27 divergence(s), bilan U1a=2, U1b=9, U1d=2, U1c=2, U2=8, U4=4",
+      "analyse": "Porte câblée par le DevOps en attente du backend (RG-80, uniformité de la forme du trafic). Les échecs portent sur clause_recue, resultat_enquete, transfert_enregistre et les agrégats : tous relèvent du moteur et du serveur, aucun du client. NON TOUCHÉ, comme la mission le demande."
+    },
+    {
+      "commande": "npm run verifier:routes",
+      "verdict": "DIVERGENCE — 0/6 routes, 14 divergence(s)",
+      "analyse": "R1 : les six routes REST sont servies sans le préfixe /api, ce qui appartient au backend. R2 : la porte échoue aussi sur applications/client/vite.config.ts, parce qu'il contient encore la réécriture replace(/^\\/api/…). C'est VOULU et imposé : RUP-04 exige que le préfixe serveur et le retrait de la réécriture soient faits ENSEMBLE, et le backend n'a pas encore préfixé. Retirer la réécriture seule casserait les six routes en développement. La porte mesure donc juste, et son rouge est l'état réel du couple, pas un défaut du client. J'ai ajouté un test qui interdit de retirer la réécriture par inadvertance tant que le préfixe n'est pas servi."
+    }
+  ],
+
+  "commits": [
+    {
+      "hash": "79dda4f",
+      "titre": "S5' — thème Zafyr appliqué : jetons propagés, polices OFL, badge, règle de l'or",
+      "_note": "Porte aussi, sans les avoir produites, la DESIGN-GDV-001.json v1.1.0 du designer et deux modifications non versionnées trouvées dans l'arbre de travail — BoutonAction.vue (activation au clic) et EcranExecution.vue (retrait des parts publiques, RG-81). Sécurisées ici plutôt que perdues, et attribuées dans le corps du message."
+    },
+    {
+      "hash": "cf9e46e",
+      "titre": "S5' — la fenêtre de lecture du secret EXISTE : enveloppe bornée et test de consommation"
+    },
+    {
+      "hash": "f734afa",
+      "titre": "S5' — ANO-UX-01, ANO-UX-02, ANO-10, ANO-12 : les quatre anomalies du client"
+    }
+  ],
+
+  "hors_perimetre_respecte": [
+    "Aucune modification de SPEC, API, ARCHI, DESIGN, QA, registre.json ni etat.json.",
+    "Aucune modification du moteur, du serveur ni de outils/ — le DevOps y travaille en parallèle.",
+    "RUP-01, RUP-02, RUP-03 et RUP-05 non implémentées : elles attendent le backend.",
+    "server.proxy de vite.config.ts non touché : la réécriture /^\\/api/u → '' est conservée.",
+    "qa/ non touché, y compris la sonde dont la section (A) est inopérante — signalée au QA.",
+    "L'univers visuel n'est pas rediscuté : « Zafyr » est tranché.",
+    "Les serveurs de développement n'ont PAS été relancés : aucune vérification n'en a eu besoin, la sortie de construction et le contenu de dist/sw.js ont suffi à prouver ANO-10."
+  ],
+
+  "ce_qui_reste_a_faire_et_a_qui": [
+    { "a": "tech-lead", "quoi": "Arbitrer le stockage du jeton de session : localStorage contre cookie Secure/HttpOnly/SameSite=Strict. Le passage impose que le serveur authentifie la poignée de main WebSocket, puisqu'un cookie HttpOnly n'est pas lisible par le script qui compose la commande authentifier. ANO-12 / co_assigne." },
+    { "a": "tech-lead", "quoi": "Rejustifier CONF-10 sur une garantie désormais effective. Le refus de rétrograder workbox reste probablement juste, mais son motif reposait sur une règle qui ne s'appliquait pas." },
+    { "a": "ux-ui-designer", "quoi": "Trancher la géométrie de la lucarne pour les cinq catégories de secret TEXTUEL, et entériner ou remplacer la hauteur dérivée de la variante « choix ». Les deux écarts sont détaillés plus haut." },
+    { "a": "ux-ui-designer", "quoi": "Corriger trois énoncés du contrat : le budget des polices (4 fichiers, 93,4 ko), la justification de latin-ext (U+0153 est dans le sous-ensemble latin), et la portée de « aucun composant n'est à retoucher », qui ne vaut pas pour un jeton neuf." },
+    { "a": "ux-ui-designer", "quoi": "Statuer sur l'interlettrage du code d'adhésion et du substitut du voile, que _regle_corps_sans_suivi interdit sur un rôle numérique et que l'implémentation pose délibérément pour une relecture à voix haute." },
+    { "a": "qa", "quoi": "Réexprimer la section (A) de sonde-client-et-transport.ts : elle teste une constante locale, pas le motif déclaré, et rendra le même verdict NON_CONFORME quel que soit le contenu de vite.config.ts." },
+    { "a": "ingenieur-devops", "quoi": "Confier la section polices de DESIGN-GDV-001.json à outils/compiler-jetons.mjs, pour que les 10 blocs @font-face de styles/global.css soient GÉNÉRÉS comme le sont les jetons. Écrits à la main cette fois-ci, parce que outils/ ne m'appartenait pas pendant cette itération." },
+    { "a": "dev-backend", "quoi": "Servir les six routes REST sous /api. Le jour où c'est fait, la réécriture du proxy doit être retirée dans le MÊME changement (RUP-04), et le test qui la protège adapté en conséquence." }
+  ],
+
+  "statut": "LIVRÉ — les deux chantiers sont complets, les quatre anomalies corrigées et vérifiées, aucun périmètre partiel.",
+  "blocages": []
+}
