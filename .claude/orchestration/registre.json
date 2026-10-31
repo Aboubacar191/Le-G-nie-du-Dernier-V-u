@@ -345,6 +345,15 @@
 
   "dette_assumee_produit": [
     {
+      "id": "DETTE-05",
+      "objet": "La fenêtre de lecture du secret, 96 × 64 px, est dimensionnée pour un NOMBRE, pas pour du texte long.",
+      "releve_par": "dev-frontend au nœud S5', qui a explicitement refusé de trancher seul",
+      "analyse": "Sur les 8 catégories de données secrètes qui l'utilisent, 5 sont TEXTUELLES — clause, rôle, mission, résultat d'enquête, proposition du Dernier Vœu — et la clause la plus longue fait 104 caractères. Le frontend a rendu le mécanisme piloté par les tokens existants sans inventer de nouvelle géométrie, et signale à juste titre que choisir une autre taille est une décision de conception, pas de développement.",
+      "statut": "ASSUMÉE pour l'instant. Le mécanisme FONCTIONNE et protège ; il est seulement à l'étroit sur les textes longs.",
+      "decision_du_chef_de_projet": "REPORTÉ, sans resynchronisation du designer pour l'instant. Motif : l'esthétique et l'ergonomie sont au rang 5 de l'ordre de priorité, la non-fuite au rang 1, et le cycle de correction doit fermer sur l'axe de non-fuite avant toute autre chose. Ce n'est pas une fuite — c'est un confort de lecture.",
+      "condition_de_reprise": "Dès que S6' rend un verdict CONFORME sur l'axe de non-fuite, resynchroniser le designer pour qu'il fixe une géométrie adaptée au texte long, probablement une seconde variante de fenêtre plutôt qu'un agrandissement global qui exposerait davantage les nombres."
+    },
+    {
       "id": "ECART-S4-01",
       "objet": "En mode avancé, le Marchand déjà lié perd son rôle de base et son pouvoir ; l'un des 4 pouvoirs peut donc disparaître de la partie.",
       "origine": "DEF-S4-01, relevé par le dev-backend. Ambiguïté d'origine dans MA spécification, qui faisait recevoir un « rôle » à la place d'une « mission ».",

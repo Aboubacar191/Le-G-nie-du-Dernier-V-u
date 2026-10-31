@@ -179,6 +179,32 @@
       "contrepartie": "Le plafond redevient strict. Si une correction échoue trois fois, gel et rapport de blocage, sans quatrième tentative. Et la règle du signal d'alerte reste armée : si une correction échoue pour une raison DIFFÉRENTE de la précédente, je gèle immédiatement au lieu de consommer la troisième.",
       "transparence": "Cette interprétation de ma propre règle est signalée à l'utilisateur dans mon compte rendu, pas appliquée en silence."
     },
+    "noeuds_du_cycle_livres": [
+      {
+        "noeud": "S2'",
+        "statut": "VALIDE",
+        "validation": "Validateur DESIGN CONFORME, version 1.1.0. Les 32 écrans, 22 composants, règles antifuite et catalogue de replis identiques à l'octet : seules les valeurs de tokens ont changé, aucun nom n'a bougé. 106 mesures de contraste, 0 échec, minimum 3,31:1 en clair et 3,67:1 en sombre.",
+        "trois_actes_remarquables": [
+          "Il CORRIGE son propre avertissement : l'or sur indigo mesure 9,94:1 et non 4,5-6:1 comme il l'avait annoncé, son estimation supposant un indigo moyen là où celui du prototype est quasi-noir. Il maintient l'interdiction de l'or sur le texte courant mais en change le fondement, du contraste vers la repérabilité.",
+          "Il S'ÉCARTE du prototype sur 4 paires parce que le PROTOTYPE LUI-MÊME échoue : ses bordures de carte à #3A3463 mesurent 1,40:1, trois fois sous le seuil. La fidélité ne peut pas livrer une interface inaccessible.",
+          "Il REFUSE une faute du prototype : les chiffres restent sur pile système tabulaire alors que le prototype met ses nombres de 44 px en DM Sans."
+        ],
+        "bonne_surprise": "Le thème RENFORCE l'antifuite visuelle : la bordure du voile passe de 3,24 à 3,35:1 en clair et de 5,95 à 11,05:1 en sombre. Aucun arbitrage sécurité contre esthétique n'a été nécessaire.",
+        "mon_erreur": "Mon brief lui donnait un CHEMIN FAUX pour le dossier de référence (racine au lieu de .claude/orchestration/). Il l'a contourné en décompressant lui-même le manifeste gzip du HTML source."
+      },
+      {
+        "noeud": "S5'",
+        "statut": "VALIDE",
+        "validation": "Contrôle indépendant : 567/567 tests, 0 échec, vérifié par moi. Types à 0. Thème appliqué, fenêtre de lecture implémentée et test tautologique remplacé par un contrôle de consommation effective.",
+        "arbitrages_rendus": [
+          "RATIFIÉ — le rouge de verifier:routes (0/6) est l'état RÉEL attendu, pas un défaut de son travail. Vérifié par moi : le serveur sert encore /sante, /sessions, /configuration/defauts et /groupes/moi À LA RACINE. Le frontend avait consigne de conserver la réécriture du proxy, et RUP-04 exige que préfixage et retrait soient livrés ensemble.",
+          "RATIFIÉ — budget des polices : les deux familles Cinzel et DM Sans conservées, mesurées à 93,4 ko réels contre 125 ko annoncés au contrat. La mesure infirme l'estimation à la baisse, le repli proposé par le designer devient inutile.",
+          "TRANSMIS À S6' — la sonde d'audit qui teste ANO-10 est elle-même cassée : elle vérifie une constante codée en dur au lieu de lire vite.config.ts, et rendra NON_CONFORME quoi qu'il arrive. À corriger avant le ré-audit, sinon le QA se trompera sur son propre verdict."
+        ],
+        "recuperation": "Il a sécurisé plutôt que perdu deux modifications non versionnées trouvées à son arrivée. Provenance vérifiée par moi : BoutonAction.vue et EcranExecution.vue sont bien attribués à ses propres commits, et DESIGN 1.1.0 au commit du designer."
+      }
+    ],
+
     "chantier_parallele_habillage": {
       "ouvert_le": "2026-10-29",
       "declencheur": "ESC-01 tranchée : fidélité au prototype « Zafyr ».",
