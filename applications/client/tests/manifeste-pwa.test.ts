@@ -64,12 +64,55 @@ test('les couleurs du manifeste sont celles du contrat de conception', () => {
   }
 });
 
-test('aucune réponse de /api n’est mise en cache par le service worker', () => {
-  assert.match(configurationVite, /urlPattern:\s*\/\^\\\/api/);
+// ANO-10 — l'ancienne assertion était « assert.match(config, /urlPattern: \/\^\\\/api/) ».
+// Elle vérifiait que le motif bogué était bien présent : elle encodait le défaut
+// au lieu de le détecter. Workbox exécute le motif sur url.href et non sur le
+// chemin, si bien que /^\/api\// ne correspondait à AUCUNE URL réelle.
+// Le contrôle ÉVALUE désormais le prédicat, sur les trois URL mesurées par le QA.
+test('la règle « /api jamais en cache » S’APPLIQUE à une URL réelle', () => {
+  const extrait = /urlPattern:\s*(\(\{\s*url\s*\}\)\s*=>[^,\n]+)/u.exec(configurationVite);
+  assert.ok(extrait !== null, 'urlPattern doit être un prédicat sur l’URL analysée');
+
+  // `new Function` n'offre QUE la portée globale : si le prédicat référençait un
+  // import ou une constante du fichier, l'évaluation lèverait ici. C'est la
+  // preuve de son autonomie — exigence réelle, parce que workbox-build le
+  // sérialise tel quel dans sw.js, où aucun import n'existe.
+  const predicat = new Function(`return ${extrait[1] ?? ''};`)() as (
+    entree: { url: URL },
+  ) => boolean;
+
+  const mesurees = [
+    'https://hote.exemple/api/sessions',
+    'http://127.0.0.1:5173/api/configuration/defauts',
+    '/api/sessions',
+  ];
+  for (const brute of mesurees) {
+    const url = new URL(brute, 'http://127.0.0.1:5173');
+    assert.equal(predicat({ url }), true, `${brute} doit être couverte par NetworkOnly`);
+  }
+  // Et la règle ne doit pas happer tout le reste : un faux positif ferait sortir
+  // du cache des ressources qui doivent y rester (coquille, polices, icônes).
+  for (const hors of ['https://hote.exemple/', 'https://hote.exemple/polices/cinzel-latin.woff2']) {
+    assert.equal(predicat({ url: new URL(hors) }), false, `${hors} ne relève pas de /api`);
+  }
+
   assert.match(configurationVite, /handler:\s*'NetworkOnly'/);
   assert.ok(
     !/handler:\s*'(CacheFirst|StaleWhileRevalidate|NetworkFirst)'/.test(configurationVite),
     'une stratégie de cache a été introduite : vérifier qu’elle n’atteint pas /api',
+  );
+});
+
+// RUP-04 — la réécriture du proxy et le préfixe servi par le serveur forment un
+// COUPLE : préfixer sans retirer casse le développement, retirer sans préfixer
+// le casse aussi. Le backend n'a pas encore préfixé ; la réécriture doit donc
+// rester, et ce test interdit de la retirer seule par inadvertance.
+test('la réécriture /api du proxy de développement est TOUJOURS là (RUP-04)', () => {
+  assert.match(
+    configurationVite,
+    /rewrite:\s*\(chemin\)\s*=>\s*chemin\.replace\(\/\^\\\/api\/u,\s*''\)/u,
+    'retirer la réécriture avant que le serveur ne préfixe ses routes casse les six ' +
+      'routes REST en développement : les deux changements vont ENSEMBLE (RUP-04)',
   );
 });
 

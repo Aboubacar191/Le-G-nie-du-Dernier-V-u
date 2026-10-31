@@ -38,7 +38,34 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/, /^\/tr/],
         runtimeCaching: [
           {
-            urlPattern: /^\/api\//,
+            // ANO-10 — le MOTIF, et lui seul, est corrigé ici.
+            //
+            // Ce qui était écrit : urlPattern: /^\/api\//. Workbox exécute le
+            // motif sur url.href et non sur le chemin — node_modules/
+            // workbox-routing/RegExpRoute.js : regExp.exec(url.href). Mesures du
+            // QA : 'https://hote.exemple/api/sessions' → false,
+            // 'http://127.0.0.1:5173/api/configuration/defauts' → false,
+            // '/api/sessions' → true. La règle ne correspondait donc à AUCUNE
+            // URL réelle, et l'engagement « aucune réponse de /api n'est mise en
+            // cache » ne tenait plus que par l'absence fortuite de toute autre
+            // règle de cache. Ce n'est pas un détail de configuration : une
+            // projection privée en cache resterait lisible sur un téléphone
+            // prêté après la partie.
+            //
+            // Un prédicat sur url.pathname est insensible à l'origine, donc
+            // juste en développement sur réseau local comme en production.
+            //
+            // CONTRAINTE : cette fonction est SÉRIALISÉE dans le service worker
+            // généré (workbox-build / runtime-caching-converter). Elle doit
+            // rester AUTONOME — pas d'import, pas de constante extérieure, pas
+            // de fermeture : un identifiant libre deviendrait un ReferenceError
+            // dans sw.js, c'est-à-dire la même panne silencieuse d'un cran plus
+            // loin. C'est pourquoi le littéral '/api/' est écrit ici au lieu
+            // d'être partagé avec BASE_REST de src/transport/rest.ts. Le test
+            // manifeste-pwa.test.ts évalue le prédicat extrait de ce fichier,
+            // sans portée extérieure, ce qui prouve l'autonomie en même temps
+            // que le comportement.
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
             handler: 'NetworkOnly',
           },
         ],

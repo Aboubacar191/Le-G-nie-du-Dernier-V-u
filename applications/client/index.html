@@ -10,10 +10,38 @@
       les styles de composant ; aucun script inline n'est autorisé.
       En production, cet en-tête doit AUSSI être servi par le serveur : une
       balise meta ne couvre pas tout.
+
+      ANO-12 — connect-src est passé de « 'self' wss: » à « 'self' ».
+      Le schéma nu wss: autorisait l'émission vers TOUT hôte en WebSocket
+      sécurisé : un script injecté ouvrait wss://hote-de-l-attaquant/ et y
+      versait le jeton de session. Le reste de la politique était pourtant
+      soigné — object-src 'none', base-uri 'none', form-action 'none',
+      script-src 'self' — ce qui rendait cette ouverture d'autant plus saillante.
+
+      Pourquoi 'self' SUFFIT, et ne casse pas le développement en HTTP sur
+      réseau local : le canal temps réel est construit à partir de
+      location.host, jamais d'un hôte reçu du serveur. Voir
+      src/magasin/session.ts / origineParDefaut() — le serveur ne transmet
+      qu'un CHEMIN (url_temps_reel), l'origine est toujours celle du document.
+      La socket est donc same-origin par construction, en ws:// derrière le
+      proxy de développement comme en wss:// en production, et CSP niveau 3
+      fait correspondre 'self' aux variantes ws et wss de l'origine du
+      document. L'hôte de déploiement n'a donc même pas à être injecté à la
+      construction, ce qui retire une variable de plus.
+
+      CE QUI N'EST PAS CORRIGÉ ICI, et qui est consigné au
+      RAPPORT-FRONTEND-002 :
+        · le jeton en localStorage. Le déplacer vers un cookie Secure,
+          HttpOnly, SameSite=Strict est une mesure de défense en profondeur qui
+          change le contrat d'authentification du canal temps réel : la
+          décision appartient au tech-lead (ANO-12 / co_assigne), pas à moi ;
+        · 'unsafe-inline' sur style-src, imposé par les styles de composant Vue ;
+        · cette balise meta ne couvre ni frame-ancestors ni le document d'erreur
+          du serveur : l'en-tête HTTP reste nécessaire côté serveur.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; connect-src 'self' wss:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'"
+      content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
     <meta name="referrer" content="no-referrer" />
     <link rel="manifest" href="/manifest.webmanifest" />

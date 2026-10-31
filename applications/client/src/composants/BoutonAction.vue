@@ -16,8 +16,23 @@
 // La variante « maintien » sert aux actes irréversibles à FAIBLE enjeu sous
 // contrainte de temps (l'enquête) : le geste porte la confirmation, pour tenir
 // dans une fenêtre de 60 s. Les actes à fort enjeu passent par le dialogue.
+//
+// ANO-UX-02 — « un état d'erreur n'est couvert que si l'utilisateur le lit »
+// La raison existait déjà, et l'utilisateur ne l'a pas lue. Trois causes, et
+// aucune n'est un oubli de libellé :
+//   1. elle était SOUS le bouton, en role.meta et en texte-secondaire : le
+//      texte le plus discret de l'écran, juste au moment où le regard est sur
+//      le bouton. Elle est maintenant DANS le bouton, sous le libellé, donc à
+//      l'endroit exact où le doigt appuie ;
+//   2. elle n'était reliée au bouton par aucun aria-describedby : un lecteur
+//      d'écran annonçait « Rejoindre une partie, indisponible » et rien de plus ;
+//   3. un bouton `disabled` ne reçoit NI clic NI focus : l'appui ne produisait
+//      strictement RIEN. C'est là la vraie cause du « ça ne marche pas » —
+//      pas l'absence de message, mais l'absence de RÉACTION. L'enveloppe écoute
+//      donc l'appui même quand le bouton est désactivé, et met la raison en
+//      évidence pendant duree.lente. Un appui refusé répond toujours.
 
-import { onBeforeUnmount, ref } from 'vue';
+import { onBeforeUnmount, ref, useId } from 'vue';
 
 import { DUREES_MS } from '../styles/jetons.ts';
 
@@ -78,12 +93,39 @@ function agirAuClic(): void {
   if (props.maintien || props.desactive || props.chargement) return;
   emettre('agir');
 }
+
+// --- ANO-UX-02 : un appui refusé RÉPOND -------------------------------------
+
+const idRaison = useId();
+const raisonSignalee = ref(false);
+let minuterieSignal: ReturnType<typeof setTimeout> | null = null;
+
+function eteindreSignal(): void {
+  if (minuterieSignal !== null) clearTimeout(minuterieSignal);
+  minuterieSignal = null;
+  raisonSignalee.value = false;
+}
+
+onBeforeUnmount(eteindreSignal);
+
+/**
+ * Appui sur un bouton désactivé. Capté par l'ENVELOPPE, parce qu'un élément
+ * `disabled` ne reçoit aucun événement de pointeur : sans cela, l'appui est un
+ * cul-de-sac silencieux, et c'est exactement ce que l'utilisateur a rencontré.
+ */
+function signalerRefus(): void {
+  if (!props.desactive || props.raison === '') return;
+  eteindreSignal();
+  raisonSignalee.value = true;
+  minuterieSignal = setTimeout(eteindreSignal, DUREES_MS.lente);
+}
 </script>
 
 <template>
   <div
     class="enveloppe"
     :class="{ 'enveloppe--large': props.pleineLargeur }"
+    @pointerdown="signalerRefus"
   >
     <button
       type="button"
@@ -91,6 +133,7 @@ function agirAuClic(): void {
       :class="[`bouton--${props.variante}`, `bouton--${props.taille}`, { 'bouton--maintien': enMaintien }]"
       :disabled="props.desactive"
       :aria-busy="props.chargement"
+      :aria-describedby="props.desactive && props.raison ? idRaison : undefined"
       @click="agirAuClic"
       @pointerdown="commencer"
       @pointerup="annuler"
@@ -99,6 +142,16 @@ function agirAuClic(): void {
       @keyup.space.prevent="annuler"
     >
       <span class="bouton__libelle">{{ props.libelle }}</span>
+      <!-- La raison est DANS le bouton, sous le libellé : à l'endroit où le
+           doigt appuie, et non dans un paragraphe discret au-dessous. -->
+      <span
+        v-if="props.desactive && props.raison"
+        :id="idRaison"
+        class="bouton__raison"
+        :class="{ 'bouton__raison--signalee': raisonSignalee }"
+      >
+        {{ props.raison }}
+      </span>
       <!-- Barre indéterminée sous le libellé : le texte n'est jamais remplacé. -->
       <span
         v-if="props.chargement"
@@ -112,12 +165,6 @@ function agirAuClic(): void {
         aria-hidden="true"
       />
     </button>
-    <p
-      v-if="props.desactive && props.raison"
-      class="enveloppe__raison"
-    >
-      {{ props.raison }}
-    </p>
   </div>
 </template>
 
@@ -133,11 +180,23 @@ function agirAuClic(): void {
   width: 100%;
 }
 
-.enveloppe__raison {
-  margin: 0;
-  color: var(--gdv-texte-secondaire);
-  font-size: var(--gdv-role-meta);
+/* Rôle étiquette, pas méta : la raison d'un blocage n'est pas une mention
+   légale. Elle hérite la couleur du bouton désactivé, qui est une paire
+   dessinée (texte-desactive sur surface-desactivee). */
+.bouton__raison {
+  max-inline-size: var(--gdv-mesure-ligne-etroit);
+  font-size: var(--gdv-role-etiquette);
+  font-weight: var(--gdv-graisse-normal);
   line-height: var(--gdv-interligne-courant);
+  text-align: center;
+}
+
+/* Réponse à un appui refusé : la raison passe en texte-principal le temps de
+   duree.lente. Un changement de COULEUR et de GRAISSE, jamais un mouvement :
+   la réaction doit rester lisible sous prefers-reduced-motion. */
+.bouton__raison--signalee {
+  color: var(--gdv-texte-principal);
+  font-weight: var(--gdv-graisse-gras);
 }
 
 .bouton {
