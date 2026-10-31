@@ -130,13 +130,42 @@ test('les durées de CONFIDENTIALITÉ ne sont pas annulées sous mouvement rédu
   assert.equal(DUREES_MS['remasquage-apres-contact'], 1500);
 });
 
-test('la fenêtre de lecture du secret tient sous le plafond de surface', () => {
-  const largeur = Number.parseInt(String(SECRET['largeur-fenetre-lecture']), 10);
-  const hauteur = Number.parseInt(String(SECRET['hauteur-fenetre-lecture']), 10);
-  const ecran = 360 * 640;
-  const ratio = (largeur * hauteur) / ecran;
-  const plafond = Number(SECRET['surface-lisible-max-ratio']);
-  assert.ok(ratio <= plafond, `empreinte de ${(ratio * 100).toFixed(1)} % pour un plafond de ${plafond * 100} %`);
+// RETIRÉ — « la fenêtre de lecture du secret tient sous le plafond de surface ».
+//
+// Ce test comparait (96 × 64) / (360 × 640) = 2,67 % au jeton
+// surface-lisible-max-ratio = 9 %. Les trois nombres sortaient du MÊME contrat
+// de conception : l'assertion ne pouvait pas échouer, parce qu'elle vérifiait
+// que le designer n'avait pas contredit le designer. Elle n'a jamais touché une
+// ligne de code, et elle a donné un vert franc à un dispositif dont l'enveloppe
+// n'était bornée par aucune règle CSS — une hauteur MINIMALE laissait la lucarne
+// grandir avec son contenu. Elle validait précisément le cas qu'elle prétendait
+// exclure.
+//
+// Remplacé par applications/client/tests/fenetre-de-lecture.test.ts, qui mesure
+// la CONSOMMATION EFFECTIVE : les jetons sont-ils émis en CSS, consommés par un
+// composant réel, et la géométrie écrite dans ce composant borne-t-elle la
+// surface ? La surface y est recalculée depuis les déclarations CSS réelles, en
+// résolvant chaque var() dans jetons.css.
+//
+// Ce qui reste légitimement ici relève du contrat et de sa compilation : que les
+// deux jetons de géométrie soient bien des longueurs en pixels, et qu'ils
+// sortent en CSS — sans quoi aucune feuille de style ne pourrait les lire.
+test('les jetons de la fenêtre de lecture sont des longueurs, et sortent en CSS', () => {
+  const css = readFileSync(CSS, 'utf8');
+  for (const [cle, variable] of [
+    ['largeur-fenetre-lecture', '--gdv-secret-largeur-fenetre'],
+    ['hauteur-fenetre-lecture', '--gdv-secret-hauteur-fenetre'],
+  ] as const) {
+    const valeur = String(SECRET[cle]);
+    assert.match(valeur, /^\d+px$/u, `secret.${cle} doit être une longueur en pixels`);
+    assert.ok(
+      css.includes(`${variable}: ${valeur};`),
+      `${variable} doit être émis en CSS : jetons.ts n'est pas lu par une feuille de style`,
+    );
+  }
+  // Le plafond de surface reste un nombre sans unité : il sert au calcul fait
+  // dans fenetre-de-lecture.test.ts, et n'a pas de sens en CSS.
+  assert.equal(typeof SECRET['surface-lisible-max-ratio'], 'number');
 });
 
 test('aucune cible interactive du contrat ne descend sous 48 px', () => {

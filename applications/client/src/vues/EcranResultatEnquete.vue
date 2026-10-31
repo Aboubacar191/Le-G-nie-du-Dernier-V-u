@@ -99,9 +99,14 @@ const etatVoile = computed(() => (resultat.value === null ? 'chargement' : null)
 </template>
 
 <style scoped>
+/* M4 — le secret est lu DANS la lucarne de secret.largeur_fenetre_lecture par
+   secret.hauteur_fenetre_lecture, et il n’y est PAS rapetissé pour y entrer :
+   « on réduit l’empreinte physique et l’angle utile, pas la lisibilité ».
+   role.corps est le plancher de lecture mobile (role._regle_mobile) ; ce qui
+   dépasse défile dans la lucarne, qui ne se dilate plus. */
 .resultat__contenu {
   font-family: var(--gdv-famille-interface);
-  font-size: var(--gdv-role-meta);
+  font-size: var(--gdv-role-corps);
   text-align: center;
 }
 

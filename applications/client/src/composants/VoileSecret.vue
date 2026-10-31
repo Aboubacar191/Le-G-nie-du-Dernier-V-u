@@ -15,11 +15,51 @@
 //      deux chemins sont actionnables au clavier.
 // M3 — remasquage immédiat et sans animation sur relâchement, expiration,
 //      perte de focus de la fenêtre, changement de visibilité et défilement.
-// M4 — la valeur révélée tient dans une fenêtre de 96 × 64 ancrée dans le tiers
-//      inférieur, du côté que la main qui tient l'appareil occulte. Le
-//      contraste n'est JAMAIS dégradé pour cacher : on réduit l'empreinte
-//      physique et l'angle utile, pas la lisibilité.
+// M4 — la valeur révélée tient dans une lucarne de secret.largeur_fenetre_lecture
+//      par secret.hauteur_fenetre_lecture, ancrée dans le tiers inférieur, du
+//      côté que la main qui tient l'appareil occulte.
 // M5 — après validation, l'état « scelle » ne porte plus aucune valeur.
+//
+// L'ENVELOPPE DE LA LUCARNE — le point qui n'était pas implémenté
+// ---------------------------------------------------------------
+// Le CSS déclarait inline-size et min-block-size : une largeur fixe et une
+// hauteur MINIMALE. Un minimum ne borne rien, il autorise la croissance. Une
+// clause de 100 caractères transformait donc 96 × 64 en 96 × 200 et plus sans
+// qu'une ligne de code ne s'en aperçoive : l'enveloppe annoncée au contrat
+// n'était tenue que pour un nombre court, soit 3 des 8 catégories de secret.
+// Le commentaire affirmait « 2,7 % de la surface » ; le CSS ne le garantissait
+// pas, et le test qui le « validait » comparait deux nombres du même contrat.
+//
+// Quatre déclarations portent désormais la garantie, et une seule manquante la
+// supprime :
+//   · max-inline-size et max-block-size, dérivés des DEUX JETONS et d'eux
+//     seuls — donc réglables au playtest sans toucher à un composant, ce qui
+//     est la raison d'être de tokens.secret ;
+//   · overflow — le contenu qui dépasse DÉFILE dans la lucarne au lieu de la
+//     dilater. On réduit l'empreinte physique et l'angle utile, jamais la
+//     lisibilité : aucune police n'est rapetissée pour faire entrer un texte,
+//     et les 9 écrans qui descendaient à 12 ou 14 px sont remontés à role.corps ;
+//   · overscroll-behavior — sans lui, le défilement interne se propagerait à la
+//     page, et le défilement de page remasque (M3) : le joueur perdrait sa
+//     lecture au milieu d'une phrase.
+//
+// Ancrage « tiers inférieur, côté dominant » : margin-block-start: auto pousse
+// la lucarne juste au-dessus de la zone de maintien, là où la main qui tient
+// l'appareil et le pouce qui appuie font écran au voisin. align-self porte le
+// côté, inversable pour les gauchers par data-cote-dominant.
+//
+// Mesures : lucarne nominale 96 × 64 = 6 144 px² sur 230 400, soit 2,67 % ;
+// variante « choix » 96 × 112 = 10 752 px², soit 4,67 % — pour un plafond de
+// 9 %. fenetre-de-lecture.test.ts ne recopie aucun de ces nombres : il les
+// recalcule depuis les déclarations CSS, var() résolus dans jetons.css.
+//
+// ÉCART DE CONTRAT consigné au RAPPORT-FRONTEND-002, non corrigé ici parce que
+// le contrat ne m'appartient pas : la fenêtre est spécifiée à 64 px de haut, en
+// famille.chiffres et au rôle nombre-principal, c'est-à-dire pour un NOMBRE.
+// Cinq des huit catégories de secret sont du TEXTE (rôle, mission, clause,
+// résultat d'enquête, proposition du Dernier Vœu), et la variante « choix »
+// doit porter deux cibles tactiles de 48 px. Ni l'une ni les autres n'entrent
+// dans 64 px à une taille lisible.
 //
 // Aucun retour haptique ni sonore n'est émis à la révélation : un voisin
 // l'entendrait.
@@ -249,17 +289,21 @@ const decompteMinute = computed(() => ({
   font-size: var(--gdv-role-etiquette);
 }
 
-/* Empreinte de lecture réduite : 96 × 64 sur 360 × 640 = 2,7 % de la surface,
-   sous le plafond de 9 %. Ancrée du côté que la main occulte, inversable pour
-   les gauchers par l'attribut data-cote-dominant de la racine. */
+/* M4 — lucarne de lecture. Voir l'en-tête du composant : les quatre
+   déclarations d'enveloppe sont solidaires, une seule manquante la supprime. */
 .voile__fenetre {
   align-self: flex-end;
+  margin-block-start: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   inline-size: var(--gdv-secret-largeur-fenetre);
-  min-block-size: var(--gdv-secret-hauteur-fenetre);
+  max-inline-size: var(--gdv-secret-largeur-fenetre);
+  block-size: var(--gdv-secret-hauteur-fenetre);
+  max-block-size: var(--gdv-secret-hauteur-fenetre);
+  overflow: hidden auto;
+  overscroll-behavior: contain;
   padding: var(--gdv-espacement-4);
   border-radius: var(--gdv-rayon-discret);
   background: var(--gdv-secret-voile);
@@ -275,14 +319,21 @@ const decompteMinute = computed(() => ({
   align-self: flex-start;
 }
 
+/* Variante « choix » : hauteur COMPOSÉE de jetons pour porter deux cibles
+   tactiles. Voir l'en-tête du composant, et l'écart consigné au rapport. */
+.voile--choix .voile__fenetre {
+  block-size: auto;
+  max-block-size: calc(
+    2 * var(--gdv-cible-minimale) + var(--gdv-espacement-8) + 2 * var(--gdv-espacement-4)
+  );
+}
+
 .voile__compte {
   inline-size: 100%;
 }
 
-/* Le substitut occupe la place du NOMBRE : il est composé dans la même famille
-   et à la même largeur tabulaire, sans quoi l'empreinte de l'état masqué
-   différerait de celle de l'état révélé et trahirait la bascule au voisin
-   (M7-etat-masque-indiscernable). */
+/* Même famille et même largeur tabulaire que le nombre qu'il remplace : une
+   empreinte différente trahirait la bascule au voisin (M7). */
 .voile__substitut {
   align-self: flex-end;
   margin: 0;

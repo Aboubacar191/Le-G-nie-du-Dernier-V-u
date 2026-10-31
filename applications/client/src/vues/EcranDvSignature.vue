@@ -170,6 +170,11 @@ function sceller(): void {
 
 /* Les deux pastilles sont rigoureusement identiques : même taille, même
    surface, même bordure. Seul leur ORDRE change d'un joueur à l'autre. */
+/* M4 — le secret est lu DANS la lucarne de secret.largeur_fenetre_lecture par
+   secret.hauteur_fenetre_lecture, et il n’y est PAS rapetissé pour y entrer :
+   « on réduit l’empreinte physique et l’angle utile, pas la lisibilité ».
+   role.corps est le plancher de lecture mobile (role._regle_mobile) ; ce qui
+   dépasse défile dans la lucarne, qui ne se dilate plus. */
 .signature__option {
   min-block-size: var(--gdv-cible-minimale);
   inline-size: 100%;
@@ -178,7 +183,7 @@ function sceller(): void {
   background: transparent;
   color: var(--gdv-texte-sur-voile);
   font-family: var(--gdv-famille-interface);
-  font-size: var(--gdv-role-etiquette);
+  font-size: var(--gdv-role-corps);
   cursor: pointer;
 }
 
