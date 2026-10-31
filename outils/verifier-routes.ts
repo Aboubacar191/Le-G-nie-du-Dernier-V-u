@@ -268,7 +268,9 @@ console.log('PORTE — routes : paths de API-GDV-001 ↔ table de routes du serv
 console.log(`  contrats : ${DOSSIER_CONTRATS}`);
 console.log(`  client   : ${FICHIER_CLIENT}`);
 console.log('-'.repeat(78));
-for (const constat of constats) console.log(`  ok   ${constat}`);
+// « mes. » et non « ok » : un constat est une MESURE, pas un succes. Afficher
+  // « ok 0 route sur 6 » serait un mensonge de presentation.
+  for (const constat of constats) console.log(`  mes. ${constat}`);
 if (anomalies.length > 0) {
   console.log('');
   for (const { controle, detail } of anomalies) console.log(`  ÉCHEC [${controle}] ${detail}`);
