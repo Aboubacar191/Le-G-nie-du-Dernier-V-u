@@ -258,4 +258,44 @@ export default tseslint.config(
       'no-magic-numbers': 'off',
     },
   },
+
+  // --- SONDES D'AUDIT : le plafond de TAILLE DE FICHIER ne s'y applique pas ---
+  //
+  // Décision tranchée au nœud S3B', avec son motif, et VOLONTAIREMENT étroite.
+  //
+  // Ce qui est désarmé : max-lines, et lui seul. qa/sondes/sonde-criteres-d.ts
+  // mesure 387 lignes pour un plafond de 300.
+  //
+  // POURQUOI le plafond ne s'applique pas ici. taille_fichier_max_lignes est un
+  // seuil de MAINTENABILITÉ : il protège du code qui sera relu, modifié et
+  // étendu pendant toute la vie du projet. Une sonde d'audit n'est pas cela,
+  // c'est un RELEVÉ DE MESURE : elle est écrite pour un audit donné, exécutée,
+  // et sa valeur tient précisément à ce qu'on ne la remanie pas — une sonde
+  // remaniée ne mesure plus ce qu'elle a mesuré, et la comparaison avec le
+  // rapport qui la cite est perdue.
+  //
+  // POURQUOI NE PAS DÉCOUPER LE FICHIER. sonde-criteres-d.ts parcourt les
+  // critères d'acceptation de la série D dans l'ordre du contrat. Couper à 300
+  // lignes placerait une frontière de fichier au milieu d'une énumération, à un
+  // endroit sans aucun sens, et rendrait plus difficile le rapprochement entre
+  // le rapport du QA et la mesure qui le fonde. Le découpage serait cosmétique,
+  // et il coûterait la traçabilité.
+  //
+  // CE QUI RESTE ARMÉ, et c'est l'essentiel : complexity, max-depth,
+  // max-lines-per-function, eqeqeq, no-unused-vars, consistent-type-imports et
+  // tout le socle recommandé. Une sonde illisible ou qui masque une variable
+  // est une sonde qui mesure faux — la précision d'un instrument d'audit
+  // compte plus que celle du code mesuré. C'est pourquoi la solution retenue
+  // N'EST PAS l'inscription du fichier dans `ignores` : ignorer un fichier
+  // désarme TOUTES les règles, y compris celles qui garantissent qu'il
+  // mesure juste.
+  //
+  // PÉRIMÈTRE : qa/sondes/ uniquement. La règle n'est PAS désarmée pour le code
+  // de production, à aucune condition.
+  {
+    files: ['qa/sondes/**/*.ts'],
+    rules: {
+      'max-lines': 'off',
+    },
+  },
 );
