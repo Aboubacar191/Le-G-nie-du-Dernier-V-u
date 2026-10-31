@@ -1,0 +1,234 @@
+/*
+ * Feuille GLOBALE — déclarations qui ne peuvent vivre dans aucun composant.
+ *
+ * Trois contenus, et pas un de plus :
+ *   1. les dix déclarations @font-face des deux familles embarquées ;
+ *   2. la remise à zéro des marges du document et la surface de fond ;
+ *   3. l'utilitaire de texte réservé aux lecteurs d'écran.
+ *
+ * Pourquoi ce fichier est écrit à la main et non compilé comme jetons.css :
+ * le générateur vit dans outils/, propriété de l'ingénieur DevOps pendant cette
+ * itération. La section « polices » de DESIGN-GDV-001.json devra lui être
+ * confiée à l'itération suivante pour que ces dix blocs soient GÉNÉRÉS eux
+ * aussi. En attendant, toute valeur de couleur, d'espacement et de typographie
+ * ci-dessous passe par un jeton : aucune valeur de thème n'est écrite ici.
+ *
+ * @font-face est déclaré UNE SEULE FOIS, ici, jamais dans un composant
+ * (DESIGN-GDV-001.json / variables_css.regle_polices).
+ */
+
+/* ===========================================================================
+   POLICES EMBARQUÉES — Cinzel et DM Sans, SIL Open Font License 1.1
+   ===========================================================================
+   Notices de copyright et texte intégral des deux licences :
+   applications/client/public/polices/POLICES-LICENCES.txt, distribué AVEC les
+   fichiers woff2 comme l'OFL 1.1 l'exige.
+
+   Quatre fichiers seulement, pour dix déclarations : ce sont des polices
+   VARIABLES, et un fichier par sous-ensemble sert toutes les graisses. Mesure
+   réelle : 95 604 octets au total (93,4 ko), soit SOUS le plafond de 125 ko
+   annoncé au contrat. Le repli « abandonner DM Sans » n'a donc pas lieu d'être
+   appliqué — voir RAPPORT-FRONTEND-002.json / decision_budget_polices.
+
+   Trois valeurs littérales sont inévitables dans un bloc @font-face, et ce ne
+   sont pas des décisions de style :
+     · font-weight décrit la graisse PORTÉE PAR LE FICHIER, pas un choix ;
+     · unicode-range décrit le découpage de Google Fonts, repris à l'octet ;
+     · les propriétés personnalisées sont interdites dans les descripteurs
+       @font-face par la spécification CSS, var() y serait sans effet.
+
+   font-display: swap sur les deux familles : la pile de repli s'affiche
+   immédiatement, et aucun écran de jeu n'attend une police pour être lisible.
+   Les CHIFFRES, eux, ne dépendent d'aucun fichier : typographie.famille.chiffres
+   est la pile système monospace et ne déclare aucun @font-face, par
+   construction (_regle_chiffres_jamais_en_serif). Un décalage de police sur un
+   minuteur est inacceptable ; il est ici impossible.
+   =========================================================================== */
+
+/* --- Cinzel 600 — titres et voix du génie --------------------------------- */
+/* latin-ext */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/polices/cinzel-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/polices/cinzel-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* --- Cinzel 700 — graisse des titres du prototype ------------------------- */
+/* latin-ext */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/polices/cinzel-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/polices/cinzel-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* --- DM Sans 400 — texte courant de l'interface --------------------------- */
+/* latin-ext */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/polices/dm-sans-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/polices/dm-sans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* --- DM Sans 500 — libellés de bouton et d'étiquette ---------------------- */
+/* latin-ext */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/polices/dm-sans-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/polices/dm-sans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* --- DM Sans 700 — graisse forte de l'interface --------------------------- */
+/* latin-ext */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/polices/dm-sans-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/polices/dm-sans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ===========================================================================
+   DOCUMENT
+   ===========================================================================
+   Le fond est posé sur html ET sur body : sans cela, la zone de rebond du
+   défilement iOS affiche le blanc du navigateur sous l'écran de jeu, ce qui
+   suffit à trahir un changement d'état au voisin assis à côté.
+   =========================================================================== */
+
+html {
+  block-size: 100%;
+  background: var(--gdv-surface-fond);
+  color: var(--gdv-texte-principal);
+  /* Lisible à 200 % de zoom à 360 px : aucune largeur fixe sur un conteneur. */
+  text-size-adjust: 100%;
+}
+
+body {
+  min-block-size: 100%;
+  margin: 0;
+  background: var(--gdv-surface-fond);
+  color: var(--gdv-texte-principal);
+  font-family: var(--gdv-famille-interface);
+  font-size: var(--gdv-role-corps);
+  font-weight: var(--gdv-graisse-normal);
+  line-height: var(--gdv-interligne-courant);
+  /* typographie.suivi._regle_corps_sans_suivi : le texte courant ne porte
+     AUCUN interlettrage. Relevé par comptage sur les 15 écrans du prototype. */
+  letter-spacing: var(--gdv-suivi-aucun);
+}
+
+#app {
+  min-block-size: 100%;
+}
+
+/* ===========================================================================
+   AFFECTATION DES FAMILLES — typographie.role._regle_famille
+   ===========================================================================
+   « famille.titre : titre-ecran, titre-section, voix-genie. » Jusqu'ici aucun
+   composant ne l'appliquait, pour une raison simple : --gdv-famille-titre
+   N'EXISTAIT PAS avant DESIGN-GDV-001.json v1.1.0. Le contrat annonce qu'« aucun
+   composant n'est à retoucher », ce qui est vrai des 29 jetons de couleur mais
+   FAUX d'un jeton neuf : un jeton que personne ne consomme ne produit aucun
+   pixel. L'écart est consigné dans RAPPORT-FRONTEND-002.json.
+
+   L'affectation est posée ICI, sur les trois niveaux de titre, et non recopiée
+   dans 21 composants : la famille est une fonction du RÔLE, le rôle est porté
+   par le niveau de titre, et un seul point de vérité ne peut pas diverger.
+   Les 21 h1/h2/h3 du client ont été inventoriés : tous portent un rôle
+   titre-ecran ou titre-section, aucun ne porte un rôle de corps.
+
+   Ni couleur ni taille ici : la taille reste la décision de chaque écran (elle
+   distingue titre-ecran de titre-section) et la couleur aussi — l'or n'est
+   admis sur un titre que parce qu'il dépasse 20 px, il n'y est pas imposé.
+   =========================================================================== */
+
+h1,
+h2,
+h3 {
+  font-family: var(--gdv-famille-titre);
+  font-weight: var(--gdv-graisse-tres-gras);
+  line-height: var(--gdv-interligne-titre);
+  letter-spacing: var(--gdv-suivi-titre);
+}
+
+/* ===========================================================================
+   UTILITAIRE — texte réservé aux lecteurs d'écran
+   ===========================================================================
+   Employé pour le nom du jeu porté par le badge quand celui-ci est décoratif.
+   Jamais pour masquer un secret : un secret masqué N'EST PAS RENDU (M1).
+   =========================================================================== */
+
+.gdv-lecteur-seul {
+  position: absolute;
+  inline-size: var(--gdv-trait-fin);
+  block-size: var(--gdv-trait-fin);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

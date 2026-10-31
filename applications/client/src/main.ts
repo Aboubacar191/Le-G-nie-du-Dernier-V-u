@@ -16,6 +16,7 @@ import { fournirMagasin, fournirStockage } from './magasin/injection.ts';
 import { creerMagasin } from './magasin/session.ts';
 import { lireEntree } from './routeur/index.ts';
 import './styles/jetons.css';
+import './styles/global.css';
 
 /** Version du protocole annoncée à l'authentification (API-GDV-001 / info). */
 const VERSION_PROTOCOLE = '1.0.0';

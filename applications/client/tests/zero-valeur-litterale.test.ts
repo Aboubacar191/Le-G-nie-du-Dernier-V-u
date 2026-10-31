@@ -45,7 +45,13 @@ function fichiers(racine: string, extensions: readonly string[]): string[] {
 
 const chemin = (absolu: string): string => relative(SOURCE, absolu).split('\\').join('/');
 
-const SOURCES = fichiers(SOURCE, ['.vue', '.ts']).filter(
+// Les FEUILLES DE STYLE autonomes sont analysées elles aussi, et c'est une
+// correction : jusqu'ici le périmètre se limitait à .vue et .ts, si bien qu'un
+// styles/theme-prototype.css de 50 lignes contenant 30 couleurs hexadécimales
+// en dur — et importé par main.ts, donc SURCHARGEANT les jetons compilés — a
+// traversé la porte sans l'émouvoir. Le trou était dans la mesure, pas dans la
+// règle. Toute feuille de style du client est désormais dedans.
+const SOURCES = fichiers(SOURCE, ['.vue', '.ts', '.css']).filter(
   (absolu) => !GENERES.includes(chemin(absolu)),
 );
 

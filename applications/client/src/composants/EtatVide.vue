@@ -84,7 +84,8 @@ const emettre = defineEmits<{ agir: [] }>();
   border: var(--gdv-trait-moyen) solid var(--gdv-bordure-champ);
   border-radius: var(--gdv-rayon-moyen);
   background: transparent;
-  color: var(--gdv-accent-action);
+  /* L'or est interdit au libellé : voir _regle_or_jamais_en_texte_courant. */
+  color: var(--gdv-texte-principal);
   font-family: var(--gdv-famille-interface);
   font-size: var(--gdv-role-corps);
   font-weight: var(--gdv-graisse-moyen);

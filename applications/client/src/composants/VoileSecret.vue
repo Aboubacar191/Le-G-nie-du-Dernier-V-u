@@ -279,10 +279,16 @@ const decompteMinute = computed(() => ({
   inline-size: 100%;
 }
 
+/* Le substitut occupe la place du NOMBRE : il est composé dans la même famille
+   et à la même largeur tabulaire, sans quoi l'empreinte de l'état masqué
+   différerait de celle de l'état révélé et trahirait la bascule au voisin
+   (M7-etat-masque-indiscernable). */
 .voile__substitut {
   align-self: flex-end;
   margin: 0;
+  font-family: var(--gdv-famille-chiffres);
   font-size: var(--gdv-role-nombre-principal);
+  font-variant-numeric: var(--gdv-chiffres-variant);
   letter-spacing: var(--gdv-espacement-4);
 }
 

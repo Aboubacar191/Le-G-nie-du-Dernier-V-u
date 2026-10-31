@@ -178,11 +178,19 @@ function sceller(): void {
   font-size: var(--gdv-role-corps);
 }
 
+/* Pastille PLEINE, et c'est la règle et non un effet : couleur._regle_jamais_la
+   _couleur_seule interdit que public et secret se distinguent par la TEINTE.
+   marque-prive appartient à la même famille d'or que accent-action, donc
+   l'opposition porte sur le REMPLISSAGE — pastille pleine pour le secret,
+   pastille sur surface-secondaire pour le public (.declaration__marque) —
+   doublée du libellé persistant « Secret » contre « Visible par tous ».
+   L'or passe ici en FOND et non en texte : à role.meta (12 px) il serait de
+   toute façon interdit par _regle_or_jamais_en_texte_courant. */
 .paiement__marque {
   padding-inline: var(--gdv-espacement-8);
   border-radius: var(--gdv-rayon-pilule);
-  background: var(--gdv-surface-secondaire);
-  color: var(--gdv-marque-prive);
+  background: var(--gdv-marque-prive);
+  color: var(--gdv-texte-sur-accent);
   font-size: var(--gdv-role-meta);
   font-weight: var(--gdv-graisse-moyen);
 }

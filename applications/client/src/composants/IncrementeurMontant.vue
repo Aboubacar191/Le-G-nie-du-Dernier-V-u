@@ -212,8 +212,11 @@ const messageBorne = computed((): string => {
   border-radius: var(--gdv-rayon-moyen);
   background: var(--gdv-surface-secondaire);
   color: var(--gdv-texte-principal);
-  font-family: var(--gdv-famille-interface);
+  /* Le pas porte un nombre signé (« +5 ») : rôle numérique, donc
+     famille.chiffres et largeur tabulaire, et non famille.interface. */
+  font-family: var(--gdv-famille-chiffres);
   font-size: var(--gdv-role-nombre-secondaire);
+  font-variant-numeric: var(--gdv-chiffres-variant);
   cursor: pointer;
   touch-action: none;
   transition: background var(--gdv-duree-rapide) var(--gdv-courbe-standard);

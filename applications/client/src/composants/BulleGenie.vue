@@ -175,9 +175,14 @@ const LIGNES_SQUELETTE = 3;
   font-size: var(--gdv-role-etiquette);
 }
 
+/* Rôle numérique : famille.chiffres et tabular-nums, jamais la serif de titre
+   (typographie.famille._regle_chiffres_jamais_en_serif). Un chiffre qui saute
+   de place pendant une phase de 30 s est une faute de lisibilité. */
 .bulle__valeur {
   margin: 0;
+  font-family: var(--gdv-famille-chiffres);
   font-size: var(--gdv-role-nombre-secondaire);
+  font-variant-numeric: var(--gdv-chiffres-variant);
 }
 
 @media (min-width: 768px) {

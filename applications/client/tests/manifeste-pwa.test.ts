@@ -37,18 +37,29 @@ test('le manifeste PWA déclare ce qu’exige strategie_pwa', () => {
   );
 });
 
-test('les couleurs du manifeste sont des gris neutres (ESC-01 ouverte)', () => {
+// ESC-01 est TRANCHÉE (univers Zafyr) : l'exigence de gris neutre est périmée et
+// remplacée par son contraire utile. Les deux couleurs du manifeste sont les
+// SEULES copies littérales d'un jeton dans tout le client — un manifeste PWA est
+// lu par le système d'exploitation avant tout CSS, il n'accepte ni var() ni
+// requête de média. Une copie littérale non surveillée dérive ; celle-ci est
+// désormais comparée au contrat, et le test échoue si le contrat bouge seul.
+test('les couleurs du manifeste sont celles du contrat de conception', () => {
+  const design = JSON.parse(
+    readFileSync(
+      resolve(PAQUET, '..', '..', '.claude', 'orchestration', 'contrats', 'DESIGN-GDV-001.json'),
+      'utf8',
+    ),
+  ) as { tokens: { couleur: { theme_sombre: Record<string, string> } } };
+  const attendu = design.tokens.couleur.theme_sombre['surface-fond'];
+
   for (const cle of ['theme_color', 'background_color']) {
     const valeur: string = manifeste[cle];
     assert.match(valeur, /^#[0-9a-f]{6}$/i, `${cle} doit être une couleur hexadécimale`);
-    const r = Number.parseInt(valeur.slice(1, 3), 16);
-    const v = Number.parseInt(valeur.slice(3, 5), 16);
-    const b = Number.parseInt(valeur.slice(5, 7), 16);
-    const ecart = Math.max(r, v, b) - Math.min(r, v, b);
-    assert.ok(
-      ecart <= 16,
-      `${cle} = ${valeur} n'est pas neutre (écart RVB ${ecart}) : trancher l'univers ` +
-        `est une décision utilisateur (ESC-01), pas un choix du squelette.`,
+    assert.equal(
+      valeur,
+      attendu,
+      `${cle} doit valoir tokens.couleur.theme_sombre.surface-fond (${String(attendu)}) : ` +
+        `l'écran de démarrage de la PWA précède l'écran de lancement, qui est sombre`,
     );
   }
 });

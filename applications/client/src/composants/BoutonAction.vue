@@ -61,16 +61,22 @@ function annuler(): void {
 onBeforeUnmount(annuler);
 
 function commencer(): void {
-  if (props.desactive || props.chargement) return;
-  if (!props.maintien) {
-    emettre('agir');
-    return;
-  }
+  if (props.desactive || props.chargement || !props.maintien) return;
   enMaintien.value = true;
   minuterie = setTimeout(() => {
     annuler();
     emettre('agir');
   }, DUREES_MS['maintien-confirmation']);
+}
+
+/**
+ * Les actions ordinaires utilisent click : c'est l'événement natif fiable sur
+ * souris, tactile et clavier. Le maintien reste volontairement piloté par les
+ * événements de pointeur pour conserver sa confirmation gestuelle.
+ */
+function agirAuClic(): void {
+  if (props.maintien || props.desactive || props.chargement) return;
+  emettre('agir');
 }
 </script>
 
@@ -85,12 +91,12 @@ function commencer(): void {
       :class="[`bouton--${props.variante}`, `bouton--${props.taille}`, { 'bouton--maintien': enMaintien }]"
       :disabled="props.desactive"
       :aria-busy="props.chargement"
+      @click="agirAuClic"
       @pointerdown="commencer"
       @pointerup="annuler"
       @pointerleave="annuler"
       @keydown.space.prevent="commencer"
       @keyup.space.prevent="annuler"
-      @keydown.enter.prevent="emettre('agir')"
     >
       <span class="bouton__libelle">{{ props.libelle }}</span>
       <!-- Barre indéterminée sous le libellé : le texte n'est jamais remplacé. -->
@@ -174,10 +180,16 @@ function commencer(): void {
   background: var(--gdv-accent-action-actif);
 }
 
+/* Le libellé N'EST PAS en or : couleur._regle_or_jamais_en_texte_courant
+   réserve la famille d'or aux rôles d'affichage (>= 20 px), aux bordures, aux
+   pastilles pleines et aux tracés d'icône. Un libellé de bouton est composé en
+   famille.interface au rôle corps, donc en texte-principal. Conséquence voulue
+   (Von Restorff) : l'aplat d'or du bouton PRINCIPAL reste le seul or actionnable
+   de l'écran, et se repère en moins de trois secondes. */
 .bouton--secondaire {
   border-color: var(--gdv-bordure-champ);
   background: transparent;
-  color: var(--gdv-accent-action);
+  color: var(--gdv-texte-principal);
 }
 
 .bouton--secondaire:hover {

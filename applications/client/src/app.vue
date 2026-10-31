@@ -128,6 +128,12 @@ const nbManches = computed((): number | null => {
   color: var(--gdv-texte-principal);
   font-family: var(--gdv-famille-interface);
   font-size: var(--gdv-role-corps);
+  /* typographie.suivi._regle_corps_sans_suivi : le texte courant, les libellés
+     et TOUS les nombres reçoivent suivi.aucun. Valeur relevée par comptage sur
+     les 15 écrans du prototype, où le texte courant ne porte aucun
+     interlettrage ; un interlettrage positif sur des chiffres tabulaires
+     annulerait par ailleurs le bénéfice de la largeur fixe. */
+  letter-spacing: var(--gdv-suivi-aucun);
 }
 
 .coquille__ecran {

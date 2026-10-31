@@ -13,35 +13,35 @@
 /* --- Thème clair : valeurs par défaut (variables_css.racine) --------------- */
 :root,
 [data-theme='clair'] {
-  --gdv-surface-fond: #F4F5F6;
-  --gdv-surface-primaire: #FFFFFF;
-  --gdv-surface-secondaire: #E9EBED;
-  --gdv-surface-inverse: #1B1E21;
-  --gdv-surface-desactivee: #E2E5E7;
-  --gdv-texte-principal: #16181A;
-  --gdv-texte-secondaire: #596165;
-  --gdv-texte-desactive: #6E767C;
-  --gdv-texte-sur-accent: #FFFFFF;
-  --gdv-texte-sur-inverse: #F7F8F9;
-  --gdv-texte-sur-voile: #FFFFFF;
-  --gdv-accent-action: #333A3F;
-  --gdv-accent-action-survol: #22282C;
-  --gdv-accent-action-actif: #14181B;
-  --gdv-accent-focus: #16181A;
-  --gdv-bordure-structurante: #7D8489;
-  --gdv-bordure-champ: #6F777D;
-  --gdv-bordure-secret: #8A9196;
-  --gdv-secret-voile: #3A4147;
-  --gdv-urgence-calme: #4A5257;
-  --gdv-urgence-tension: #8A5A1E;
-  --gdv-urgence-critique: #9B2F28;
-  --gdv-statut-succes: #1F6B4A;
-  --gdv-statut-echec: #9B2F28;
-  --gdv-statut-avertissement: #8A5A1E;
-  --gdv-statut-info: #2C5570;
-  --gdv-marque-public: #2C5570;
-  --gdv-marque-prive: #3A4147;
-  --gdv-ombre-teinte: rgba(22,24,26,0.12);
+  --gdv-surface-fond: #F4EEDF;
+  --gdv-surface-primaire: #FFFCF5;
+  --gdv-surface-secondaire: #EBE3CF;
+  --gdv-surface-inverse: #15122A;
+  --gdv-surface-desactivee: #E4DCC6;
+  --gdv-texte-principal: #15122A;
+  --gdv-texte-secondaire: #4A4468;
+  --gdv-texte-desactive: #5E5880;
+  --gdv-texte-sur-accent: #FFFCF5;
+  --gdv-texte-sur-inverse: #F4EEDF;
+  --gdv-texte-sur-voile: #FFFCF5;
+  --gdv-accent-action: #6B5A33;
+  --gdv-accent-action-survol: #574826;
+  --gdv-accent-action-actif: #3F3419;
+  --gdv-accent-focus: #2D2852;
+  --gdv-bordure-structurante: #6E6790;
+  --gdv-bordure-champ: #615A82;
+  --gdv-bordure-secret: #A8873C;
+  --gdv-secret-voile: #3A3463;
+  --gdv-urgence-calme: #4A4468;
+  --gdv-urgence-tension: #8A4B1E;
+  --gdv-urgence-critique: #A32C1B;
+  --gdv-statut-succes: #1B6153;
+  --gdv-statut-echec: #A32C1B;
+  --gdv-statut-avertissement: #8A4B1E;
+  --gdv-statut-info: #4A3C9B;
+  --gdv-marque-public: #4A4468;
+  --gdv-marque-prive: #6B5A33;
+  --gdv-ombre-teinte: rgba(21,18,42,0.14);
 
   /* Dimensions, durées, courbes et seuils — indépendants du thème. */
   --gdv-espacement-4: 4px;
@@ -58,9 +58,10 @@
   --gdv-trait-fin: 1px;
   --gdv-trait-moyen: 2px;
   --gdv-trait-epais: 3px;
-  --gdv-famille-interface: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --gdv-famille-interface: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --gdv-famille-titre: 'Cinzel', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
   --gdv-famille-chiffres: ui-monospace, 'SF Mono', 'Segoe UI Mono', 'Roboto Mono', monospace;
-  --gdv-famille-voix-genie: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --gdv-famille-voix-genie: 'Cinzel', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
   --gdv-taille-12: 12px;
   --gdv-taille-14: 14px;
   --gdv-taille-16: 16px;
@@ -81,11 +82,16 @@
   --gdv-graisse-normal: 400;
   --gdv-graisse-moyen: 500;
   --gdv-graisse-gras: 600;
+  --gdv-graisse-tres-gras: 700;
   --gdv-interligne-titre: 1.2;
   --gdv-interligne-courant: 1.5;
+  --gdv-interligne-voix-genie: 1.35;
   --gdv-chiffres-variant: tabular-nums;
   --gdv-mesure-ligne-etroit: 48ch;
   --gdv-mesure-ligne-large: 68ch;
+  --gdv-suivi-titre: 0.03em;
+  --gdv-suivi-surtitre-capitales: 0.08em;
+  --gdv-suivi-aucun: 0;
   --gdv-rayon-aucun: 0;
   --gdv-rayon-discret: 4px;
   --gdv-rayon-moyen: 8px;
@@ -131,44 +137,47 @@
   --gdv-hauteur-zone-maintien-secret: var(--gdv-cible-geante);
   --gdv-hauteur-ligne-tableau: var(--gdv-cible-minimale);
   --gdv-hauteur-carte-joueur: var(--gdv-cible-geante);
+  --gdv-hauteur-badge-lampe: var(--gdv-largeur-badge-lampe);
   --gdv-largeur-pas-incrementeur: var(--gdv-cible-confortable);
   --gdv-largeur-carte-joueur: var(--gdv-cible-geante);
   --gdv-largeur-anneau-minuteur: var(--gdv-cible-minimale);
+  --gdv-largeur-badge-lampe: 192px;
+  --gdv-largeur-glyphe-lampe: 128px;
   --gdv-gouttiere-ecran: var(--gdv-espacement-16);
   --gdv-gouttiere-ecran-large: var(--gdv-espacement-24);
 }
 
 /* --- Thème sombre, demandé explicitement (variables_css.racine_sombre) ---- */
 [data-theme='sombre'] {
-  --gdv-surface-fond: #121416;
-  --gdv-surface-primaire: #1B1F22;
-  --gdv-surface-secondaire: #262B2F;
-  --gdv-surface-inverse: #F2F4F5;
-  --gdv-surface-desactivee: #23272A;
-  --gdv-texte-principal: #F2F4F5;
-  --gdv-texte-secondaire: #A9B1B6;
-  --gdv-texte-desactive: #7E878D;
-  --gdv-texte-sur-accent: #121416;
-  --gdv-texte-sur-inverse: #16181A;
-  --gdv-texte-sur-voile: #F2F4F5;
-  --gdv-accent-action: #C9D1D6;
-  --gdv-accent-action-survol: #DDE3E7;
-  --gdv-accent-action-actif: #AEB6BB;
-  --gdv-accent-focus: #F2F4F5;
-  --gdv-bordure-structurante: #717A7F;
-  --gdv-bordure-champ: #868F95;
-  --gdv-bordure-secret: #868F95;
-  --gdv-secret-voile: #0A0C0D;
-  --gdv-urgence-calme: #A9B1B6;
-  --gdv-urgence-tension: #E0A857;
-  --gdv-urgence-critique: #F08A82;
-  --gdv-statut-succes: #6CC79A;
-  --gdv-statut-echec: #F08A82;
-  --gdv-statut-avertissement: #E0A857;
-  --gdv-statut-info: #8FBEDD;
-  --gdv-marque-public: #8FBEDD;
-  --gdv-marque-prive: #AEB6BB;
-  --gdv-ombre-teinte: rgba(0,0,0,0.48);
+  --gdv-surface-fond: #0B0A18;
+  --gdv-surface-primaire: #15122A;
+  --gdv-surface-secondaire: #221E3D;
+  --gdv-surface-inverse: #F4EEDF;
+  --gdv-surface-desactivee: #1A1730;
+  --gdv-texte-principal: #F4EEDF;
+  --gdv-texte-secondaire: #B9B2D6;
+  --gdv-texte-desactive: #7E77A2;
+  --gdv-texte-sur-accent: #15122A;
+  --gdv-texte-sur-inverse: #15122A;
+  --gdv-texte-sur-voile: #F4EEDF;
+  --gdv-accent-action: #E6B95A;
+  --gdv-accent-action-survol: #F4D28A;
+  --gdv-accent-action-actif: #CFA24B;
+  --gdv-accent-focus: #E6B95A;
+  --gdv-bordure-structurante: #7B74A0;
+  --gdv-bordure-champ: #8F88AE;
+  --gdv-bordure-secret: #E6B95A;
+  --gdv-secret-voile: #06050F;
+  --gdv-urgence-calme: #B9B2D6;
+  --gdv-urgence-tension: #E89A6B;
+  --gdv-urgence-critique: #F0A090;
+  --gdv-statut-succes: #7FD6C4;
+  --gdv-statut-echec: #F0A090;
+  --gdv-statut-avertissement: #E89A6B;
+  --gdv-statut-info: #B8A6F2;
+  --gdv-marque-public: #D9D3EE;
+  --gdv-marque-prive: #E6B95A;
+  --gdv-ombre-teinte: rgba(4,3,12,0.62);
 }
 
 /* --- Thème sombre, préférence système, avant tout réglage local ------------ */
@@ -177,35 +186,35 @@
    que la couleur soit juste dès le premier rendu, sans attendre le script. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --gdv-surface-fond: #121416;
-    --gdv-surface-primaire: #1B1F22;
-    --gdv-surface-secondaire: #262B2F;
-    --gdv-surface-inverse: #F2F4F5;
-    --gdv-surface-desactivee: #23272A;
-    --gdv-texte-principal: #F2F4F5;
-    --gdv-texte-secondaire: #A9B1B6;
-    --gdv-texte-desactive: #7E878D;
-    --gdv-texte-sur-accent: #121416;
-    --gdv-texte-sur-inverse: #16181A;
-    --gdv-texte-sur-voile: #F2F4F5;
-    --gdv-accent-action: #C9D1D6;
-    --gdv-accent-action-survol: #DDE3E7;
-    --gdv-accent-action-actif: #AEB6BB;
-    --gdv-accent-focus: #F2F4F5;
-    --gdv-bordure-structurante: #717A7F;
-    --gdv-bordure-champ: #868F95;
-    --gdv-bordure-secret: #868F95;
-    --gdv-secret-voile: #0A0C0D;
-    --gdv-urgence-calme: #A9B1B6;
-    --gdv-urgence-tension: #E0A857;
-    --gdv-urgence-critique: #F08A82;
-    --gdv-statut-succes: #6CC79A;
-    --gdv-statut-echec: #F08A82;
-    --gdv-statut-avertissement: #E0A857;
-    --gdv-statut-info: #8FBEDD;
-    --gdv-marque-public: #8FBEDD;
-    --gdv-marque-prive: #AEB6BB;
-    --gdv-ombre-teinte: rgba(0,0,0,0.48);
+    --gdv-surface-fond: #0B0A18;
+    --gdv-surface-primaire: #15122A;
+    --gdv-surface-secondaire: #221E3D;
+    --gdv-surface-inverse: #F4EEDF;
+    --gdv-surface-desactivee: #1A1730;
+    --gdv-texte-principal: #F4EEDF;
+    --gdv-texte-secondaire: #B9B2D6;
+    --gdv-texte-desactive: #7E77A2;
+    --gdv-texte-sur-accent: #15122A;
+    --gdv-texte-sur-inverse: #15122A;
+    --gdv-texte-sur-voile: #F4EEDF;
+    --gdv-accent-action: #E6B95A;
+    --gdv-accent-action-survol: #F4D28A;
+    --gdv-accent-action-actif: #CFA24B;
+    --gdv-accent-focus: #E6B95A;
+    --gdv-bordure-structurante: #7B74A0;
+    --gdv-bordure-champ: #8F88AE;
+    --gdv-bordure-secret: #E6B95A;
+    --gdv-secret-voile: #06050F;
+    --gdv-urgence-calme: #B9B2D6;
+    --gdv-urgence-tension: #E89A6B;
+    --gdv-urgence-critique: #F0A090;
+    --gdv-statut-succes: #7FD6C4;
+    --gdv-statut-echec: #F0A090;
+    --gdv-statut-avertissement: #E89A6B;
+    --gdv-statut-info: #B8A6F2;
+    --gdv-marque-public: #D9D3EE;
+    --gdv-marque-prive: #E6B95A;
+    --gdv-ombre-teinte: rgba(4,3,12,0.62);
   }
 }
 

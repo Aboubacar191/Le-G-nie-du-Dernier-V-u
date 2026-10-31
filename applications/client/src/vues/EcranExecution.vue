@@ -32,7 +32,6 @@ import BandeauAlerte from '../composants/BandeauAlerte.vue';
 import BoutonAction from '../composants/BoutonAction.vue';
 import BulleGenie from '../composants/BulleGenie.vue';
 import EtatVide from '../composants/EtatVide.vue';
-import JetonMontant from '../composants/JetonMontant.vue';
 import SqueletteChargement from '../composants/SqueletteChargement.vue';
 import { texte } from '../logique/contenu.ts';
 import { pseudoDe } from '../magasin/etat.ts';
@@ -42,11 +41,7 @@ const magasin = utiliserMagasin();
 const detailDeplie = ref(false);
 
 const resultat = computed(() => magasin.etat.execution);
-const parts = computed(() => resultat.value?.parts ?? []);
 const amendes = computed(() => resultat.value?.amendes_liquidees ?? []);
-const aucuneRedistribution = computed(
-  () => parts.value.length === 0 && amendes.value.length === 0,
-);
 </script>
 
 <template>
@@ -85,42 +80,14 @@ const aucuneRedistribution = computed(
         :phrase="`${texte('ecran.execution.clause_revelee')} — ${texte(`clause.${resultat.clause_revelee}`)} : ${texte(`clause_description.${resultat.clause_revelee}`)}`"
       />
 
-      <!-- Temps 3 : les parts, montant aligné à droite. -->
+      <!-- Temps 3 : seules les informations autorisées par le protocole sont publiques. -->
       <section class="execution__section">
-        <h3 class="execution__titre">
-          {{ texte('ecran.execution.parts') }}
-        </h3>
-
         <EtatVide
-          v-if="aucuneRedistribution"
+          v-if="!resultat.reussi && amendes.length === 0"
           :titre="texte('ecran.execution.rien_redistribue')"
           :action-libelle="texte('ecran.execution.detail_calcul')"
           @agir="detailDeplie = true"
         />
-
-        <ul
-          v-else
-          class="execution__parts"
-        >
-          <li
-            v-for="part in parts"
-            :key="part.joueur_id"
-            class="execution__part"
-          >
-            <span>{{ pseudoDe(magasin.etat, part.joueur_id) }}</span>
-            <span
-              v-if="part.exclu_du_partage"
-              class="execution__exclu"
-            >
-              {{ texte('carte_joueur.exclu_du_partage') }} · {{ texte('ecran.execution.exclu_raison') }}
-            </span>
-            <JetonMontant
-              :valeur="part.part"
-              signe="positif"
-              :etiquette="texte('ecran.execution.parts')"
-            />
-          </li>
-        </ul>
       </section>
 
       <!-- Temps 4 : verdicts et amendes liquidées, publics dès l'EXECUTION. -->
@@ -172,8 +139,6 @@ const aucuneRedistribution = computed(
         <dd>{{ resultat.recompense }}</dd>
         <dt>{{ texte('ecran.execution.clause_revelee') }}</dt>
         <dd>{{ texte(`clause.${resultat.clause_revelee}`) }}</dd>
-        <dt>{{ texte('ecran.execution.reliquat', { montant: resultat.reliquat_non_distribue }) }}</dt>
-        <dd>{{ resultat.reliquat_non_distribue }}</dd>
       </dl>
     </template>
   </section>

@@ -251,7 +251,8 @@ const vainqueurParLiberation = computed((): LigneClassement | null => {
   border: var(--gdv-trait-moyen) solid var(--gdv-bordure-champ);
   border-radius: var(--gdv-rayon-moyen);
   background: transparent;
-  color: var(--gdv-accent-action);
+  /* Rôle étiquette (14 px) : l'or y est explicitement interdit. */
+  color: var(--gdv-texte-principal);
   font-family: var(--gdv-famille-interface);
   font-size: var(--gdv-role-etiquette);
   cursor: pointer;

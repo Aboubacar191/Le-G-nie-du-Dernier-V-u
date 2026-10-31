@@ -19,6 +19,7 @@
 
 import { onMounted, ref } from 'vue';
 
+import BadgeLampe from '../composants/BadgeLampe.vue';
 import BandeauAlerte from '../composants/BandeauAlerte.vue';
 import BoutonAction from '../composants/BoutonAction.vue';
 import EtatVide from '../composants/EtatVide.vue';
@@ -51,10 +52,17 @@ function reprendre(): void {
 <template>
   <main class="accueil">
     <header class="accueil__entete">
-      <h1 class="accueil__titre">
-        {{ texte('commun.titre_application') }}
-      </h1>
-      <IndicateurConnexion :liaison="magasin.etat.liaison" />
+      <!-- La marque, et le seul élément décoratif du contrat. Elle n'est admise
+           QUE sur cet écran et sur l'état de chargement de premier démarrage ;
+           le h1 ci-dessous répète le nom du jeu en texte réel, donc le badge est
+           déclaré aria-hidden pour ne pas l'annoncer deux fois. -->
+      <BadgeLampe :titre-adjacent="true" />
+      <div class="accueil__ligne-titre">
+        <h1 class="accueil__titre">
+          {{ texte('commun.titre_application') }}
+        </h1>
+        <IndicateurConnexion :liaison="magasin.etat.liaison" />
+      </div>
     </header>
 
     <BandeauAlerte
@@ -129,15 +137,30 @@ function reprendre(): void {
 
 .accueil__entete {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gdv-espacement-16);
+}
+
+.accueil__ligne-titre {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--gdv-espacement-12);
+  inline-size: 100%;
 }
 
+/* famille.titre n'est admise que sur titre-ecran, titre-section et voix-genie.
+   L'or y est autorisé : le rôle est à 24 px, bien au-delà des 20 px du seuil
+   de couleur._regle_or_jamais_en_texte_courant. */
 .accueil__titre {
   margin: 0;
+  color: var(--gdv-accent-action);
+  font-family: var(--gdv-famille-titre);
   font-size: var(--gdv-role-titre-ecran);
+  font-weight: var(--gdv-graisse-tres-gras);
   line-height: var(--gdv-interligne-titre);
+  letter-spacing: var(--gdv-suivi-titre);
 }
 
 /* Un seul bouton de variante principale, isolé par espacement.24 de tout autre

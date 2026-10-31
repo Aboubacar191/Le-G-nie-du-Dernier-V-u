@@ -18,8 +18,41 @@
     <meta name="referrer" content="no-referrer" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icones/icone-192.png" />
-    <!-- Gris neutre placeholder, à remplacer à la clôture d'ESC-01. -->
-    <meta name="theme-color" content="#6b7076" />
+
+    <!--
+      Polices embarquées : Cinzel (titres, voix du génie) et DM Sans (interface),
+      SIL Open Font License 1.1. Notices et licences dans
+      /polices/POLICES-LICENCES.txt, distribué AVEC les woff2 comme l'OFL l'exige.
+      Les deux sous-ensembles « latin » sont préchargés parce qu'ils servent sur
+      tous les écrans ; « latin-ext » ne se charge que si un pseudonyme ou un
+      libellé en sort. Les CHIFFRES ne sont jamais préchargés : ils sont composés
+      sur la pile système, donc hors du chemin de chargement des polices.
+    -->
+    <link
+      rel="preload"
+      href="/polices/cinzel-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/polices/dm-sans-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <!--
+      ESC-01 TRANCHÉE — univers Zafyr. Les deux valeurs sont des copies
+      littérales de tokens.couleur.theme_*.surface-fond : l'attribut content
+      d'une balise meta n'accepte ni var() ni jeton, c'est une contrainte de la
+      spécification HTML et non une préférence. La requête de média permet au
+      moins que la couleur de l'interface du navigateur suive le thème, comme le
+      fait jetons.css dès le premier rendu.
+    -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4EEDF" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B0A18" />
     <title>Le Génie du Dernier Vœu</title>
   </head>
   <body>

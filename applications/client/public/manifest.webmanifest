@@ -8,8 +8,9 @@
   "orientation": "portrait",
   "start_url": "/",
   "scope": "/",
-  "theme_color": "#6b7076",
-  "background_color": "#f2f2f3",
+  "_note_couleurs": "ESC-01 TRANCHÉE — univers Zafyr. Ces deux valeurs sont les SEULES copies littérales d'un jeton de couleur dans tout le client, et elles sont inévitables : un manifeste PWA est lu par le système d'exploitation avant tout CSS, il n'accepte donc ni var() ni requête de média. Source unique : DESIGN-GDV-001.json / tokens.couleur.theme_sombre.surface-fond pour les deux. Le thème sombre est retenu parce que l'écran de lancement du prototype est sombre et que l'écran de démarrage de la PWA le précède. Le test manifeste-pwa.test.ts compare ces valeurs au contrat et échoue si le contrat bouge sans que ce fichier suive.",
+  "theme_color": "#0B0A18",
+  "background_color": "#0B0A18",
   "icons": [
     {
       "src": "/icones/icone-192.png",
