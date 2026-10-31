@@ -179,6 +179,17 @@
       "contrepartie": "Le plafond redevient strict. Si une correction échoue trois fois, gel et rapport de blocage, sans quatrième tentative. Et la règle du signal d'alerte reste armée : si une correction échoue pour une raison DIFFÉRENTE de la précédente, je gèle immédiatement au lieu de consommer la troisième.",
       "transparence": "Cette interprétation de ma propre règle est signalée à l'utilisateur dans mon compte rendu, pas appliquée en silence."
     },
+    "chantier_parallele_habillage": {
+      "ouvert_le": "2026-10-29",
+      "declencheur": "ESC-01 tranchée : fidélité au prototype « Zafyr ».",
+      "arbitrage_de_placement": {
+        "objet": "Nouveau nœud S2' DESIGN-THEME, ou intégration dans S5' déjà en cours ?",
+        "decision": "NŒUD DISTINCT S2'. L'application des tokens reste dans S5'.",
+        "motif": "Trois raisons. (1) Le livrable et le propriétaire diffèrent : produire des valeurs de thème est un acte de conception, les appliquer est un acte de développement. (2) Le thème a sa PROPRE validation, et elle est substantielle : les 132 ratios de contraste mesurés au nœud S2 l'ont été sur des tokens neutres tenant 5,9 à 17,8:1. L'indigo et l'or changent CHAQUE ratio, et le designer avait averti que l'or sur indigo plafonne vers 4,5 à 6:1, soit juste au seuil. Ce n'est pas une substitution de valeurs, c'est un recalcul complet. (3) Fondre les deux empêcherait de distinguer, en cas d'échec, un défaut de thème d'un défaut d'application.",
+        "parallelisation": "S2' tourne EN PARALLÈLE du cycle de correction sécurité : il ne touche que des valeurs de tokens dans DESIGN-GDV-001.json, aucun composant, aucun protocole. Aucune collision de fichier avec le backend ni avec l'outillage.",
+        "priorite_assumee": "L'esthétique reste au rang 5 de l'ordre de priorité. En cas de conflit de ressource ou de temps, la sécurité passe devant — le chantier d'habillage n'a pas de valeur si le jeu fuit ses secrets."
+      }
+    },
     "sequence_imposee": [
       {"ordre": 1, "noeud": "S3'", "agent": "tech-lead", "objet": "Décisions de forme contractuelle : ANO-01 et ANO-02 (uniformité du trafic), ANO-07, le test tautologique, et l'arbitrage du préfixe /api. Produit API 1.1.0.", "pourquoi_en_premier": "Cinq des six bloquantes ne sont pas des correctifs mais des DÉCISIONS. Lancer le développement avant serait exactement ce que le QA a recommandé d'éviter."},
       {"ordre": 2, "noeud": "S4'", "agent": "dev-backend", "objet": "ANO-04, ANO-08, ANO-09, ANO-11, ANO-13, plus l'implémentation de l'API 1.1.0 et des RG-24, RG-74, RG-80, RG-81 et de l'étape 16 révisée."},

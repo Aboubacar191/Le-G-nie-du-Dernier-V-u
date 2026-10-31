@@ -422,7 +422,21 @@
     {
       "id": "ESC-01",
       "objet": "Univers et thème visuel (nuit de Zafyr / Mille et une nuits VS ancrage ouest-africain)",
-      "statut": "REPORTEE_VOLONTAIREMENT",
+      "statut": "TRANCHÉE le 2026-10-29 — FIDÉLITÉ AU PROTOTYPE EXISTANT, ambiance « Zafyr ». L'ancrage ouest-africain que le GDD proposait en alternative est ÉCARTÉ. Décision déclarée définitive et non rediscutable.",
+      "provenance": "Relayée par le coordinateur, qui déclare avoir comparé lui-même à l'écran le prototype et l'application codée. Consignée avec sa provenance par rigueur : je ne la réouvre pas, et l'architecture en tokens sémantiques permettrait de la reprendre sans toucher un composant si elle était contredite.",
+      "valeurs_a_reproduire": [
+        "fond indigo profond, quasi noir, avec une teinte violette",
+        "badge circulaire centré, lampe dorée illuminée, fumée mauve ou lavande",
+        "titres en serif dorée élégante — police Cinzel, embarquée dans le HTML source du prototype",
+        "accents dorés sur fond sombre sur l'ensemble du parcours"
+      ],
+      "reference_de_verite_des_valeurs": [
+        "D:\\Le Génie du Dernier Vœu\\reference-prototype\\ (15 écrans décodés)",
+        "D:\\Le Génie du Dernier Vœu\\Le Génie du Dernier Vœu — Prototype mobile.html (source, polices embarquées)"
+      ],
+      "ecart_constate_par_le_coordinateur": "L'application codée n'a AUCUN habillage : fond gris plat, titre sans-serif blanc, aucun logo, aucun accent. Cohérent avec DESIGN-GDV-001 livré en tokens neutres volontairement, mais l'écart visuel est total et non une affaire de teinte.",
+      "contrainte_heritee_du_noeud_S2": "AVERTISSEMENT du designer, formulé AVANT la décision et désormais gouvernant : l'or sur indigo plafonne en pratique vers 4,5 à 6:1, soit juste au seuil, là où les tokens neutres tenaient 5,9 à 17,8:1. L'or doit donc être réservé aux accents de grande taille et aux bordures (seuil 3:1) et JAMAIS au texte courant, qui doit rester quasi blanc. Il recommandait aussi de verrouiller la famille des CHIFFRES sur une pile système à chiffres tabulaires : le jeu est entièrement fait de chiffres lus sous pression en 30 secondes, et une serif calligraphique dégrade leur lisibilité.",
+      "_statut_precedent": "REPORTEE_VOLONTAIREMENT",
       "declencheur": "À poser via AskUserQuestion quand le travail de contenu/UI thématique devient pertinent — pas avant, sur instruction explicite du client.",
       "impact_backend": "Nul : purement thématique et copywriting. Le moteur de jeu n'en dépend pas. Les identifiants de rôles, clauses et révélations sont des clés techniques neutres ; les libellés affichés vivent dans un fichier de contenu séparé."
     }
