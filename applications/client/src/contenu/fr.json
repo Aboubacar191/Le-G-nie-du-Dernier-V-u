@@ -113,6 +113,7 @@
     "ACTION_NON_AUTORISEE_ROLE": "Le génie ne t'accorde pas ce pouvoir. Fais un transfert simple à la place.",
     "ACTION_RESERVEE_HOTE": "Seul l'hôte peut faire cela. Demande-le-lui à voix haute.",
     "SOLDE_INSUFFISANT": "Ton or ne suffit pas. Choisis un montant plus petit.",
+    "PRET_INDISPONIBLE": "Ce prêt n'est plus disponible. Reprends la négociation autrement.",
     "QUOTA_DEPASSE": "Tu as déjà utilisé cette possibilité cette manche.",
     "JETON_INVALIDE": "Le génie ne te reconnaît pas. Demande le code à l'hôte et rejoins la partie.",
     "JETON_ABSENT": "Le génie ne te reconnaît pas. Demande le code à l'hôte et rejoins la partie.",
@@ -335,7 +336,10 @@
       "creer": "Créer une partie",
       "reprendre": "Reprendre ma partie",
       "serveur_injoignable": "Le génie ne répond pas. Vérifie que ton téléphone est sur le même réseau, puis réessaie.",
-      "nominal": "Crée une partie, ou rejoins celle de ton hôte."
+      "nominal": "Crée une partie, ou rejoins celle de ton hôte.",
+      "lancement_accroche": "Un jeu de bluff entre marchands cupides",
+      "lancement_invite": "Touche pour frotter la lampe",
+      "lancement_effectif": "5 à 8 joueurs · même pièce · un téléphone chacun"
     },
     "creation": {
       "titre": "Créer une partie",

@@ -49,6 +49,16 @@ const sonde = utiliserSondeSante();
 const chargement = ref(true);
 const jetonPresent = ref(false);
 
+// ECR-01 Accueil s'ouvre désormais sur l'écran A · Lancement du prototype :
+// badge, titre, accroche, invite tactile — aucun bouton, exactement comme la
+// référence. Un tapotement n'importe où révèle le contenu existant (Rejoindre
+// / Créer / réglages). Non persisté à dessein : « Lancement de l'appli »
+// rejoue à chaque ouverture, pas seulement à la première.
+const lancementFranchi = ref(false);
+function franchirLancement(): void {
+  lancementFranchi.value = true;
+}
+
 /** Seul l'état MESURÉ « injoignable » bloque. « inconnu » ne bloque rien. */
 const serveurInjoignable = computed(() => sonde.etat.value === 'injoignable');
 const raisonIndisponible = computed(() =>
@@ -68,7 +78,47 @@ function reprendre(): void {
 </script>
 
 <template>
-  <main class="accueil">
+  <!-- ECR-01-A · Lancement — reproduit à l'identique de
+       reference-prototype/a-lancement-de-l-appli.ecran.html : badge, titre,
+       accroche, trois pastilles (portées par BadgeLampe), invite tactile,
+       effectif. AUCUN bouton sur cet écran, comme dans la référence : toute la
+       surface est une seule cible de tapotement (le prototype l'exprime par un
+       <a> englobant ; ici un <button> plein, pour garder un élément natif
+       accessible au clavier sans rôle ARIA à maintenir à la main). -->
+  <main
+    v-if="!lancementFranchi"
+    class="accueil accueil--lancement"
+  >
+    <button
+      type="button"
+      class="accueil__lancement"
+      :aria-label="texte('ecran.accueil.lancement_invite')"
+      @click="franchirLancement"
+    >
+      <BadgeLampe :titre-adjacent="true" />
+      <div class="accueil__bloc-titre">
+        <h1 class="accueil__titre">
+          {{ texte('commun.titre_application') }}
+        </h1>
+        <p class="accueil__accroche">
+          {{ texte('ecran.accueil.lancement_accroche') }}
+        </p>
+      </div>
+      <p class="accueil__invite">
+        {{ texte('ecran.accueil.lancement_invite') }}
+      </p>
+      <p class="accueil__effectif">
+        {{ texte('ecran.accueil.lancement_effectif') }}
+      </p>
+    </button>
+  </main>
+
+  <!-- ECR-01-C · Accueil — le contenu existant (Rejoindre / Créer / réglages),
+       révélé après le tapotement sur l'écran de lancement. -->
+  <main
+    v-else
+    class="accueil"
+  >
     <header class="accueil__entete">
       <!-- La marque, et le seul élément décoratif du contrat. Elle n'est admise
            QUE sur cet écran et sur l'état de chargement de premier démarrage ;
@@ -154,6 +204,63 @@ function reprendre(): void {
   padding: var(--gdv-gouttiere-ecran);
   background: var(--gdv-surface-fond);
   color: var(--gdv-texte-principal);
+}
+
+/* ECR-01-A · Lancement — mise en page de reference-prototype/
+   a-lancement-de-l-appli.ecran.html, rendue avec les jetons d'espacement
+   existants les plus proches de ses valeurs (aucun jeton n'est créé ici). */
+.accueil--lancement {
+  padding: 0;
+}
+
+.accueil__lancement {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gdv-espacement-24);
+  inline-size: 100%;
+  min-block-size: 100vh;
+  padding: var(--gdv-espacement-48) var(--gdv-espacement-32);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.accueil__lancement:focus-visible {
+  outline: var(--gdv-trait-moyen) solid var(--gdv-accent-focus);
+  outline-offset: calc(-1 * var(--gdv-espacement-8));
+}
+
+.accueil__bloc-titre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gdv-espacement-8);
+}
+
+.accueil__accroche {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-etiquette);
+  line-height: var(--gdv-interligne-courant);
+}
+
+.accueil__invite {
+  margin: 0;
+  color: var(--gdv-texte-principal);
+  font-size: var(--gdv-role-etiquette);
+  letter-spacing: var(--gdv-suivi-titre);
+}
+
+.accueil__effectif {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
 }
 
 .accueil__entete {
