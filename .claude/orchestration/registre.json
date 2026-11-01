@@ -343,6 +343,33 @@
     }
   ],
 
+  "demandes_en_attente": [
+    {
+      "id": "DEM-01",
+      "objet": "Sélecteur de couleur d'avatar (6 nuances au prototype, écran B), à intégrer À CÔTÉ du champ pseudo existant dans ECR-02 (création) et ECR-05 (rejoindre). Pas un écran séparé : le pseudo y est déjà capturé.",
+      "origine": "Demande utilisateur, relayée le 2026-10-29.",
+      "statut": "ACCEPTÉE, PLANIFIÉE APRÈS LE CYCLE DE SÉCURITÉ",
+      "arbitrage_rendu": {
+        "question": "La couleur doit-elle voyager au serveur — nouveau champ du contrat API, visible aux autres joueurs — ou rester un choix purement local et cosmétique ?",
+        "verification_faite_avant_de_decider": "J'ai vérifié ce qui distingue déjà les joueurs : CarteJoueurCercle ne porte QUE le pseudo, la position dans le cercle et l'état de connexion, avec un commentaire explicite indiquant qu'elle ne transporte que des données publiques de matrice_visibilite. Aucune notion d'avatar ni de couleur n'existe nulle part.",
+        "decision": "LOCAL UNIQUEMENT en v1. Aucun champ ajouté au contrat API, aucune persistance serveur, aucune visibilité pour les autres joueurs.",
+        "motifs": [
+          "Le GDD ne lui donne AUCUN rôle de jeu — c'est de la personnalisation de première ouverture, pas un signal de jeu.",
+          "L'identification visuelle qu'une couleur partagée apporterait est déjà résolue autrement, et mieux : les joueurs sont PHYSIQUEMENT présents dans la même pièce, et le designer a imposé que la disposition affichée du cercle corresponde à la disposition réelle de la table, le voisin de gauche apparaissant à gauche. Le pseudo et la position suffisent donc, et ils sont ancrés dans le réel.",
+          "Ajouter un attribut public par joueur pendant un cycle de sécurité NON RÉSOLU élargirait la surface du protocole au pire moment : il faudrait une annotation de visibilité, une charge neutre, une prise en compte dans le remplissage, et une PREUVE DE NON-INVERSIBILITÉ au titre de RG-81 — pour un gain de jeu nul.",
+          "Le coût d'un retour en arrière est asymétrique : passer de local à partagé plus tard est une addition simple ; retirer un champ public du protocole une fois que des clients en dépendent est une rupture de compatibilité."
+        ],
+        "condition_de_reexamen": "Si un playtest réel montre que les joueurs confondent les cartes, notamment à 8 joueurs. La décision serait alors reprise comme une addition au contrat, avec sa preuve de non-inversibilité."
+      },
+      "sequence_prescrite": [
+        "1. ux-ui-designer : ajouter la palette au contrat de conception — 6 jetons de couleur nommés par intention, avec leurs ratios de contraste mesurés si la couleur sert de fond à l'initiale du pseudo comme au prototype. Sans cela, le test de zéro valeur littérale interdit toute couleur en dur dans un composant, et il a raison.",
+        "2. propagation par le compilateur de jetons.",
+        "3. dev-frontend : câbler le sélecteur dans ECR-02 et ECR-05, avec persistance locale par appareil."
+      ],
+      "priorite_assumee": "Après le cycle de correction sécurité. L'habillage est au rang 5, la non-fuite au rang 1, et le verdict produit est encore REJETÉ."
+    }
+  ],
+
   "dette_assumee_produit": [
     {
       "id": "DETTE-05",
