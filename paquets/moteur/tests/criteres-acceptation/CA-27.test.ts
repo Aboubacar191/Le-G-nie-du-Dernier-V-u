@@ -83,7 +83,10 @@ test('CA-27 : chacun apprend sa consolation par son canal PRIVÉ de solde', () =
   table.declarerEtPayer(PAIEMENTS);
   table.allerA('EXECUTION');
 
-  const soldes = table.tramesDe('J0', 'solde_mis_a_jour');
+  // RUP-02 : le lot part aux six, charge neutre {} pour qui n'a rien reçu. La
+  // consolation s'apprend donc dans la dernière charge PLEINE, et nulle part
+  // ailleurs — c'est le canal privé que RG-74 désigne comme le seul licite.
+  const soldes = table.tramesPleinesDe('J0', 'solde_mis_a_jour');
   assert.ok(soldes.length >= 1);
   const derniere = soldes[soldes.length - 1];
   const mouvements = (derniere?.charge.derniers_mouvements as { elements: { motif: string }[] })

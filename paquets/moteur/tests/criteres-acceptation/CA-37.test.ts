@@ -20,8 +20,11 @@ test('CA-37 : le mode avancé s’ouvre après la manche 5, en phase DV_PROPOSIT
 
 test('CA-37 : la proposition est PRIVÉE et porte le montant lu dans la configuration', () => {
   const { table } = allerAuDernierVoeu();
+  // RUP-02 : la proposition est émise joueur par joueur et chaque effet part
+  // aux N — chacun reçoit donc N trames, dont UNE SEULE est pleine : la sienne.
+  // C'est ce qui rend le dénombrement muet.
   for (const joueur of table.joueurs) {
-    const propositions = table.tramesDe(joueur, 'dernier_voeu_propose');
+    const propositions = table.tramesPleinesDe(joueur, 'dernier_voeu_propose');
     assert.equal(propositions.length, 1);
     assert.equal(propositions[0]?.charge.montant_propose, 15);
     assert.deepEqual(Object.keys(propositions[0]?.charge ?? {}).sort(), [

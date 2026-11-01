@@ -108,7 +108,16 @@ test('cas limite 15 — aucun gabarit de révélation éligible sur une manche',
     [0, 0],
   ]);
   assert.deepEqual(candidatsEligibles(duo.etat, duo.manche(1)), []);
-  assert.equal(duo.trames.filter((trame) => trame.type === 'revelation').length, 0);
+
+  // RUP-02 / CA-15 : la trame part désormais à CHAQUE manche, éligible ou non.
+  // Son ABSENCE révélait la condition qui la déclenche, c'est-à-dire l'état de
+  // l'ensemble des suspects (RG-81) ; sa charge est la variante neutre
+  // {numero_manche}, et le génie n'invente toujours aucun énoncé.
+  const revelations = duo.trames.filter((trame) => trame.type === 'revelation');
+  assert.equal(revelations.length, duo.joueurs.length, 'une trame par joueur, toujours');
+  for (const trame of revelations) {
+    assert.deepEqual(Object.keys(trame.charge), ['numero_manche']);
+  }
 });
 
 test('cas limite 16 — déconnexion pendant le paiement puis reconnexion après expiration', () => {

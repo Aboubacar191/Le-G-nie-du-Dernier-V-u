@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { Table } from '../aide/table.ts';
+import { estChargePleine, Table } from '../aide/table.ts';
 
 function enNegociation(): Table {
   return new Table({ joueurs: 6, graine: 'ca-33' }).demarrer().allerA('NEGOCIATION');
@@ -60,11 +60,22 @@ test('CA-33 : le prêt n’est visible que du prêteur et de l’emprunteur', ()
   table.imposerRole('J0', 'PRETEUR');
   table.exiger('J0', 'proposer_pret', { emprunteur_joueur_id: 'J1', principal: 4 });
 
+  // RUP-02 / RG-80 : la trame part aux SIX. Sa seule présence disait « un prêt
+  // existe », donc que l'un des deux détient le rôle PRETEUR, qui est secret —
+  // et le dénombrement suffisait à le lire. Ce qui reste restreint aux deux
+  // parties, c'est la charge PLEINE.
   const proposes = table.trames.filter((trame) => trame.type === 'pret_propose');
-  assert.deepEqual([...new Set(proposes.map((trame) => trame.destinataire))].sort(), [
-    'J0',
-    'J1',
-  ]);
+  assert.deepEqual(
+    [...new Set(proposes.map((trame) => trame.destinataire))].sort(),
+    [...table.joueurs].sort(),
+  );
+  assert.deepEqual(
+    [...new Set(proposes.filter(estChargePleine).map((trame) => trame.destinataire))].sort(),
+    ['J0', 'J1'],
+  );
+  for (const trame of proposes.filter((candidate) => !estChargePleine(candidate))) {
+    assert.deepEqual(Object.keys(trame.charge), [], 'la charge neutre de EvtPretPropose est {}');
+  }
 });
 
 test('CA-33 : un prêt proposé à un autre ne peut pas être accepté par un tiers (CA-44)', () => {

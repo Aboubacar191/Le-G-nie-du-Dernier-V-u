@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { tableEnDeclaration, type Table } from '../aide/table.ts';
+import { estChargePleine, tableEnDeclaration, type Table } from '../aide/table.ts';
 
 /** Enquêteur à exactement 2 pièces : il a déclaré 10 et payé 10. */
 function tableAvecEnqueteurA2Pieces(): Table {
@@ -32,20 +32,37 @@ test('CA-19 : l’enquête coûte 2, le solde tombe à 0, le résultat est le pa
   table.exiger('J0', 'lancer_enquete', { cible_joueur_id: 'J1' });
 
   assert.equal(table.solde('J0'), 0);
-  const resultats = table.tramesDe('J0', 'resultat_enquete');
+  const resultats = table.tramesPleinesDe('J0', 'resultat_enquete');
   assert.equal(resultats.length, 1);
   assert.equal(resultats[0]?.charge.cible_joueur_id, 'J1');
   assert.equal(resultats[0]?.charge.montant_paye, 2, 'J1 a réellement payé 2');
   assert.equal(resultats[0]?.charge.montant_declare, 5);
   assert.equal(resultats[0]?.charge.cout_paye, 2);
 
-  // Aucune trame n'est partie vers la cible ni vers la table.
+  // RUP-02 / RG-80 — ANO-02, mesurée, portait précisément sur ce dénombrement :
+  // « trames resultat_enquete par joueur = {J3:1, autres 0} » trahissait
+  // l'enquêteur par son seul volume. Les trames partent donc désormais aux SIX
+  // joueurs, et l'assertion d'origine — « aucune trame n'est partie vers la
+  // cible ni vers la table » — est devenue le défaut lui-même. Ce qui est
+  // vérifié à sa place est plus fort : la table reçoit la MÊME FORME, et le
+  // CONTENU ne va qu'à l'enquêteur.
   const nouvelles = table.trames.slice(avant);
+  for (const type of new Set(nouvelles.map((trame) => trame.type))) {
+    const destinataires = nouvelles
+      .filter((trame) => trame.type === type)
+      .map((trame) => trame.destinataire);
+    assert.deepEqual(
+      [...new Set(destinataires)].sort(),
+      [...table.joueurs].sort(),
+      `la trame ${type} n’est pas partie à tous : son dénombrement désigne un acteur`,
+    );
+  }
   for (const trame of nouvelles) {
-    assert.equal(
-      trame.destinataire,
-      'J0',
-      `une trame ${trame.type} est partie vers ${trame.destinataire}`,
+    if (trame.destinataire === 'J0') continue;
+    assert.ok(
+      !estChargePleine(trame),
+      `${trame.type} apprend quelque chose à ${trame.destinataire} : ` +
+        `${JSON.stringify(Object.keys(trame.charge))}`,
     );
   }
 });
@@ -56,9 +73,14 @@ test('CA-19 : la cible n’apprend JAMAIS qu’elle a été enquêtée, même à
   table.allerA('EXECUTION');
   table.expirer();
 
-  // La cible ne reçoit aucune trame de résultat, et aucune trame reçue par elle
-  // ne porte un champ de l'entité enquetes.
-  assert.equal(table.tramesDe('J1', 'resultat_enquete').length, 0);
+  // La cible reçoit la trame — elle part à tous — mais sa charge est la charge
+  // NEUTRE déclarée au contrat, {numero_manche}, qui est une donnée publique.
+  // Le secret de RG-27 n'est plus protégé par l'ABSENCE de trame, qui était
+  // elle-même l'information, mais par le contenu.
+  assert.equal(table.tramesPleinesDe('J1', 'resultat_enquete').length, 0);
+  for (const trame of table.tramesNeutresDe('J1', 'resultat_enquete')) {
+    assert.deepEqual(Object.keys(trame.charge), ['numero_manche']);
+  }
   const INTERDITS = [
     'cout_paye',
     'resultat_montant_paye',
