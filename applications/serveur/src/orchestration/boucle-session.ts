@@ -57,17 +57,29 @@ export class BoucleSession {
   }
 
   /**
-   * Projette un effet vers CHAQUE joueur de la session, individuellement.
-   * projeterEvenement rend null pour qui n'est pas destinataire : le transport
-   * n'a donc aucune décision à prendre, et c'est précisément le but.
+   * Projette un effet vers CHAQUE joueur de la session, individuellement, puis
+   * émet les N trames en UN LOT (RUP-02).
+   *
+   * La boucle de projection est inchangée et reste la garantie de RG-01 : N
+   * appels à projeterEvenement, N charges recalculées, jamais un objet partagé.
+   * Ce qui change, c'est qu'un destinataire hors classe reçoit désormais la
+   * CHARGE NEUTRE au lieu de rien — et que les N trames partent avec le même
+   * numéro de séquence, la même taille et dans le même tour de boucle.
+   *
+   * `null` ne signifie plus « pas destinataire » mais « aucune trame ne part » :
+   * les trois seuls cas sont un joueur hors session, un effet inapplicable à
+   * l'état (personne ne le reçoit, le dénombrement reste donc égal) et les deux
+   * exemptions de la liste fermée du contrat.
    */
   private emettre(etat: EtatSession, effets: readonly Effet[], idCorrelation?: string): void {
     for (const effet of effets) {
+      const lot: { joueur_id: string; charge: Readonly<Record<string, unknown>> }[] = [];
       for (const joueur of etat.joueurs) {
         const charge = projeterEvenement(etat, effet, joueur.id);
         if (charge === null) continue;
-        this.diffuseur.envoyerA(joueur.id, effet.type, charge, idCorrelation ?? null);
+        lot.push({ joueur_id: joueur.id, charge });
       }
+      this.diffuseur.envoyerLot(etat.session_id, effet.type, lot, idCorrelation ?? null);
     }
   }
 
@@ -115,15 +127,82 @@ export class BoucleSession {
     });
     if (!resultat.ok) return compte;
 
-    this.diffuseur.envoyerA(
-      auteur,
-      'accuse_reception',
-      { id_correlation: idCorrelation, type_commande: type, accepte: true },
-      idCorrelation,
-    );
+    this.emettreAccuse(partie, auteur, type, idCorrelation);
     this.emettre(resultat.etat, resultat.effets);
     this.poursuivre(partie);
     return compte;
+  }
+
+  /**
+   * Accusé de réception — RUP-02 : émis à TOUS, charge neutre pour les N−1.
+   *
+   * Sa présence disait « ce joueur a émis une commande dans cette phase ». En
+   * phase ENQUETES_ACCUSATIONS, un joueur qui n'a pas accusé publiquement et qui
+   * a néanmoins reçu un accusé a enquêté : c'est exactement le bit que RG-27
+   * protège. Et c'est l'UN DES TROIS contributeurs du profil 28 contre 25 mesuré
+   * par le QA à ANO-02 — les deux autres étant resultat_enquete et
+   * solde_mis_a_jour. Uniformiser les deux derniers seuls n'aurait PAS fermé la
+   * fuite.
+   *
+   * L'accusé n'est plus construit à la main ici : il passe par la projection,
+   * comme tout le reste. Un second endroit où composer une charge serait un
+   * second endroit où oublier la charge neutre.
+   */
+  emettreAccuse(
+    partie: Partie,
+    auteur: string,
+    type: string,
+    idCorrelation: string,
+  ): void {
+    this.emettre(
+      partie.etat,
+      [
+        {
+          type: 'accuse_reception',
+          auteur_joueur_id: auteur,
+          id_correlation: idCorrelation,
+          type_commande: type,
+        },
+      ],
+      idCorrelation,
+    );
+  }
+
+  /**
+   * Refus — RUP-02 : émis à TOUS, hors les cinq codes de protocole, charge
+   * neutre pour les N−1.
+   *
+   * Sa présence disait « ce joueur a TENTÉ un acte, y compris secret, et a été
+   * refusé » : SOLDE_INSUFFISANT sur une enquête, QUOTA_DEPASSE sur une seconde
+   * enquête. Chacun des refus de jeu peut sanctionner un acte SECRET, et c'est
+   * pourquoi la liste des exemptions est si courte.
+   *
+   * L'exemption n'est pas décidée ici : elle est portée par la projection, qui
+   * lit x-emission et la liste fermée du contrat. Cette méthode émet un lot sans
+   * savoir si le code est exempté ; si la projection rend null pour tous, le lot
+   * est vide et rien ne part — c'est alors au transport d'écrire la trame
+   * unitaire.
+   */
+  emettreRefus(
+    partie: Partie,
+    auteur: string,
+    code: string,
+    message: string,
+    idCorrelation: string | null,
+  ): void {
+    this.emettre(
+      partie.etat,
+      [
+        {
+          type: 'erreur',
+          auteur_joueur_id: auteur,
+          code,
+          message,
+          id_correlation: idCorrelation,
+        },
+      ],
+      idCorrelation ?? undefined,
+    );
   }
 
   /** Expiration d'un minuteur : la seule façon dont le temps fait avancer la partie. */

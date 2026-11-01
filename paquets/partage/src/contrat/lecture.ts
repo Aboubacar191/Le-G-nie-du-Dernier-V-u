@@ -28,12 +28,18 @@ export interface SchemaContrat {
   readonly maximum?: number;
   readonly $ref?: string;
   readonly 'x-visibilite'?: string;
+  readonly 'x-emission'?: string;
+  readonly 'x-charge-neutre'?: readonly string[];
+  readonly 'x-charge-par-destinataire'?: Readonly<Record<string, readonly string[]>>;
 }
 
 interface ContratApi {
   readonly info: { readonly version: string };
   readonly servers?: readonly { readonly url?: string }[];
   readonly components: { readonly schemas: Readonly<Record<string, SchemaContrat>> };
+  readonly 'x-temps-reel'?: {
+    readonly canal?: Readonly<Record<string, unknown>>;
+  };
 }
 
 export const CONTRAT_API = contratBrut as unknown as ContratApi;
@@ -96,6 +102,59 @@ export function resoudreRef(ref: string): SchemaContrat {
 }
 
 // -----------------------------------------------------------------------------
+// RUP-03 — paramètres de taille du canal, LUS dans x-temps-reel.canal.
+//
+// « La TAILLE d'une trame est observable même sous TLS. Une charge vide de 12
+//   octets face à une charge pleine de 300 octets laisse fuir exactement le bit
+//   que l'émission à tous prétendait masquer. »
+//
+// Les deux valeurs sont dérivées et non recopiées : un palier codé en dur dans
+// le transport et un autre au contrat dériveraient, et la divergence ne se
+// verrait sur aucune porte — la taille n'a pas de schéma qui la valide.
+// -----------------------------------------------------------------------------
+
+function entierDuCanal(cle: string): number {
+  const valeur = CONTRAT_API['x-temps-reel']?.canal?.[cle];
+  if (typeof valeur !== 'number' || !Number.isInteger(valeur) || valeur <= 0) {
+    throw new Error(
+      `API-GDV-001.json : x-temps-reel.canal.${cle} absent ou non entier positif. ` +
+        `Aucune valeur de repli n'est admise : un palier par défaut annulerait RUP-03 ` +
+        `sans qu'aucune porte ne le voie.`,
+    );
+  }
+  return valeur;
+}
+
+/** Palier de remplissage des trames sortantes, en octets (RG-80, RUP-03). */
+export const PALIER_TAILLE_OCTETS: number = entierDuCanal('palier_taille_octets');
+
+/** Plafond d'une trame SORTANTE, remplissage compris (RUP-03). */
+export const TAILLE_MAX_TRAME_SORTANTE_OCTETS: number = entierDuCanal(
+  'taille_max_trame_sortante_octets',
+);
+
+/**
+ * La compression est INTERDITE, et c'est une exigence de SÉCURITÉ depuis 1.1.0
+ * et non plus une absence de gain : appliquée APRÈS remplissage, elle rendrait
+ * la taille compressée fonction du CONTENU — une charge neutre faite de 1000
+ * octets de remplissage se comprime beaucoup mieux qu'une charge pleine
+ * complétée à la même taille, et l'écart de taille sur le fil réapparaîtrait.
+ *
+ * La valeur est LUE pour que le transport puisse l'opposer à sa propre
+ * configuration : une porte qui compare deux littéraux ne prouve rien.
+ */
+export const COMPRESSION_CANAL: string = (() => {
+  const valeur = CONTRAT_API['x-temps-reel']?.canal?.compression;
+  if (typeof valeur !== 'string' || valeur.length === 0) {
+    throw new Error('API-GDV-001.json : x-temps-reel.canal.compression absent.');
+  }
+  return valeur;
+})();
+
+/** La compression de trame est-elle autorisée par le contrat ? Non, jamais. */
+export const COMPRESSION_AUTORISEE: boolean = !COMPRESSION_CANAL.startsWith('aucune');
+
+// -----------------------------------------------------------------------------
 // Nommage : type sur le fil (snake_case) → nom de schéma (CmdXxx / EvtXxx).
 // « Aucune autre forme n'est admise » (ARCHI standards.nommage_messages) : la
 // conversion est donc mécanique, et un schéma manquant ferme la porte.
@@ -151,6 +210,73 @@ export const VISIBILITE_BRUTE_PAR_EVENEMENT: Readonly<Record<TypeEvenement, stri
   Object.freeze(
     Object.fromEntries(TYPES_EVENEMENT.map((type) => [type, lireVisibilite(type)])),
   ) as Readonly<Record<TypeEvenement, string>>;
+
+// -----------------------------------------------------------------------------
+// RG-80 / RUP-02 — x-emission, x-charge-neutre, x-charge-par-destinataire.
+//
+// x-visibilite gouverne CE QUE contient une trame ; x-emission gouverne À QUI,
+// QUAND et EN QUELLE TAILLE elle part. Les deux sont normatifs. Les six fuites
+// de l'audit du nœud S6 ont toutes franchi une porte de visibilité verte :
+// aucune ne passait par un champ, toutes passaient par la FORME.
+//
+// Comme pour x-visibilite, rien n'est recopié : tout est LU. Une annotation
+// absente ferme la porte au chargement du module — c'était le défaut réel de
+// l'API 1.1.0, neuf schémas sur trente sans x-emission, que personne n'a vu.
+// -----------------------------------------------------------------------------
+
+function lireEmission(type: TypeEvenement): string {
+  const nom = NOM_SCHEMA_PAR_EVENEMENT[type];
+  const emission = schemaContrat(nom)['x-emission'];
+  if (typeof emission !== 'string' || emission.length === 0) {
+    throw new Error(
+      `API-GDV-001.json : ${nom} ne porte pas d'annotation x-emission. ` +
+        `Aucun mode par défaut n'est admis : une émission que personne n'a décidée est ` +
+        `exactement le défaut que RG-80 ferme.`,
+    );
+  }
+  return emission;
+}
+
+export const EMISSION_BRUTE_PAR_EVENEMENT: Readonly<Record<TypeEvenement, string>> = Object.freeze(
+  Object.fromEntries(TYPES_EVENEMENT.map((type) => [type, lireEmission(type)])),
+) as Readonly<Record<TypeEvenement, string>>;
+
+/**
+ * Champs de la charge NEUTRE, celle que reçoit un destinataire hors classe.
+ * `null` quand le schéma n'en déclare pas — soit il est exempté, soit sa charge
+ * est identique pour tous et il n'existe aucun non-destinataire.
+ *
+ * Un tableau VIDE et `null` ne sont pas la même chose : `[]` signifie « la
+ * charge neutre est l'objet vide », `null` signifie « il n'y a pas de charge
+ * neutre ». Confondre les deux ferait émettre {} là où rien ne doit partir.
+ */
+export const CHARGE_NEUTRE_PAR_EVENEMENT: Readonly<
+  Record<TypeEvenement, readonly string[] | null>
+> = Object.freeze(
+  Object.fromEntries(
+    TYPES_EVENEMENT.map((type) => {
+      const brut = schemaContrat(NOM_SCHEMA_PAR_EVENEMENT[type])['x-charge-neutre'];
+      return [type, brut === undefined ? null : Object.freeze([...brut])];
+    }),
+  ),
+) as Readonly<Record<TypeEvenement, readonly string[] | null>>;
+
+/**
+ * Variantes de charge nommées (x-charge-par-destinataire). Un seul schéma en
+ * porte aujourd'hui, EvtPretPreleve, et c'est ADR-TL-22 / ANO-07 : le prêteur
+ * reçoit une charge RÉDUITE, parce que la conjonction montant_preleve et
+ * reliquat_du livre le solde EXACT de l'emprunteur.
+ */
+export const VARIANTES_CHARGE_PAR_EVENEMENT: Readonly<
+  Record<TypeEvenement, Readonly<Record<string, readonly string[]>> | null>
+> = Object.freeze(
+  Object.fromEntries(
+    TYPES_EVENEMENT.map((type) => {
+      const brut = schemaContrat(NOM_SCHEMA_PAR_EVENEMENT[type])['x-charge-par-destinataire'];
+      return [type, brut === undefined ? null : Object.freeze({ ...brut })];
+    }),
+  ),
+) as Readonly<Record<TypeEvenement, Readonly<Record<string, readonly string[]>> | null>>;
 
 /** Champs DÉCLARÉS au contrat pour un événement — base de la propriété (P-a). */
 export const CHAMPS_DECLARES_PAR_EVENEMENT: Readonly<Record<TypeEvenement, readonly string[]>> =

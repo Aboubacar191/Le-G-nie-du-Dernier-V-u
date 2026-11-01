@@ -72,10 +72,25 @@ test('CA-15 : si aucun gabarit n’est éligible, seul l’écart total est publ
     [0, 0],
   ]);
   assert.deepEqual(candidatsEligibles(duo.etat, duo.manche(1)), []);
-  assert.equal(
-    duo.trames.filter((trame) => trame.type === 'revelation').length,
-    0,
-    'le génie n’invente jamais un énoncé de remplacement',
-  );
+
+  // RUP-02 / x-emission = uniforme_par_manche. La trame revelation est émise à
+  // CHAQUE manche, éligible ou non, mais sa charge est alors la variante neutre
+  // {numero_manche} : le génie n'invente TOUJOURS aucun énoncé de remplacement.
+  //
+  // Ce que la rupture change : l'ABSENCE de la trame révélait la CONDITION qui
+  // la déclenche, c'est-à-dire l'état de l'ensemble des suspects (RG-81). RG-80
+  // énonce de son côté qu'un champ ne peut pas être publié dans certaines
+  // manches et omis dans d'autres. Le coût de la fermeture étant nul, elle est
+  // faite — et c'est ici qu'elle se mesure.
+  const revelations = duo.trames.filter((trame) => trame.type === 'revelation');
+  assert.equal(revelations.length, duo.joueurs.length, 'une trame par joueur, toujours');
+  for (const trame of revelations) {
+    assert.deepEqual(
+      Object.keys(trame.charge),
+      ['numero_manche'],
+      'aucun énoncé de remplacement : la charge est la variante neutre',
+    );
+    assert.equal(trame.charge.revelation, undefined);
+  }
   assert.ok(duo.trames.some((trame) => trame.type === 'revelation_ecart_total'));
 });

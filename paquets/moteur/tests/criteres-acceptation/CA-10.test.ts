@@ -100,16 +100,43 @@ test('CA-10 : le payeur lui-même ne reçoit aucun montant dans paiement_enregis
   assert.deepEqual(Object.keys(accuses[0]?.charge ?? {}).sort(), ['enregistre', 'numero_manche']);
 });
 
-test('CA-10 : aucun autre joueur ne reçoit paiement_enregistre', () => {
+/**
+ * RUP-02 — le critère est RENFORCÉ, pas affaibli.
+ *
+ * Auparavant : « aucun autre joueur ne reçoit paiement_enregistre ». C'était
+ * vrai du CONTENU et FAUX de la forme — la trame n'était émise qu'au payeur,
+ * donc son existence même disait QUI avait payé. CONF-12 avait explicitement
+ * refusé toute pastille publique « a payé », au motif que « savoir QUI a déjà
+ * payé renseignerait sur le comportement de la table » ; la présence de la trame
+ * reconstituait ce compteur à l'insu de cet arbitrage.
+ *
+ * Désormais : les six joueurs reçoivent la trame, et seuls le numéro de manche —
+ * donnée publique — en sort pour les cinq autres. Ce qui est vérifié n'est plus
+ * l'absence de trame mais l'absence de toute clé non neutre, numéro de manche
+ * excepté.
+ */
+test('CA-10 : aucun autre joueur n’apprend qu’un paiement a eu lieu', () => {
   const table = tableEnDeclaration({ joueurs: 6 });
   table.exiger('J0', 'declarer_contribution', { montant: 4 });
   table.exiger('J0', 'payer_secret', { montant: 1 });
 
   for (const joueur of table.joueurs.slice(1)) {
     assert.equal(
-      table.tramesDe(joueur, 'paiement_enregistre').length,
+      table.tramesPleinesDe(joueur, 'paiement_enregistre').length,
       0,
-      'pas même un signal indiquant qu’un paiement a eu lieu',
+      'aucune trame PORTEUSE : le voisin n’apprend pas qu’un paiement a eu lieu',
     );
+    for (const trame of table.tramesDe(joueur, 'paiement_enregistre')) {
+      assert.deepEqual(
+        Object.keys(trame.charge),
+        ['numero_manche'],
+        'la charge neutre de EvtPaiementEnregistre est {numero_manche}, et rien d’autre',
+      );
+    }
   }
+  // Le DÉNOMBREMENT est égal : c'est la dimension que l'audit a mesurée en fuite.
+  const comptes = table.joueurs.map(
+    (joueur) => table.tramesDe(joueur, 'paiement_enregistre').length,
+  );
+  assert.equal(new Set(comptes).size, 1, `dénombrement non uniforme : ${comptes.join(', ')}`);
 });

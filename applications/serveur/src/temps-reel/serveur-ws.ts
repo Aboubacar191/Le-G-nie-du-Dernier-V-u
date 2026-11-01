@@ -18,6 +18,7 @@ import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket } from 'ws';
 
 import {
+  COMPRESSION_AUTORISEE,
   DELAI_MAX_AUTHENTIFICATION_MS,
   FERMETURE,
   SCHEMAS_COMMANDE,
@@ -32,11 +33,30 @@ import type { Service } from '../service.ts';
 import { authentifier } from './authentification.ts';
 import { Battement } from './battement.ts';
 import { verifierDebit } from './debit.ts';
+import { acheminerRefus } from './refus.ts';
 import type { Connexion } from './registre-connexions.ts';
 
 const CHEMIN_CANAL = '/tr';
-/** Aucun destinataire n'existe encore : la séquence ne peut que valoir 1. */
-const SEQUENCE_AVANT_AUTHENTIFICATION = 1;
+
+/**
+ * RUP-03, versant configuration : la compression de trame est INTERDITE, et
+ * c'est une exigence de SÉCURITÉ depuis l'API 1.1.0, non plus une absence de
+ * gain. Appliquée APRÈS remplissage, elle rendrait la taille compressée fonction
+ * du CONTENU — une charge neutre faite de mille octets de remplissage se
+ * comprime beaucoup mieux qu'une charge pleine complétée à la même taille — et
+ * l'écart de taille sur le fil réapparaîtrait, c'est-à-dire exactement le canal
+ * que RUP-03 ferme.
+ *
+ * `perMessageDeflate: false` est écrit EXPLICITEMENT et non laissé au défaut de
+ * la bibliothèque : un défaut n'est pas un engagement, il change de version en
+ * version, et un engagement de sécurité implicite n'est pas un engagement.
+ *
+ * Ce qui reste HORS DU CODE et relève de l'ingenieur-devops : une compression
+ * réintroduite au niveau du cadre WebSocket par un proxy inverse ou une
+ * terminaison TLS annulerait silencieusement le correctif, sans qu'aucun test de
+ * ce dépôt ne le voie.
+ */
+const COMPRESSION_WS = false;
 
 interface EtatSocket {
   connexion: Connexion | null;
@@ -54,7 +74,18 @@ export class ServeurTempsReel {
   constructor(service: Service, origineAutorisee: string | null) {
     this.service = service;
     this.origineAutorisee = origineAutorisee;
-    this.ws = new WebSocketServer({ noServer: true, maxPayload: TAILLE_MAX_TRAME_OCTETS });
+    if (COMPRESSION_AUTORISEE) {
+      throw new Error(
+        'API-GDV-001.json / x-temps-reel.canal.compression n’interdit plus la compression. ' +
+          'RUP-03 en fait une exigence de SÉCURITÉ : le serveur refuse de démarrer plutôt ' +
+          'que d’annuler le remplissage en silence.',
+      );
+    }
+    this.ws = new WebSocketServer({
+      noServer: true,
+      maxPayload: TAILLE_MAX_TRAME_OCTETS,
+      perMessageDeflate: COMPRESSION_WS,
+    });
     this.battement = new Battement(service.registre);
   }
 
@@ -110,6 +141,7 @@ export class ServeurTempsReel {
     this.service.boucle.signalerPresence(partie, connexion.joueur_id, false);
   }
 
+  /** Refus : le CANAL de sortie est décidé par refus.ts, pas ici. */
   private refuser(
     socket: WebSocket,
     code: CodeErreur,
@@ -117,27 +149,11 @@ export class ServeurTempsReel {
     idCorrelation: string | null,
     fermeture?: number,
   ): void {
-    const etat = this.etats.get(socket);
-    const charge = { code, message, details: null, id_correlation: idCorrelation };
-    const connexion = etat?.connexion ?? null;
-    if (connexion !== null) {
-      this.service.diffuseur.envoyerA(connexion.joueur_id, 'erreur', charge, idCorrelation);
-    } else {
-      // Refus AVANT authentification : il n'existe encore aucun destinataire,
-      // donc aucun compteur de séquence. L'enveloppe reste néanmoins conforme —
-      // emis_a est requis par EnveloppeEvenement et doit être un horodatage, pas
-      // un nul : un client qui calcule son décalage d'horloge sur emis_a (RG-79)
-      // ne doit pas avoir à traiter un cas particulier dès sa première trame.
-      socket.send(
-        JSON.stringify({
-          type: 'erreur',
-          sequence: SEQUENCE_AVANT_AUTHENTIFICATION,
-          emis_a: new Date(this.service.maintenant()).toISOString(),
-          id_correlation: idCorrelation,
-          charge,
-        }),
-      );
-    }
+    acheminerRefus(this.service, socket, this.etats.get(socket)?.connexion ?? null, {
+      code,
+      message,
+      id_correlation: idCorrelation,
+    });
     if (fermeture !== undefined) socket.close(fermeture, code);
   }
 
@@ -261,14 +277,16 @@ export class ServeurTempsReel {
     const memorisee = this.service.correlation.retrouver(connexion.joueur_id, idCorrelation);
     if (memorisee === undefined) return false;
     if (memorisee.accepte) {
-      this.service.diffuseur.envoyerA(
+      // RUP-02 : le rejeu réémet un accusé à TOUS, comme l'accusé d'origine. Le
+      // réémettre au seul auteur ferait d'une reconnexion après coupure un canal
+      // de plus — « ce joueur a rejoué une commande », donc « ce joueur en avait
+      // émis une ».
+      const partie = this.service.boucle.partie(connexion.session_id);
+      if (partie === undefined) return false;
+      this.service.boucle.emettreAccuse(
+        partie,
         connexion.joueur_id,
-        'accuse_reception',
-        {
-          id_correlation: idCorrelation,
-          type_commande: memorisee.type_commande,
-          accepte: true,
-        },
+        memorisee.type_commande,
         idCorrelation,
       );
       return true;

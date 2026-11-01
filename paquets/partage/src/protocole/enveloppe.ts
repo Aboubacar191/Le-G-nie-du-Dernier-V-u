@@ -30,10 +30,27 @@ export interface EnveloppeCommande {
  */
 export interface EnveloppeEvenement {
   readonly type: TypeEvenement;
+  /**
+   * RUP-01 : monotone PAR SESSION, et jamais remis à 1. Les N joueurs d'une même
+   * session portent les MÊMES numéros, parce qu'ils reçoivent les mêmes trames
+   * dans le même lot — c'est la trace VÉRIFIABLE de l'uniformité du nombre de
+   * trames, et le contrôle le moins coûteux de la porte d'uniformité.
+   */
   readonly sequence: number;
   readonly emis_a: HorodatageIso;
   readonly id_correlation?: CorrelationId | null;
   readonly charge: Readonly<Record<string, unknown>>;
+  /**
+   * RUP-03 : chaîne de complément posée par le TRANSPORT, en dernier, juste
+   * avant l'écriture sur le socket. Le client l'IGNORE sans la lire. Elle ne
+   * porte AUCUNE information et ne doit jamais en porter : son contenu est un
+   * caractère de remplissage répété, jamais une valeur dérivée de l'état.
+   *
+   * Aucune charge EvtXxx ne porte de champ de remplissage : un seul point
+   * d'application, donc un seul endroit où se tromper, et la couverture est
+   * automatique pour tout événement ajouté plus tard.
+   */
+  readonly remplissage?: string;
 }
 
 /** Taille maximale d'une trame, en octets (ARCHI standards.taille_max_message_octets). */

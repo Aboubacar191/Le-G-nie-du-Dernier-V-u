@@ -150,13 +150,21 @@ function entrerEnRevelation(etat: EtatSession, contexte: ContexteMoteur): Transi
     maintenant: contexte.horloge.maintenant(),
     identifiant: contexte.identifiant,
   });
-  if (emission === null) return { etat: avecTotaux, effets };
 
+  // RUP-02 / x-emission = uniforme_par_manche : l'effet est AJOUTÉ À CHAQUE
+  // MANCHE, éligible ou non. Rendre « pas d'effet » quand aucun gabarit ne passe
+  // la garde faisait de l'ABSENCE de trame la trace de la condition qui la
+  // déclenche — l'état de l'ensemble des suspects (RG-81). La projection rend
+  // alors la variante neutre {numero_manche}.
   return {
-    etat: emission.etat,
+    etat: emission === null ? avecTotaux : emission.etat,
     effets: [
       ...effets,
-      { type: 'revelation', numero_manche: chiffree.numero, revelation: emission.revelation },
+      {
+        type: 'revelation',
+        numero_manche: chiffree.numero,
+        revelation: emission === null ? null : emission.revelation,
+      },
     ],
   };
 }

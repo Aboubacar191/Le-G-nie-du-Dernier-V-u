@@ -130,10 +130,16 @@ export interface EffetRevelationEcartTotal {
   readonly total_paye: number;
 }
 
+/**
+ * `revelation: null` est un cas NORMAL et non une absence d'effet : RUP-02 / CA-15
+ * impose d'émettre l'événement à CHAQUE manche en phase REVELATION, même quand
+ * aucun gabarit n'est éligible. Ne pas l'émettre révélait la condition qui le
+ * déclenche, c'est-à-dire l'état de l'ensemble des suspects.
+ */
 export interface EffetRevelation {
   readonly type: 'revelation';
   readonly numero_manche: number;
-  readonly revelation: RevelationEmise;
+  readonly revelation: RevelationEmise | null;
 }
 
 export interface EffetResultatEnquete {

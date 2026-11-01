@@ -136,10 +136,33 @@ function refusReponsePret(
   return null;
 }
 
+/**
+ * RUP-02 / RG-80 : une réponse à un prêt notifie TOUJOURS les soldes des deux
+ * parties, que le prêt soit accepté ou refusé.
+ *
+ * Mesure qui l'impose : à graine identique, deux parties ne différant que par la
+ * RÉPONSE de l'emprunteur produisaient 53 trames contre 55 pour chacun des six
+ * joueurs. Un prêt accepté déplace des pièces et émettait deux notifications de
+ * solde ; un prêt refusé n'en émettait aucune. Le simple DÉNOMBREMENT des
+ * trames livrait donc la réponse — qui est un secret au même titre que
+ * l'existence du prêt, puisqu'elle désigne indirectement le PRETEUR.
+ *
+ * Les deux trames partent à TOUS les joueurs, charge neutre pour les N−2 qui ne
+ * sont pas parties au prêt : personne n'apprend DE QUI il s'agit, et le
+ * dénombrement cesse d'apprendre QUOI.
+ */
+function soldesDesParties(pret: Pret): readonly Effet[] {
+  return [
+    { type: 'solde_mis_a_jour', joueur_id: pret.preteur_joueur_id },
+    { type: 'solde_mis_a_jour', joueur_id: pret.emprunteur_joueur_id },
+  ];
+}
+
 function refuserPret(etat: EtatSession, pret: Pret, repondu: number): ResultatCommande {
   const refuse: Pret = { ...pret, statut: 'REFUSE', repondu_at: repondu };
   return succes({ ...etat, prets: etat.prets.map((p) => (p.id === pret.id ? refuse : p)) }, [
     { type: 'pret_resolu', pret: refuse, accepte: false },
+    ...soldesDesParties(refuse),
   ]);
 }
 
@@ -189,8 +212,7 @@ function accepterPret(
 
   const effets: Effet[] = [
     { type: 'pret_resolu', pret: actif, accepte: true },
-    { type: 'solde_mis_a_jour', joueur_id: pret.preteur_joueur_id },
-    { type: 'solde_mis_a_jour', joueur_id: pret.emprunteur_joueur_id },
+    ...soldesDesParties(actif),
   ];
   return succes(
     { ...apres, prets: apres.prets.map((p) => (p.id === pret.id ? actif : p)) },

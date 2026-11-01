@@ -219,10 +219,19 @@ test('scores_finaux : les manches NON closes ne figurent pas dans les paiements 
   assert.ok(!charge.paiements_historiques.some((ligne) => ligne.numero_manche === 5));
 });
 
-test('groupe_mis_a_jour ne part qu’à l’hôte', () => {
+/**
+ * RUP-02 : groupe_mis_a_jour part à TOUS, et la charge `groupe` ne va qu'à
+ * l'hôte. Le non-hôte reçoit la charge neutre, qui vaut {} au contrat.
+ *
+ * Cet événement ne révèle QUE l'identité de l'hôte, laquelle est déjà publique
+ * (est_hote) : il n'y avait AUCUNE fuite ici. Il est soumis à la règle unique
+ * par refus de maintenir une liste d'exceptions, pas par nécessité de sécurité.
+ */
+test('groupe_mis_a_jour : la charge groupe ne va qu’à l’hôte, la trame va à tous', () => {
   const table = new Table({ joueurs: 6 });
-  assert.notEqual(projette(table, { type: 'groupe_mis_a_jour' }, 'J0'), null);
-  assert.equal(projette(table, { type: 'groupe_mis_a_jour' }, 'J1'), null);
+  const hote = projette(table, { type: 'groupe_mis_a_jour' }, 'J0');
+  assert.deepEqual(Object.keys(hote as object), ['groupe']);
+  assert.deepEqual(projette(table, { type: 'groupe_mis_a_jour' }, 'J1'), {});
 });
 
 test('joueur_rejoint et les événements de présence comptent les CONNECTÉS', () => {

@@ -2,12 +2,23 @@
 // Une seule forme d'erreur pour toute la frontière : REST (corps de toute
 // réponse 4xx/5xx) et temps réel (événement de type erreur).
 // Transcrite depuis ARCHI-GDV-001.json — aucun code ajouté.
+//
+// ÉCART DE CONTRAT SIGNALÉ, pas tranché ici. PRET_INDISPONIBLE est ajouté par
+// API-GDV-001.json 1.1.0 / x-temps-reel.codes_erreur pour fermer ANO-08 et
+// ANO-09, et il est NORMATIF côté protocole. Il est en revanche ABSENT de
+// ARCHI-GDV-001.json 1.2.0 / standards.codes_erreur, qui n'énumère que 24
+// codes. Les deux contrats ne s'accordent pas. Le code suit l'API, qui est la
+// source de vérité du PROTOCOLE et la seule qui décrive le couple code/message
+// à rendre ; l'écart est consigné dans RAPPORT-BACKEND-002.json pour que le
+// tech-lead aligne l'ARCHI. Sans ce code, le correctif de ANO-08 serait
+// impossible à exprimer.
 
 export const CODES_ERREUR = [
   'ACTION_HORS_PHASE',
   'ACTION_NON_AUTORISEE_ROLE',
   'ACTION_RESERVEE_HOTE',
   'SOLDE_INSUFFISANT',
+  'PRET_INDISPONIBLE',
   'QUOTA_DEPASSE',
   'JETON_INVALIDE',
   'JETON_ABSENT',

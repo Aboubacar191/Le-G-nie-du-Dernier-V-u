@@ -43,18 +43,24 @@ export function projeterEtatPartieChange(etat: EtatSession): ProjectionBrute {
 }
 
 /**
- * « x-destinataires : tous les joueurs DÉJÀ PRÉSENTS. » L'arrivant ne reçoit pas
- * l'annonce de sa propre arrivée : il reçoit un EvtEtatCompletPrive, qui la
- * contient et bien davantage. Lui envoyer les deux remettrait en plus son
- * compteur de séquence à 1 après l'avoir déjà incrémenté, et le client y verrait
- * une anomalie de séquence là où il n'y a qu'un doublon.
+ * Émis à TOUS, L'ARRIVANT COMPRIS (RUP-02, RG-80).
+ *
+ * La version précédente excluait le sujet de l'événement — « tous les joueurs
+ * DÉJÀ PRÉSENTS » — au motif qu'il recevait de toute façon un
+ * EvtEtatCompletPrive. Un destinataire de moins est une trame de moins, donc une
+ * divergence de dénombrement, et le dénombrement est la dimension que l'audit a
+ * mesurée en fuite. Le second motif invoqué — « lui envoyer les deux remettrait
+ * son compteur de séquence à 1 » — a DISPARU avec RUP-01 : la séquence est
+ * désormais portée par la session et n'est jamais remise à 1.
+ *
+ * L'état de connexion est classé visible_par: tous par matrice_visibilite : la
+ * charge est donc identique pour les N destinataires, l'arrivant compris, et
+ * x-emission vaut uniforme_charge_identique.
  */
 export function projeterJoueurRejoint(
   etat: EtatSession,
   effet: EffetJoueurRejoint,
-  destinataire: string,
-): ProjectionBrute | null {
-  if (destinataire === effet.joueur_id) return null;
+): ProjectionBrute {
   return publique({
     joueur: joueurPublic(exigerJoueur(etat, effet.joueur_id)),
     nb_joueurs: etat.joueurs.length,
@@ -62,16 +68,14 @@ export function projeterJoueurRejoint(
 }
 
 /**
- * « x-destinataires : tous les AUTRES joueurs. Le reconnecté reçoit, lui, un
- * EvtEtatCompletPrive. » Pour joueur_quitte, « tous les joueurs restants ».
- * Dans les deux cas, le sujet de l'événement n'en est pas destinataire.
+ * Émis à TOUS, LE JOUEUR CONCERNÉ COMPRIS (RUP-02, RG-80) — et non plus « à
+ * tous les autres ». Même raison que ci-dessus : un destinataire de moins est
+ * une trame de moins. L'état de connexion est public.
  */
 export function projeterPresence(
   etat: EtatSession,
   effet: EffetPresence,
-  destinataire: string,
-): ProjectionBrute | null {
-  if (destinataire === effet.joueur_id) return null;
+): ProjectionBrute {
   return publique({
     joueur_id: effet.joueur_id,
     nb_connectes: joueursConnectes(etat).length,
@@ -141,8 +145,22 @@ export function projeterRevelationEcartTotal(
   });
 }
 
-/** suspects_restants porte minimum 2 au contrat : la valeur vient du journal. */
+/**
+ * suspects_restants porte minimum 2 au contrat : la valeur vient du journal.
+ *
+ * RUP-02, x-emission = uniforme_par_manche. L'événement est émis à CHAQUE manche
+ * en phase REVELATION, y compris quand AUCUN gabarit n'est éligible (CA-15) ;
+ * la charge est alors la variante neutre {numero_manche}. L'absence précédente
+ * ne discriminait aucun joueur — elle était la même pour les N — mais elle
+ * révélait la CONDITION qui la déclenche, c'est-à-dire l'état de l'ensemble des
+ * suspects : c'est RG-81, et RG-80 énonce de son côté qu'un champ ne peut pas
+ * être publié dans certaines manches et omis dans d'autres. Le coût de la
+ * fermeture étant nul, elle est faite ici.
+ */
 export function projeterRevelation(effet: EffetRevelation): ProjectionBrute {
+  if (effet.revelation === null) {
+    return publique({ numero_manche: effet.numero_manche });
+  }
   return publique({
     numero_manche: effet.numero_manche,
     revelation: {

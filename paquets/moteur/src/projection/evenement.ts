@@ -7,21 +7,36 @@
 // ║  Seuils de couverture exigés ici : 100 % des lignes ET des branches.   ║
 // ╚════════════════════════════════════════════════════════════════════════╝
 //
-// projeterEvenement : UNE charge par destinataire, ou null. Un événement dit
-// « public » est une BOUCLE de projections individuelles, chacune recalculée
-// pour son destinataire — jamais un objet partagé envoyé N fois (ADR-TL-03).
+// projeterEvenement : UNE charge par destinataire. Un événement est TOUJOURS une
+// BOUCLE de projections individuelles, chacune recalculée pour son destinataire
+// — jamais un objet partagé envoyé N fois (ADR-TL-03). Si une seule charge était
+// sérialisée puis envoyée N fois, le premier événement de classe proprietaire
+// fuiterait vers les sept autres joueurs.
+//
+// RUPTURE RUP-02 (RG-80, rang 1). Un non-destinataire ne reçoit plus RIEN : il
+// reçoit la CHARGE NEUTRE déclarée par le schéma. L'absence de trame était
+// elle-même l'information — « trames resultat_enquete par joueur = {J3:1,
+// autres 0} » livrait l'enquêteur en violation de RG-27 sans qu'aucun champ ne
+// fuite (ANO-02, bloquante, mesurée). x-visibilite gouverne CE QUE contient une
+// trame ; x-emission gouverne À QUI elle part. L'adressage sélectif ÉTAIT le
+// canal ; le contenu sélectif est la règle. On garde le second, on supprime le
+// premier.
 //
 // Trois gardes, dans cet ordre :
 //   1. le destinataire appartient-il à la session ? sinon RIEN ;
-//   2. le projecteur de l'effet produit-il une charge ? sinon RIEN ;
+//   2. le projecteur de l'effet produit-il une charge ? sinon RIEN — un effet
+//      inapplicable à l'état courant n'est pas une question de destinataire, et
+//      il n'est émis à PERSONNE, donc le dénombrement reste égal ;
 //   3. le destinataire appartient-il à la CLASSE DÉCLARÉE AU CONTRAT pour cet
-//      événement, au vu des propriétaires déclarés par l'effet ? sinon RIEN.
-// La classe n'est jamais décidée par le code : elle est lue dans x-visibilite.
+//      événement ? si oui, la charge complète ; SINON, la charge neutre.
+// Ni la classe ni l'exemption ne sont décidées par le code : elles sont lues
+// dans x-visibilite et x-emission.
 
 import { VISIBILITE_PAR_EVENEMENT } from '@gdv/partage';
 
 import type { Effet } from '../etat/effets.ts';
 import type { EtatSession } from '../etat/types.ts';
+import { chargeNeutre } from './charges-neutres.ts';
 import {
   projeterAccuseReception,
   projeterAttributionPrivee,
@@ -81,9 +96,9 @@ const PROJECTEURS: TableProjecteurs = {
   erreur: (_etat, effet) => projeterErreur(effet),
   etat_complet_prive: (etat, effet) => projeterEtatCompletPrive(etat, effet),
   etat_partie_change: (etat) => projeterEtatPartieChange(etat),
-  joueur_rejoint: (etat, effet, destinataire) => projeterJoueurRejoint(etat, effet, destinataire),
-  joueur_quitte: (etat, effet, destinataire) => projeterPresence(etat, effet, destinataire),
-  joueur_reconnecte: (etat, effet, destinataire) => projeterPresence(etat, effet, destinataire),
+  joueur_rejoint: (etat, effet) => projeterJoueurRejoint(etat, effet),
+  joueur_quitte: (etat, effet) => projeterPresence(etat, effet),
+  joueur_reconnecte: (etat, effet) => projeterPresence(etat, effet),
   partie_demarree: (etat) => projeterPartieDemarree(etat),
   attribution_privee: (etat, effet) => projeterAttributionPrivee(etat, effet),
   voeu_annonce: (etat, effet) => projeterVoeuAnnonce(etat, effet),
@@ -119,9 +134,18 @@ function projeterBrut(
 }
 
 /**
- * Charge projetée pour CE destinataire, ou null s'il n'a rien à recevoir.
- * null n'est pas une erreur : c'est la réponse normale pour un joueur qui n'est
- * pas destinataire de l'effet. Le transport envoie, ou n'envoie pas.
+ * Charge projetée pour CE destinataire : la charge COMPLÈTE s'il appartient à la
+ * classe déclarée, la charge NEUTRE sinon, `null` si aucune trame ne doit partir
+ * vers lui.
+ *
+ * `null` reste possible et ne se confond pas avec la charge vide `{}`. Trois cas
+ * seulement le produisent, et aucun des trois ne dépend d'un SECRET :
+ *   · le destinataire n'appartient pas à la session ;
+ *   · l'effet est inapplicable à l'état courant — personne ne le reçoit, donc
+ *     le dénombrement reste égal entre les N joueurs ;
+ *   · l'événement est EXEMPTÉ par la liste fermée du contrat : etat_complet_prive
+ *     (déclenché par une reconnexion, laquelle est déjà publique) et les cinq
+ *     codes d'erreur de protocole.
  */
 export function projeterEvenement(
   etat: EtatSession,
@@ -132,8 +156,10 @@ export function projeterEvenement(
   const projection = projeterBrut(etat, effet, destinataire);
   if (projection === null) return null;
   const classe = VISIBILITE_PAR_EVENEMENT[effet.type];
-  if (!appartientALaClasse(etat, destinataire, classe, projection.proprietaires)) return null;
-  return projection.charge;
+  if (appartientALaClasse(etat, destinataire, classe, projection.proprietaires)) {
+    return projection.charge;
+  }
+  return chargeNeutre(effet);
 }
 
 export type ProjeterEvenement = typeof projeterEvenement;

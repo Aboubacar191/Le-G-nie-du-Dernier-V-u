@@ -152,20 +152,44 @@ export function projeterPretResolu(effet: EffetPretResolu): ProjectionBrute {
   };
 }
 
+/**
+ * DEUX variantes nommées au contrat (x-charge-par-destinataire), et non une
+ * charge complète dont certains champs seraient mis à null — ADR-TL-22, ANO-07.
+ *
+ * La conjonction montant_preleve et reliquat_du livre le solde EXACT de
+ * l'emprunteur : dès que le reliquat dû est non nul, le montant prélevé EST le
+ * solde de l'emprunteur. Le prêteur reçoit donc la variante RÉDUITE
+ * {numero_manche, pret_id, statut} — pas la variante complète amputée. La
+ * distinction n'est pas cosmétique : une charge aux six clés dont trois valent
+ * null est l'« ensemble intermédiaire » que (P-c) déclare défaut bloquant, et
+ * c'est la trace du développeur qui vide la charge par soustraction. Ici chaque
+ * variante est ÉCRITE, donc un champ ajouté demain n'apparaît dans aucune des
+ * deux sans décision.
+ */
 export function projeterPretPreleve(
   effet: EffetPretPreleve,
   destinataire: string,
 ): ProjectionBrute {
-  const emprunteur = destinataire === effet.pret.emprunteur_joueur_id;
+  const proprietaires = partiesDuPret(effet.pret);
+  if (destinataire === effet.pret.emprunteur_joueur_id) {
+    return {
+      proprietaires,
+      charge: {
+        numero_manche: effet.pret.manche_emission,
+        pret_id: effet.pret.id,
+        statut: effet.pret.statut,
+        pret: pretVuPartie(effet.pret),
+        montant_preleve: effet.montant_preleve,
+        reliquat_du: effet.reliquat_du,
+      },
+    };
+  }
   return {
-    proprietaires: partiesDuPret(effet.pret),
+    proprietaires,
     charge: {
       numero_manche: effet.pret.manche_emission,
       pret_id: effet.pret.id,
       statut: effet.pret.statut,
-      pret: emprunteur ? pretVuPartie(effet.pret) : null,
-      montant_preleve: emprunteur ? effet.montant_preleve : null,
-      reliquat_du: emprunteur ? effet.reliquat_du : null,
     },
   };
 }

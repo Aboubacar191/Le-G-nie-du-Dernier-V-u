@@ -6,11 +6,13 @@
 // instantanément — un test qui attendrait réellement ne serait pas un test.
 
 import {
+  CHAMPS_DECLARES_PAR_EVENEMENT,
   CONFIG_DEFAUT,
   type Clause,
   type ConfigJeu,
   type Phase,
   type TypeCommande,
+  type TypeEvenement,
 } from '@gdv/partage';
 import {
   abandonnerParInactivite,
@@ -87,6 +89,18 @@ export interface TrameEmise {
   readonly type: string;
   readonly destinataire: string;
   readonly charge: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * La charge est-elle la variante COMPLÈTE du schéma, ou une variante neutre ou
+ * réduite ? La comparaison porte sur l'ENSEMBLE DES CLÉS, exactement comme
+ * (P-c) : un seul critère dans tout le dépôt, et aucune inspection de valeurs.
+ */
+export function estChargePleine(trame: TrameEmise): boolean {
+  const declares = CHAMPS_DECLARES_PAR_EVENEMENT[trame.type as TypeEvenement];
+  if (declares === undefined) return true;
+  const cles = Object.keys(trame.charge);
+  return cles.length === declares.length && cles.every((cle) => declares.includes(cle));
 }
 
 /**
@@ -185,6 +199,28 @@ export class Table {
     return this.trames.filter(
       (trame) => trame.destinataire === joueurId && (type === undefined || trame.type === type),
     );
+  }
+
+  /**
+   * Trames PORTEUSES : celles dont la charge est la variante COMPLÈTE.
+   *
+   * Depuis RUP-02, toute trame part à tous les joueurs : compter les trames ne
+   * dit donc plus rien sur la visibilité, et un critère de non-fuite qui
+   * compterait des trames serait désormais VERT à tort. Ce qui se compte, c'est
+   * le nombre de destinataires à qui la trame a APPRIS quelque chose — les
+   * autres ont reçu x-charge-neutre, par construction vide ou publique.
+   *
+   * La discrimination est faite par l'ensemble des CLÉS et non par une
+   * inspection de valeurs : c'est la même mesure que (P-c), donc un seul critère
+   * dans tout le dépôt.
+   */
+  tramesPleinesDe(joueurId: string, type?: string): readonly TrameEmise[] {
+    return this.tramesDe(joueurId, type).filter((trame) => estChargePleine(trame));
+  }
+
+  /** Trames reçues SANS rien apprendre : charge neutre (RUP-02). */
+  tramesNeutresDe(joueurId: string, type?: string): readonly TrameEmise[] {
+    return this.tramesDe(joueurId, type).filter((trame) => !estChargePleine(trame));
   }
 
   cmd(auteur: string, type: TypeCommande, charge: Record<string, unknown> = {}): Resultat {
