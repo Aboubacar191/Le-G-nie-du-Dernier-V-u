@@ -68,7 +68,14 @@ test('CA-44 : les champs de CIBLE ne sont pas des champs d’auteur', () => {
   }
 });
 
-test('CA-44 : répondre à un prêt qui ne lui est pas adressé est une usurpation', () => {
+// ANO-09 : ce refus ne s'appelle PLUS une usurpation, et c'est voulu.
+// USURPATION_IDENTITE sur repondre_pret distinguait « ce prêt existe mais n'est
+// pas pour vous » de « ce prêt n'existe pas » (CIBLE_INVALIDE) : c'était un
+// oracle d'existence sur les identifiants de prêt. Les quatre causes de refus
+// rendent désormais PRET_INDISPONIBLE et le même message. Le FOND de CA-44 est
+// intact — un tiers ne peut pas répondre au prêt d'un autre — et c'est lui qui
+// est vérifié ici, par le refus ET par l'absence d'effet sur le prêt.
+test('CA-44 : répondre à un prêt qui ne lui est pas adressé est refusé, sans dire pourquoi', () => {
   const table = tableEnDeclaration({ joueurs: 6 });
   table.imposerRole('J0', 'PRETEUR');
   table.allerA('EXECUTION');
@@ -80,6 +87,7 @@ test('CA-44 : répondre à un prêt qui ne lui est pas adressé est une usurpati
   const resultat = table.cmd('J3', 'repondre_pret', { pret_id: pretId, accepte: true });
   assert.equal(
     (resultat as { erreur: { code: string } }).erreur.code,
-    'USURPATION_IDENTITE',
+    'PRET_INDISPONIBLE',
   );
+  assert.equal(table.etat.prets[0]?.statut, 'PROPOSE', 'le tiers n’a rien pu changer');
 });

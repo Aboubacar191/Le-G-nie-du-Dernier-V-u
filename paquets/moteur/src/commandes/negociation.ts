@@ -112,26 +112,57 @@ export function proposerPret(
   return succes({ ...etat, prets: [...etat.prets, pret] }, [{ type: 'pret_propose', pret }]);
 }
 
+/**
+ * UN SEUL REFUS POUR QUATRE CAUSES — ANO-08 (majeure) et ANO-09, mesurées.
+ *
+ * API / CmdRepondrePret.x-autorisation, amendé en 1.1.0 : « les cas "prêt
+ * inexistant", "prêt adressé à un autre joueur", "prêt déjà résolu ou expiré"
+ * et "prêteur devenu insolvable" rendent TOUS le même refus PRET_INDISPONIBLE
+ * avec le même message, et aucun ne rend ni CIBLE_INVALIDE, ni
+ * USURPATION_IDENTITE, ni SOLDE_INSUFFISANT. Deux refus discernables sur un
+ * identifiant sont un oracle d'existence ; un refus qui nomme le solde d'autrui
+ * est un oracle de solde. »
+ *
+ * CE QUE CHAQUE CODE LIVRAIT :
+ *   · SOLDE_INSUFFISANT, « Le prêteur n'a plus le principal disponible. » —
+ *     l'emprunteur apprenait solde(prêteur) < principal, et encadrait ce solde
+ *     par DICHOTOMIE en faisant varier le principal de propositions
+ *     successives. La restriction ajoutée en 1.1.0 au code SOLDE_INSUFFISANT
+ *     est désormais explicite : il ne peut JAMAIS être rendu pour un solde
+ *     insuffisant appartenant à un autre joueur que l'auteur.
+ *   · CIBLE_INVALIDE contre USURPATION_IDENTITE — « cet identifiant n'existe
+ *     pas » se distinguait de « il existe mais n'est pas pour vous ».
+ *
+ * Le MESSAGE est imposé par le contrat, à la lettre : un message dérivé, même
+ * fidèle au code, redeviendrait un canal — c'est par le message, et non par le
+ * code, que ANO-08 a été mesurée.
+ *
+ * ÉCART DE CONTRAT SIGNALÉ, NON CORRIGÉ. Le contrat prescrit en outre
+ * « etat_modifie : le prêt passe au statut CADUC lorsqu'il existait et qu'il
+ * devient inhonorable ». Un refus qui MODIFIE l'état contredit CA-43 et
+ * ARCHI/conventions.gestion_erreurs — « il retourne { ok: false, erreur } et
+ * l'état d'entrée INCHANGÉ » — et le serveur ne retient d'ailleurs pas l'état
+ * d'un résultat en échec (Partie.retenir). La transition vers CADUC exige donc
+ * soit une exception à l'invariant d'immutabilité, soit une passe système de
+ * caducité à la clôture de NEGOCIATION : l'une et l'autre sont des décisions
+ * d'architecture. Le statut reste PROPOSE ; les deux oracles sont fermés sans
+ * lui, et un emprunteur qui réessaie obtient le même refus.
+ */
 function refusReponsePret(
   etat: EtatSession,
   auteur: string,
   pret: Pret | undefined,
   accepte: boolean | null,
 ): ResultatCommande | null {
-  if (pret === undefined) return refus(etat, 'CIBLE_INVALIDE', 'Prêt inconnu.');
-  if (pret.emprunteur_joueur_id !== auteur) {
-    return refus(
-      etat,
-      'USURPATION_IDENTITE',
-      'Ce prêt n’est pas adressé à l’auteur de la commande.',
-    );
-  }
-  if (pret.statut !== 'PROPOSE') {
-    return refus(etat, 'DEJA_SOUMIS', 'Ce prêt a déjà reçu une réponse.');
-  }
+  const indisponible = refus(etat, 'PRET_INDISPONIBLE', 'Ce prêt n’est plus disponible.');
+  if (pret === undefined) return indisponible;
+  if (pret.emprunteur_joueur_id !== auteur) return indisponible;
+  if (pret.statut !== 'PROPOSE') return indisponible;
+  // MESSAGE_MALFORME est antérieur au jeu : il décrit la TRAME, pas le prêt, et
+  // il n'est atteignable que par un client qui viole son propre schéma.
   if (accepte === null) return refus(etat, 'MESSAGE_MALFORME', 'Réponse au prêt absente.');
   if (accepte && pret.principal > exigerJoueur(etat, pret.preteur_joueur_id).solde_pieces) {
-    return refus(etat, 'SOLDE_INSUFFISANT', 'Le prêteur n’a plus le principal disponible.');
+    return indisponible;
   }
   return null;
 }

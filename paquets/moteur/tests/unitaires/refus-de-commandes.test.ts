@@ -155,14 +155,18 @@ test('proposer_pret : rôle, cible, montant, solde', () => {
   );
 });
 
+// ANO-08 et ANO-09 : les quatre causes de refus de repondre_pret rendent le
+// MÊME code et le MÊME message. Seul MESSAGE_MALFORME subsiste à part : il
+// décrit la trame et non le prêt. Les deux oracles — existence d'identifiant et
+// solde du prêteur — sont éprouvés dans tests/unitaires/refus-indiscernables.
 test('repondre_pret : prêt inconnu, réponse absente, double réponse, solde du prêteur', () => {
   const table = new Table({ joueurs: 6 }).demarrer().allerA('NEGOCIATION');
   table.imposerRole('J0', 'PRETEUR');
   assert.equal(
     code(table.cmd('J1', 'repondre_pret', { pret_id: 'inconnu', accepte: true })),
-    'CIBLE_INVALIDE',
+    'PRET_INDISPONIBLE',
   );
-  assert.equal(code(table.cmd('J1', 'repondre_pret', { accepte: true })), 'CIBLE_INVALIDE');
+  assert.equal(code(table.cmd('J1', 'repondre_pret', { accepte: true })), 'PRET_INDISPONIBLE');
 
   table.exiger('J0', 'proposer_pret', { emprunteur_joueur_id: 'J1', principal: 4 });
   const pretId = table.etat.prets[0]?.id ?? '';
@@ -172,7 +176,7 @@ test('repondre_pret : prêt inconnu, réponse absente, double réponse, solde du
   assert.equal(table.etat.prets[0]?.statut, 'REFUSE');
   assert.equal(
     code(table.cmd('J1', 'repondre_pret', { pret_id: pretId, accepte: true })),
-    'DEJA_SOUMIS',
+    'PRET_INDISPONIBLE',
   );
 });
 
@@ -183,9 +187,12 @@ test('repondre_pret : le prêteur n’a plus le principal entre la proposition e
   const pretId = table.etat.prets[0]?.id ?? '';
   // Le prêteur dilapide son solde avant que l'emprunteur n'accepte.
   table.exiger('J0', 'transferer_pieces', { cible_joueur_id: 'J2', montant: 8 });
+  // ANO-08 : SOLDE_INSUFFISANT ne peut JAMAIS sanctionner le solde d'un AUTRE
+  // joueur que l'auteur — restriction ajoutée au code en 1.1.0. Le refus ne
+  // qualifie plus sa cause.
   assert.equal(
     code(table.cmd('J1', 'repondre_pret', { pret_id: pretId, accepte: true })),
-    'SOLDE_INSUFFISANT',
+    'PRET_INDISPONIBLE',
   );
   assert.ok(verifierInvariants(table.etat).ok);
 });

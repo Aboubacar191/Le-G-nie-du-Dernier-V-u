@@ -84,9 +84,11 @@ test('CA-33 : un prêt proposé à un autre ne peut pas être accepté par un ti
   table.exiger('J0', 'proposer_pret', { emprunteur_joueur_id: 'J1', principal: 4 });
   const pretId = table.etat.prets[0]?.id ?? '';
 
+  // ANO-09 : le refus ne qualifie plus sa cause — voir CA-44 et
+  // tests/unitaires/refus-indiscernables.test.ts.
   const resultat = table.cmd('J2', 'repondre_pret', { pret_id: pretId, accepte: true });
   assert.equal(
     (resultat as { erreur: { code: string } }).erreur.code,
-    'USURPATION_IDENTITE',
+    'PRET_INDISPONIBLE',
   );
 });
