@@ -1,0 +1,297 @@
+{
+  "cible": "GDV-001",
+  "iteration": 2,
+  "noeud": "S4'",
+  "auteur": "dev-backend",
+  "date": "2026-11-01",
+  "branche_git": "main",
+  "portee": "Les cinq ruptures de compatibilité de API 1.2.0 (RUP-01 à RUP-05), les cinq anomalies assignées au backend (ANO-04, ANO-07, ANO-08, ANO-09, ANO-13), et la règle modifiée RG-29 avec la réécriture de CA-34.",
+
+  "_resume_en_une_phrase": "Les cinq ruptures sont closes et les cinq anomalies corrigées, 592 tests passent et dix portes sur onze sont vertes ; la onzième, verifier:uniformite, reste à 20 divergences dont AUCUNE n'est corrigible par le code — U1c mesure une grandeur que RUP-03 rend invisible à son instrumentation, et U2 exige sur trois paires un invariant que le contrat refuse lui-même d'exiger en v1.",
+
+  "etat_des_cinq_ruptures": {
+    "RUP-01": {
+      "intitule": "Numéro de séquence : par destinataire devient par session",
+      "statut": "CLOSE",
+      "ce_qui_existait_deja": "Le compteur avait migré vers la session au palier précédent (commit e9b818d) : Diffuseur.sequences est une Map par session_id, suivanteDe en est le point d'incrément UNIQUE, et aucune remise à 1 ne subsistait.",
+      "ce_qui_restait_et_qui_etait_le_defaut_reel": "envoyerEtatComplet passait par emettre, donc par le LOT, donc par suivanteDe. Une (re)connexion CONSOMMAIT donc un numéro de séquence pour une trame qui ne part qu'à un seul joueur : les N−1 autres voyaient un TROU, c'est-à-dire exactement le déclencheur de reconnexion du client (x-temps-reel.reconnexion.declencheurs). Chaque reconnexion en provoquait N−1 autres, chacune creusant son propre trou. L'appel emprunte désormais la primitive unitaire envoyerA, dont le contrat documenté est de lire la valeur COURANTE sans l'incrémenter — « etat_complet_prive porte la valeur courante du compteur de session ».",
+      "second_residu": "Connexion.sequence, champ mort depuis la migration, est retiré de registre-connexions.ts et de son initialisation dans serveur-ws.ts. Une structure qui porte encore un compteur par destinataire est une invitation à s'en servir, et deux compteurs recréeraient la divergence que la rupture supprime.",
+      "point_d_increment_unique_verifie": "Diffuseur.suivanteDe est le seul appelant de sequences.set. envoyerA et le chemin de refus lisent couranteDe, qui n'écrit pas. Vérifié par grep sur applications/serveur : 2 appels à envoyerA dans tout le serveur, et ce sont les deux exemptions de la liste fermée du contrat.",
+      "test_neuf": "applications/serveur/tests/sequence-par-session.test.ts — 4 tests. SEUL dispositif du dépôt qui lit les trames RÉELLEMENT ÉCRITES sur un socket, enveloppe comprise : la porte d'uniformité mesure les charges projetées et ne voit donc ni l'enveloppe, ni la séquence, ni le remplissage (son contrôle U1b DÉDUIT l'égalité des séquences de l'égalité des suites de types). Ici elle est LUE. Invariants : égalité entre les N destinataires à tout rang, monotonie sans trou, compteur d'une session neuve à 0 puis première trame à 1, et non-consommation par etat_complet_prive.",
+      "invariant_offert_au_qa": "L'égalité des séquences entre destinataires est désormais vérifiable directement sur le socket et non plus seulement par déduction. Si deux joueurs d'une même session divergent d'un numéro, une trame a été adressée sélectivement."
+    },
+    "RUP-02": {
+      "intitule": "Toute trame est émise à tous : l'adressage sélectif disparaît du transport",
+      "statut": "CLOSE",
+      "etat_a_ma_reprise": "Le cœur était livré au palier précédent : envoyerLot (N charges projetées séparément, UN numéro, une cible de taille commune, N écritures dans le même tour de boucle), charges-neutres.ts (table TOTALE sur les 30 types, construction par AJOUT), accusé de réception et refus passés par la projection.",
+      "ce_que_j_ai_terminé": "Les NEUF dernières assertions de test qui décrivaient l'adressage sélectif et mesuraient la non-fuite par le DÉNOMBREMENT des trames. Depuis que toute trame part à tous, ce critère est vert à tort : il ne mesure plus rien. Chacune est remplacée par le critère de (P-c) — l'ensemble des CLÉS de la charge — via tramesPleinesDe / tramesNeutresDe / estChargePleine, déjà employés par CA-05, CA-10, CA-12 et CA-15. Un seul critère de non-fuite dans tout le dépôt.",
+      "detail_des_neuf": [
+        "CA-19 — « aucune trame n'est partie vers la cible ni vers la table » était devenu le défaut lui-même : ANO-02 a été MESURÉE sur ce dénombrement. Vérifié à la place : même forme pour les six, contenu au seul enquêteur, charge neutre {numero_manche} chez la cible.",
+        "CA-27 — la consolation s'apprend dans la dernière charge PLEINE de solde, canal privé que RG-74 désigne comme le seul licite.",
+        "CA-33 — pret_propose part aux six ; charge pleine aux deux parties, {} ailleurs.",
+        "CA-36 (trois assertions) — solde_mis_a_jour était « le principal contributeur au profil 28 contre 25 » : J2 reçoit les trames du transfert, elles ne lui apprennent rien.",
+        "CA-37 — chacun reçoit N dernier_voeu_propose, une seule pleine : la sienne.",
+        "cas limite 15 — la révélation est émise même sans gabarit éligible (charge neutre {numero_manche}) ; son absence révélait l'état de l'ensemble des suspects."
+      ],
+      "interdit_mecanique_respecte": "Aucune fonction nommée diffuser, broadcast, emitAll ni toAll n'est déclarée ; la primitive unitaire reste envoyerA. L'émission à tous est une BOUCLE sur N projections distinctes, jamais une charge unique envoyée N fois. npm run lint (règle no-restricted-syntax sur temps-reel) sort en code 0.",
+      "mesure_de_recette_du_contrat": "qa/sondes/sonde-canaux-indirects.ts, section (II) : « trames clause_recue par joueur = {J0:1,J1:1,J2:1,J3:1,J4:1,J5:1} » (recette ANO-01 : 1 pour les six, TENUE) ; « trames resultat_enquete par joueur » identique pour les six (recette ANO-02, TENUE) ; « profil global » = 56 trames pour chacun des six (recette ANO-02 sur le total, TENUE)."
+    },
+    "RUP-03": {
+      "intitule": "Remplissage des trames sortantes à paliers de 1024 octets, compression interdite",
+      "statut": "CLOSE, et désormais MESURÉE",
+      "etat_a_ma_reprise": "remplissage.ts livré au palier précédent : cible COMMUNE par lot (maximum des N longueurs sérialisées, coût de la clé intégré AVANT l'arrondi), remplissage appliqué EN DERNIER juste avant l'écriture, perMessageDeflate: false écrit explicitement et serveur qui refuse de démarrer si le contrat cesse d'interdire la compression.",
+      "ce_que_j_ai_ajoute": "applications/serveur/tests/remplissage-des-lots.test.ts — 5 tests qui mesurent les OCTETS DU TEXTE REMIS AU SOCKET. À 6 puis 8 joueurs : 0 rang de taille inégale, au moins 20 trames par joueur mesurées, égalité du nombre de trames entre les N, toute trame multiple de 1024 octets et sous le plafond de 16384, la trame EXEMPTÉE (etat_complet_prive) complétée elle aussi, COMPRESSION_AUTORISEE === false.",
+      "pourquoi_ce_test_etait_necessaire": "Voir ci-dessous l'analyse du contrôle U1c : le harnais de la porte mesure la charge PROJETÉE PAR LE MOTEUR, grandeur sur laquelle le remplissage n'agit pas par construction. Le test établit le fait que la porte ne peut pas établir. Il est tautologique au sens d'ADR-TL-24 — le même dépôt écrit et mesure — et ne remplace donc pas la porte ; il échouera si quelqu'un retire le remplissage.",
+      "residu_declare_non_couvert": "Le palier ne rend indiscernables que les trames du même palier. etat_complet_prive, hors lot, a une taille qui dépend de l'historique privé du destinataire : deux reconnexions d'historiques très différents peuvent tomber dans deux paliers distincts. Inscrit en dette assumée à l'ARCHI, rappelé dans le test."
+    },
+    "RUP-04": {
+      "intitule": "Les six routes REST passent sous /api",
+      "statut": "CLOSE au palier précédent (commit beea205), CONFIRMÉE ICI",
+      "confirmation_demandee_par_la_mission": "npm run verifier:routes, code de sortie 0 : « mes. R1 — 6 route(s) sur 6 servies sous « /api » ; 6 route(s) enregistrées au total. mes. R2 — configuration du client lue (113 lignes), 3 motifs de réécriture recherchés. VERDICT CONFORME — 6/6 routes, 0 divergence(s) ». La réécriture du proxy Vite a bien été retirée dans le MÊME commit, comme le piège nommé de la rupture l'exigeait.",
+      "aucune_modification_de_ma_part": "Je n'ai pas touché au client, conformément au périmètre."
+    },
+    "RUP-05": {
+      "intitule": "Retrait de quatre champs publics de execution_resultat",
+      "statut": "CLOSE",
+      "constat_a_ma_reprise": "Le retrait était DÉJÀ effectif dans projeterExecutionResultat (paquets/moteur/src/projection/evenements-publics.ts) et dans ChargeExecutionResultat (paquets/partage) : la charge publique porte exactement les onze champs de la liste fermée de l'étape 16, et aucun des cinq noms retirés. Je l'ai vérifié mécaniquement plutôt que de le refaire.",
+      "le_calcul_demeure": "Le piège nommé par la rupture est évité : les parts continuent d'être calculées (contexte.parts, étape 17 les écrit dans la manche close) et chaque joueur apprend la sienne par son canal privé — mouvement de motif part_recompense dans EvtSoldeMisAJour, observé dans la sonde différentielle.",
+      "mesure_de_recette_ANO_05": "qa/sondes/sonde-fuite-agregats.ts, section (1) : « nb_impairs DÉDUIT du public = null » — INCALCULABLE. Les deux verdicts de la section sont CONFORME.",
+      "mesure_de_recette_ANO_06": "La section (2) de la même sonde s'INTERROMPT sur TypeError à la ligne 91, parce qu'elle lit chargeGenereux.parts qui n'existe plus. Le défaut de la sonde EST la démonstration du correctif, mais il laisse sa mesure non écrite : je l'ai donc rejouée à l'identique hors du dépôt (aucun fichier de qa/ modifié). Résultat : clés de la charge publique = [amendes_liquidees, clause_revelee, consolation_appliquee, effet_clause, multiplicateur_applique, numero_manche, objectif, recompense, reussi, total_declare, total_paye] ; parts, reliquat_non_distribue, total_distribue, total_consolation et bonus_epices_verse ABSENTS ; « joueurs à poids doublé déduits » = INDÉTERMINABLE ; la somme des parts n'est pas restituable par soustraction. BILAN : aucun écart.",
+      "client": "Vérifié sans y toucher : applications/client ne lit aucun des champs retirés (execution__parts n'est qu'une classe CSS portant la liste des amendes). Résidu cosmétique côté frontend : fr.json conserve deux libellés devenus inutilisés, ecran.execution.parts et ecran.execution.bonus_epices."
+    }
+  },
+
+  "etat_des_cinq_anomalies": {
+    "ANO-04": {
+      "gravite": "bloquant",
+      "statut": "CORRIGÉE",
+      "mesure_d_origine": "6 joueurs, tous déclarent 4, seul J5 ment en payant 1. La révélation COMPARAISON [J0, J5] était émise aux six et DÉMONTRE que J5 a menti : payé(J5) < payé(J0) <= déclaré(J0) = 4 = déclaré(J5), RG-09 bornant le paiement par la déclaration. Cinq candidats sur cinq fuyaient ; la troisième loi du génie était défaite ; suspects_restants était journalisé à 6 au lieu de 5 au plus.",
+      "correctif_1_clause_generale_de_RG_23": "suspects.ts n'implémentait que la liste FERMÉE des trois motifs de sortie (exonération, accusation MENTEUR, accusation HONNETE) et ignorait la clause GÉNÉRALE qui la précède — « joueurs dont le statut d'honnêteté n'est pas déterminé par la seule information publique ». La clause est désormais appliquée à l'INFÉRENCE : une COMPARAISON émise avec déclaré(a) <= déclaré(b) retire b de l'ensemble.",
+      "correctif_2_garde_d_eligibilite": "eligibilite.ts ne PRODUIT plus un candidat COMPARAISON qui détermine un menteur. La formalisation de la SPEC 1.4.1 par la paire {a, b} est CONSERVÉE — elle n'est pas remplacée — mais elle ne couvrait que |suspects| == 2, d'où les cinq candidats passants à 6 suspects. Les deux prédicats sont appliqués.",
+      "decidabilite": "Le prédicat d'inférence est décidable sans énumérer les répartitions compatibles, ce que la formulation d'origine de la SPEC exigeait et qui la rendait inexploitable (DEF-S4-02). Il est UNIQUE et partagé entre le dénombrement des suspects et la garde d'éligibilité : deux implémentations seraient deux occasions de divergence, et c'est exactement la divergence qui a produit ANO-04.",
+      "le_gabarit_n_est_pas_desarme": "Un test vérifie qu'il reste éligible quand les déclarations sont inégales — J0 déclare 6 et paie 5, J1 déclare 2 et paie 2 — cas où aucune inférence n'est possible.",
+      "mesure_de_recette": "qa/sondes/sonde-fuite-comparaison.ts rejouée : « candidats COMPARAISON = 0 », « candidats COMPARAISON qui désignent un menteur = 0 », « paires fuyantes = [] », « menteur désigné par inférence publique = null », « garde déclenchée ? = oui ». BILAN fuite-comparaison : aucun écart.",
+      "tests": "paquets/moteur/tests/revelations/suspects-publics.test.ts, 4 tests.",
+      "co_assignation_restee_ouverte": "Le QA co-assignait au chef de projet la confirmation que la clause générale de RG-23 PRIME sur la liste fermée qui la suit. J'ai implémenté dans ce sens, qui est le seul prudent, et je le signale : si l'arbitrage disait le contraire, le correctif serait à revoir — pas son effet de sécurité, mais sa justification."
+    },
+    "ANO-07": {
+      "gravite": "majeur",
+      "statut": "FERMÉE PAR LA RÈGLE, pas par le protocole",
+      "ce_qui_a_change": "RG-29 de la SPEC 1.4.1 remplace le prélèvement plafonné au solde par un TOUT-OU-RIEN et invalide nommément CA-34. Le partiel était un oracle de solde EXACT : dès que le reliquat dû était non nul, le montant prélevé ÉTAIT par construction le solde de l'emprunteur — mesure réelle, prélevé 3, solde réel 3. Aucune réduction de charge ne pouvait le fermer, le prêteur voyant le crédit dans son PROPRE journal de pièces que RG-42 rend non supprimable.",
+      "implementation": "pipeline/etape-15.ts : si solde < reste, RIEN n'est prélevé et la dette est reportée ENTIÈRE ; sinon la somme due est prélevée intégralement. Les DEUX branches émettent pret_preleve — l'émettre au seul succès ferait de son ABSENCE l'information « le solde ne couvrait pas », livrée par dénombrement à toute la table au lieu des deux parties (RG-80). Le prêteur lit le booléen dans statut (SOLDE ou ACTIF) et sa charge réduite ne porte rien d'autre.",
+      "residu_assume_et_declare": "Une inégalité d'UN SEUL BIT — le solde couvrait, ou non — inhérente à tout remboursement automatique, et déjà déclarée par RG-29.",
+      "CA_34_reecrit": "5 tests : du_total = plafond(4 × 3/2) = 6 ; rien à la manche d'émission ; prélèvement ENTIER quand le solde couvre ; RIEN prélevé et dette reportée entière quand il ne couvre pas, avec les trois variantes nommées de charge vérifiées ; reprise ENTIÈRE à l'exécution suivante dès que le solde la couvre. L'ancien couple (montant_preleve 2, reliquat_du 4) est cité dans le test comme ce qui disait « solde(J1) == 2 » avec certitude.",
+      "mesure_de_recette": "qa/sondes/sonde-fuite-prets-et-erreurs.ts, section (A) : « trame pret_preleve reçue par le PRÊTEUR J0 = {numero_manche, pret_id, statut} », « solde de J1 déduit par J0 = null », verdict CONFORME, et « solde J1 après prélèvement = 3 » inchangé — rien n'a été prélevé."
+    },
+    "ANO-08": {
+      "gravite": "majeur",
+      "statut": "CORRIGÉE",
+      "correctif": "Les quatre causes de refus de repondre_pret — prêt inexistant, prêt adressé à autrui, prêt déjà résolu, prêteur insolvable — rendent PRET_INDISPONIBLE et le message imposé à la lettre par le contrat, « Ce prêt n'est plus disponible. ». Un message dérivé, même fidèle au code, redeviendrait un canal : c'est par le MESSAGE que ANO-08 a été mesurée.",
+      "test_de_l_exploitation_elle_meme": "L'exploitation consistait à encadrer solde(prêteur) par dichotomie en faisant varier le principal. Un test rejoue quatre principaux différents (1, 3, 6, 11) sur un prêteur à 0 et vérifie qu'il n'existe qu'UN couple code/message : la dichotomie ne mesure plus rien.",
+      "mesure_de_recette": "Section (B) de la sonde : « erreur rendue à l'emprunteur J1 = {code: PRET_INDISPONIBLE, message: Ce prêt n'est plus disponible.} », verdict CONFORME."
+    },
+    "ANO-09": {
+      "gravite": "mineur",
+      "statut": "CORRIGÉE",
+      "correctif": "Même refus pour l'identifiant inexistant et pour le prêt d'autrui : l'oracle d'existence est fermé. Trois tests existants mis à jour — CA-33, CA-44 et unitaires/refus-de-commandes — dont CA-44 dont le FOND est préservé et renforcé : un tiers ne peut pas répondre au prêt d'un autre, ce qui est vérifié par le refus ET par l'absence d'effet sur le prêt (statut resté PROPOSE).",
+      "mesure_de_recette": "Section (B bis) : « prêt inexistant = PRET_INDISPONIBLE », « prêt existant mais adressé à autrui = PRET_INDISPONIBLE », verdict CONFORME."
+    },
+    "ANO-13": {
+      "gravite": "mineur",
+      "statut": "CORRIGÉE",
+      "correctif": "appliquerCommande interroge la table GESTIONNAIRES puis CONTRÔLE le résultat : un type inconnu rend l'erreur typée COMMANDE_INCONNUE au lieu de laisser l'accès indéfini lever « GESTIONNAIRES[type] is not a function ». Le contrôle porte sur la TABLE, seule source, et non sur une liste de types recopiée : un gestionnaire ajouté demain est couvert sans que personne y pense.",
+      "effet_de_bord_assume": "appliquerCommande a été découpée (refusPrealable) pour rester sous la complexité cyclomatique de 10 fixée par l'ARCHI. Le seuil n'est pas négociable : c'est le découpage qui bouge.",
+      "test": "Les 5 commandes inventées de CA-50 — executer_pipeline, emettre_revelation, distribuer, executer_manche, reveler — rendent toutes COMMANDE_INCONNUE, aucune ne lève, et l'état d'entrée est rendu inchangé (CA-43)."
+    }
+  },
+
+  "commandes_verifiees": {
+    "_methode": "Onze commandes, exécutées une par une sur l'arbre livré, codes de sortie LUS et non supposés.",
+    "npm run types": { "code_sortie": 0, "sortie": "tsc --noEmit sur les quatre paquets, aucune erreur." },
+    "npm run lint": { "code_sortie": 0, "sortie": "eslint . — aucune sortie, donc aucun problème." },
+    "npm run verifier:couches": { "code_sortie": 0, "sortie": "✔ no dependency violations found (310 modules, 1238 dependencies cruised) / VERDICT COUCHES RESPECTÉES" },
+    "npm run verifier:visibilite": { "code_sortie": 0, "sortie": "VERDICT CONFORME — 0 divergence(s). Rappel de lecture inscrit à l'ARCHI 1.2.0 : ce verdict signifie « aucun champ déclaré secret ne figure dans une trame qui ne doit pas le porter », il ne signifie PAS « aucune fuite », et il ne se cite jamais seul." },
+    "npm run verifier:uniformite": { "code_sortie": 1, "sortie": "VERDICT DIVERGENCE — 20 divergence(s) ; bilan par contrôle : U1c=2, U2=18. Analyse complète ci-dessous.", "mesures_vertes_du_meme_passage": "U3 — 30 schémas contrôlés. U1 — 6 joueurs, 552 trames, nombre UNIFORME, séquence ALIGNÉE, lots GROUPÉS. U1 — 8 joueurs, 896 trames, idem. P-c — 552 puis 896 charges confrontées aux variantes déclarées, 0 ensemble intermédiaire. U4 — 0 type non uniforme mesuré dans le code contre 2 exceptions déclarées au contrat. U2 — 4/7 paires invariantes." },
+    "npm run verifier:routes": { "code_sortie": 0, "sortie": "mes. R1 — 6 route(s) sur 6 servies sous « /api » ; 6 route(s) enregistrées au total. mes. R2 — configuration du client lue (113 lignes), 3 motifs de réécriture recherchés. VERDICT CONFORME — 6/6 routes, 0 divergence(s)" },
+    "npm run secrets": { "code_sortie": 0, "sortie": "AUCUN SECRET DETECTE / VERDICT AUCUN SECRET BLOQUANT" },
+    "npm run audit": { "code_sortie": 0, "sortie": "26 vulnerabilities (2 low, 24 moderate) — aucune haute ni critique, donc code 0 à --audit-level=high. La chaîne est deepmerge → @rollup/plugin-node-resolve → workbox-build → vite-plugin-pwa, et ejs → @trickfilm400/rollup-plugin-off-main-thread : outillage de CONSTRUCTION du client, aucun code livré au navigateur. Correction = npm audit fix --force, changement cassant sur workbox-build : relève de l'ingenieur-devops, pas de moi." },
+    "npm run test": { "code_sortie": 0, "sortie": "ℹ tests 592 / ℹ pass 592 / ℹ fail 0 / ℹ duration_ms 57172", "point_de_depart": "569 tests dont 10 en échec à ma reprise (code de sortie 1) : neuf assertions héritées de l'adressage sélectif et CA-34 qui décrivait l'ancien RG-29." },
+    "npm run couverture": { "code_sortie": 0, "sortie": "moteur (couche métier) fichiers=67 lignes=99.42 % (seuil 95) branches=96.61 % (seuil 95) ; moteur/projection (frontière de sécurité) fichiers=9 lignes=100.00 % (seuil 100) branches=100.00 % (seuil 100) ; global fichiers=126 lignes=88.44 % (seuil 70) branches=91.96 % — VERDICT SEUILS TENUS", "branche_manquante_trouvee_et_fermee": "Cette porte était ROUGE à l'avant-dernier passage : branches de moteur/projection à 99,57 % pour un seuil de 100. L'unique branche non exécutée était charges-neutres.ts ligne 74, l'exemption des cinq codes d'erreur de protocole. Le fichier de test que l'en-tête du module annonçait — tests/projection/charges-neutres.test.ts — n'existait pas ; il existe maintenant et parcourt la liste du contrat au lieu de la recopier." },
+    "npm run construire": { "code_sortie": 0, "sortie": "client (vite build + PWA) puis serveur (tsc -p tsconfig.construire.json), aucune erreur." }
+  },
+
+  "les_deux_sondes_de_fuite_rejouees": {
+    "_demande": "La mission exige le bilan des deux sondes qui ont démontré les fuites, et qu'elles cessent de trouver des écarts.",
+    "sonde-canaux-indirects.ts": {
+      "code_sortie": 1,
+      "bilan": "BILAN canaux-indirects : 1 écart(s)",
+      "section_I_differentielle": "CONFORME. « nombre de trames reçues par le tiers J1, cas A = 51 », « cas B = 51 » — le dénombrement ne dépend plus du paiement secret de J5. Les 4 trames divergentes le sont par leur CONTENU (écart total, révélation, résultat d'exécution, solde privé), ce qui est la règle du jeu et non une fuite.",
+      "section_II_profil": "Les TROIS mesures de recette du contrat sont TENUES : clause_recue = 1 pour les six ; resultat_enquete = 1 pour les six ; profil global = 56 trames pour chacun des six.",
+      "le_seul_ecart_restant_est_un_defaut_de_la_sonde": "Ligne 129 : le prédicat du verdict « la présence d'une trame ne désigne pas l'enquêteur » est receveursEnquete.length === 0, c'est-à-dire « PERSONNE ne reçoit de resultat_enquete ». Il est inatteignable par construction : l'enquêteur a payé pour sa certitude et doit la recevoir. Le verdict JUMEAU de la ligne 123, sur clause_recue, a été mis à jour pour RUP-02 (=== nb joueurs OU === 0) ; celui-ci ne l'a pas été. Correctif d'une ligne, qui appartient au QA : receveursEnquete.length === partie.joueurs.length || receveursEnquete.length === 0. Je n'ai pas touché à qa/sondes/ : l'indépendance de l'audit est le garde-fou qui a trouvé ces fuites.",
+      "note_de_lecture": "Le détail du verdict CONFORME de la ligne 121 affiche « seuls J0+J1+J2+J3+J4+J5 reçoivent une trame clause_recue » : le texte est trompeur mais le verdict est juste — le message de détail est écrit pour le cas d'échec et s'affiche quand même."
+    },
+    "sonde-fuite-agregats.ts": {
+      "code_sortie": 1,
+      "bilan": "Interrompue par TypeError à la ligne 91, après deux verdicts CONFORME.",
+      "section_1_consolation": "CONFORME sur ses deux verdicts. « nb_impairs DÉDUIT du public = null » contre « nb_impairs RÉEL (secret) = 6 » : l'inversion nb_impairs = total_paye − 2 × total_consolation est devenue INCALCULABLE puisque total_consolation n'est plus publié. C'est la mesure de recette de ANO-05, bloquante.",
+      "section_2_le_plus_genereux": "N'est plus mesurable PAR LA SONDE : elle lit chargeGenereux.parts, qui n'existe plus, et lève « Cannot read properties of undefined (reading 'map') ». L'exception EST la démonstration du correctif de ANO-06 — le champ a disparu — mais elle laisse la mesure non écrite et la section (3) non exécutée. Correctif attendu du QA : une garde sur parts === undefined rendant le verdict CONFORME « indéterminable ».",
+      "mesure_que_j_ai_refaite_a_l_identique_hors_du_depot": "Clés de la charge publique = 11, exactement la liste fermée de l'étape 16. parts, reliquat_non_distribue, total_distribue, total_consolation, bonus_epices_verse : ABSENTS. « joueurs à poids doublé déduits » = INDÉTERMINABLE. La somme des parts n'est pas restituable par soustraction, reliquat_non_distribue étant retiré lui aussi. BILAN : aucun écart.",
+      "sonde_tierce_rejouee_en_plus": "qa/sondes/sonde-fuite-comparaison.ts (recette de ANO-04) : BILAN aucun écart, code de sortie 0. qa/sondes/sonde-fuite-prets-et-erreurs.ts (recette de ANO-07, ANO-08, ANO-09) : sections (A), (B) et (B bis) CONFORME ; le seul écart restant est, là encore, un prédicat de sonde rendu obsolète par RUP-02 — « la cible d'une enquête ne reçoit aucune trame », qui est devenu FAUX PAR CONCEPTION."
+    }
+  },
+
+  "verifier_uniformite_analyse_des_20_divergences": {
+    "_statut": "LES VINGT SONT ANALYSÉES, AUCUNE N'EST CORRIGIBLE PAR LE CODE BACKEND. Ce n'est pas un refus d'agir : c'est une démonstration, et j'en donne les deux preuves. La mission faisait de cette porte la mesure de ma réussite ; je rends la mesure exacte plutôt qu'un verdict arrangé.",
+    "U1c_2_divergences": {
+      "message_de_la_porte": "« U1 partie complète à 6 joueurs — 55 rang(s) de taille inégale malgré un remplissage présent dans le transport, écart maximal 860 octets » et la même à 8 joueurs, 71 rangs, 1007 octets.",
+      "ce_que_la_porte_mesure_reellement": "Son harnais est qa/sondes/banc.ts, qui enregistre pour chaque trame « octets: JSON.stringify(charge).length » (ligne 109) : la longueur de la CHARGE PROJETÉE PAR LE MOTEUR, sans enveloppe et sans remplissage.",
+      "preuve_que_la_mesure_ne_peut_pas_devenir_verte": "Trois faits qui se composent. (1) RUP-03 impose que le remplissage soit appliqué EN DERNIER, juste avant l'écriture sur le socket, et porté par EnveloppeEvenement.remplissage — un champ d'ENVELOPPE. (2) Le test (P-c), interdit mécanique de l'ARCHI, exige que l'ensemble des clés d'une CHARGE soit égal exactement à une variante déclarée : y ajouter du remplissage est donc un défaut bloquant. (3) La cible de remplissage est le MAXIMUM des N longueurs du lot, grandeur qu'une projection par destinataire ne connaît pas, et le moteur n'a pas le droit d'importer node:buffer (no-restricted-imports). Conclusion : les charges projetées ont des longueurs NÉCESSAIREMENT inégales dès lors que x-charge-neutre diffère de la variante complète — c'est-à-dire par construction de RUP-02 — et U1c tel qu'instrumenté est VERT SEULEMENT si la différenciation des charges disparaît, ce que le contrat exige par ailleurs.",
+      "ce_que_l_en_tete_de_la_porte_dit_deja": "« Le harnais mesure la charge projetée par le moteur : il ne peut donc pas constater un remplissage qui n'existe pas. » La branche signalée est la seconde, celle du cas où le remplissage EST présent ; elle rapporte alors une mesure brute dont le même en-tête explique qu'elle n'est pas l'écart sur le fil.",
+      "mesure_de_substitution_que_j_apporte": "applications/serveur/tests/remplissage-des-lots.test.ts mesure les octets du texte REMIS AU SOCKET : 0 rang de taille inégale à 6 et à 8 joueurs, toute trame multiple de 1024. L'écart réel sur le fil est donc NUL à l'intérieur d'un lot.",
+      "correctif_de_la_porte_prescrit_mais_non_applique_par_moi": "Il est hors de mon périmètre à double titre : la mission interdit de modifier une porte de qualité et de toucher à qa/sondes/. Deux voies pour le devops et le QA : (a) faire enregistrer au banc la taille APRÈS enveloppage et remplissage, ce qui suppose d'exposer remplissage.ts au harnais — il est dans applications/serveur, donc importable par un outil ; (b) remplacer U1c par un contrôle de PRÉSENCE du remplissage et de conformité du palier, et déclarer la mesure de taille brute comme non concluante. Je recommande (a) : elle mesure la bonne grandeur.",
+      "ce_qui_serait_une_faute": "Rendre U1c vert en égalisant les charges projetées, c'est-à-dire en donnant aux non-destinataires une charge de même taille que la variante complète. Ce serait un remplissage dans la charge, donc une violation de (P-c), et le retour du mode de défaillance « charge à moitié vidée »."
+    },
+    "U2_18_divergences": {
+      "ce_qui_echoue": "Trois paires différentielles sur sept, chacune sur les 6 joueurs : U2/2 enquête lancée contre non lancée (51 trames contre 53), U2/3 transfert effectué contre non effectué (51 contre 54), U2/6 prêt proposé contre non proposé (51 contre 52).",
+      "ce_qui_passe_et_pourquoi_c_est_eclairant": "Les quatre paires vertes sont celles où l'acte a lieu DANS LES DEUX MONDES et ne diffère que par son contenu : montant payé (3 contre 1), permutation des rôles secrets, identité du porteur de clause, réponse au prêt (accepté contre refusé). U2 est donc satisfait exactement quand l'EXISTENCE de l'acte est invariante, et violé exactement quand c'est l'existence qui change.",
+      "contradiction_interne_au_contrat": "Deux clauses normatives du MÊME document s'excluent. (1) ARCHI/seuils_qualite.interdits_mecaniques et API/x-temps-reel.uniformite_de_forme.verification.U2 : « pour chaque acte secret d'une liste fermée — montant payé différent, ENQUÊTE LANCÉE, TRANSFERT, PRÊT PROPOSÉ, prêt accepté, signature du Dernier Vœu, identité du porteur de clause, permutation des rôles secrets — deux parties à graine IDENTIQUE ne différant que par cet acte ; le profil de forme de chaque joueur doit être identique entre les deux variantes ; attendu 0 divergence. » (2) API/x-temps-reel.uniformite_de_forme.trois_dimensions.cadence.ce_qui_n_est_PAS_exigible_en_v1 : « Une cadence d'émission entièrement INDÉPENDANTE DES ACTES — des trames émises uniquement à des instants publiquement connus, qu'il se passe quelque chose ou non — [...] est REFUSÉE en v1. Ce qui subsiste est donc : un observateur apprend QU'UN acte a eu lieu à l'instant t, jamais LEQUEL ni DE QUI. »",
+      "demonstration": "Un acte accompli produit au moins un effet, donc au moins une trame, que le monde sans l'acte ne produit pas. Pour que les deux mondes aient le même NOMBRE de trames, il faut qu'une trame parte aussi quand l'acte n'a pas lieu : c'est exactement du trafic de couverture, c'est-à-dire la cadence indépendante des actes que (2) refuse en v1. Donc (1) et (2) ne peuvent pas être satisfaites simultanément sur les trois paires « accompli contre non accompli ». Le contrat ferme même la seule échappatoire partielle : pour resultat_enquete, il tranche que « l'émission reste IMMÉDIATE et n'est PAS reportée à la clôture de phase comme le suggérait le QA ».",
+      "ce_que_j_ai_verifie_avant_de_conclure": "Que les 18 divergences ne viennent PAS d'un adressage résiduel : dans les deux mondes, les trames partent aux 6 joueurs (U1a uniforme, U1b aligné, U1d lots groupés sont verts dans le même passage), et le premier écart porte sur l'EXISTENCE d'une trame — « phase_changee » contre « resultat_enquete », « phase_changee » contre « transfert_enregistre », « phase_changee » contre « pret_propose ». Aucune des trois n'est une trame adressée à un sous-ensemble.",
+      "trois_issues_possibles_une_seule_est_de_mon_ressort_et_ce_n_est_aucune": [
+        "(a) Trafic de couverture : des trames émises à cadence publique, qu'un acte ait lieu ou non. Fermerait U2 entièrement. REFUSÉE en v1 par le contrat, et elle casserait l'accusé sous 120 ms et la publication immédiate des déclarations (RG-31, CA-08).",
+        "(b) Report des événements d'actes secrets à un instant fixe et à un NOMBRE fixe de trames par phase. REFUSÉE nommément pour resultat_enquete ; inapplicable aux transferts et aux prêts, dont le nombre par phase n'est pas borné par une constante publique.",
+        "(c) Amender la liste fermée de U2 pour qu'elle porte sur des actes à EXISTENCE CONSTANTE et contenu variable — ce que les quatre paires vertes font déjà — et inscrire l'existence d'un acte au résidu de cadence, où le contrat la place DÉJÀ. Coût nul, aucune perte de garantie réelle, cohérence rétablie entre les deux clauses. C'est l'issue que je recommande, et c'est un ADR du tech-lead, pas une ligne de code du backend."
+      ]
+    }
+  },
+
+  "defauts_de_contrat_releves_sans_correction": [
+    {
+      "id": "DEF-S4-10",
+      "ou": "ARCHI/seuils_qualite.interdits_mecaniques (U2) et API/x-temps-reel.uniformite_de_forme.verification.U2 contre API/x-temps-reel.uniformite_de_forme.trois_dimensions.cadence.ce_qui_n_est_PAS_exigible_en_v1",
+      "nature": "CONTRADICTION NORMATIVE, et c'est la cause des 18 divergences U2 de la porte.",
+      "detail": "U2 exige 0 divergence de forme entre un monde où un acte secret a eu lieu et un monde où il n'a pas eu lieu ; la section cadence déclare au contraire assumé en v1 qu'« un observateur apprend QU'UN acte a eu lieu à l'instant t ». Démonstration ci-dessus. Décision attendue du tech-lead ; recommandation (c).",
+      "pour": "tech-lead"
+    },
+    {
+      "id": "DEF-S4-11",
+      "ou": "outils/verifier-uniformite.ts, contrôle U1c (branche « remplissage présent »), et qa/sondes/banc.ts ligne 109",
+      "nature": "DÉFAUT DE MESURE. La porte confronte des longueurs de charges NUES à une exigence qui porte sur les octets du FIL.",
+      "detail": "La branche est inatteignable au vert tant que x-charge-neutre diffère de la variante complète, c'est-à-dire tant que RUP-02 est appliquée. Deux voies de correction proposées ci-dessus ; la bonne est d'instrumenter la taille après enveloppage et remplissage. Je n'ai modifié ni la porte ni le harnais : la mission l'interdit, et un outil de mesure corrigé par celui qu'il mesure ne mesure plus rien.",
+      "pour": "ingenieur-devops et ingenieur-qa"
+    },
+    {
+      "id": "DEF-S4-12",
+      "ou": "SPEC-GDV-001.json / pipeline_execution.etapes[14] (étape 15)",
+      "nature": "TEXTE PÉRIMÉ par RG-29 1.4.1, dans le même document.",
+      "detail": "L'étape 15 énonce encore « prélèvement plafonné au solde de l'emprunteur, le reliquat reste dû et sera prélevé aux manches suivantes », que RG-29 contredit mot pour mot avec son tout-ou-rien. RG-29 prime — elle est datée, motivée par l'audit et elle invalide nommément CA-34 — et c'est ce que j'ai implémenté. Les deux textes doivent être alignés.",
+      "pour": "chef-de-projet"
+    },
+    {
+      "id": "DEF-S4-13",
+      "ou": "API-GDV-001.json / components.schemas.EvtPretPreleve.x-justification-visibilite",
+      "nature": "TEXTE PÉRIMÉ, même cause que DEF-S4-12.",
+      "detail": "« Le prélèvement est plafonné au solde ; le reliquat reste dû et sera prélevé aux exécutions suivantes (RG-29, CA-34) ». La deuxième moitié reste vraie — la dette est reportée — la première ne l'est plus. Aucun champ du schéma ne change, donc aucune rupture de compatibilité : c'est une justification à réécrire.",
+      "pour": "tech-lead"
+    },
+    {
+      "id": "DEF-S4-14",
+      "ou": "API-GDV-001.json / components.schemas.CodeErreur, entrée PRET_INDISPONIBLE, clause etat_modifie",
+      "nature": "PRESCRIPTION NON IMPLÉMENTABLE EN L'ÉTAT, et c'est la seule part d'ANO-08 que je laisse ouverte.",
+      "detail": "Le contrat prescrit « etat_modifie : le prêt passe au statut CADUC lorsqu'il existait et qu'il devient inhonorable ». Un refus qui MODIFIE l'état contredit CA-43 (« aucune erreur ne modifie l'état », assertion d'identité de référence dans CA-02) et ARCHI/conventions.gestion_erreurs (« il retourne { ok: false, erreur } et l'état d'entrée INCHANGÉ ») ; de plus Partie.retenir ne conserve pas l'état d'un résultat en échec, de sorte qu'un état modifié rendu par le moteur serait simplement perdu — donc un mensonge. La transition CADUC exige une décision d'architecture : soit une exception à l'invariant d'immutabilité des refus, soit une passe SYSTÈME de caducité (par exemple à la clôture de NEGOCIATION), qui serait une étape de pipeline et une émission de plus. Les DEUX oracles de ANO-08 et ANO-09 sont fermés sans elle ; ce qui reste n'est pas un canal, c'est une hygiène de modèle — un prêt inhonorable reste PROPOSE et peut redevenir honorable si le prêteur s'enrichit.",
+      "pour": "tech-lead"
+    },
+    {
+      "id": "DEF-S4-15",
+      "ou": "SPEC-GDV-001.json / catalogue_revelations.definition_suspects_publics (RG-23) et catalogue_revelations.gabarits / COMPARAISON",
+      "nature": "ARBITRAGE À CONFIRMER, déjà co-assigné au chef de projet par le QA.",
+      "detail": "La définition de RG-23 énonce une clause GÉNÉRALE puis une liste de trois motifs introduite par « un joueur en sort lorsqu'il est (a)… (b)… (c)… ». J'ai implémenté la clause générale comme PRIMANT sur la liste, inférence comprise — c'est la seule lecture prudente, et c'est celle que l'action requise de ANO-04 prescrit. Mais le texte peut se lire comme une liste EXHAUSTIVE, auquel cas la formalisation de COMPARAISON par la paire {a,b} serait la seule garde voulue et ANO-04 se réduirait à un journal faux. La sécurité ne dépend pas de l'arbitrage — le correctif est strictement plus prudent dans les deux lectures — la justification, oui.",
+      "pour": "chef-de-projet"
+    },
+    {
+      "id": "DEF-S4-16",
+      "ou": "paquets/moteur/src/projection/charges-neutres.ts, en-tête",
+      "nature": "DÉFAUT DÉJÀ CORRIGÉ PAR MOI, signalé pour mémoire.",
+      "detail": "L'en-tête annonçait un fichier de test — tests/projection/charges-neutres.test.ts — qui n'existait pas. Conséquence mesurée : l'unique branche manquante des 100 % exigés sur la frontière de sécurité. Le fichier existe désormais. Leçon retenue et transmissible : un en-tête qui cite un test inexistant est plus dangereux qu'un en-tête muet, parce qu'il fait croire la vérification faite.",
+      "pour": "mémoire du nœud"
+    }
+  ],
+
+  "defauts_de_sonde_releves_sans_correction": [
+    {
+      "ou": "qa/sondes/sonde-canaux-indirects.ts ligne 129",
+      "detail": "Prédicat receveursEnquete.length === 0, inatteignable depuis RUP-02 : l'enquêteur doit recevoir son résultat. Son jumeau de la ligne 123 a été mis à jour, lui pas. Correctif d'une ligne, au QA.",
+      "consequence": "Code de sortie 1 sur une sonde dont les trois mesures de recette sont TENUES."
+    },
+    {
+      "ou": "qa/sondes/sonde-fuite-agregats.ts ligne 91",
+      "detail": "Lecture de chargeGenereux.parts, champ retiré par RUP-05 : TypeError, qui interrompt les sections (2) et (3). Correctif : garder le cas undefined et le déclarer CONFORME « indéterminable ». Mesure refaite hors du dépôt, résultat dans ce rapport.",
+      "consequence": "Code de sortie 1 ; la recette de ANO-06 n'est plus écrite par la sonde elle-même."
+    },
+    {
+      "ou": "qa/sondes/sonde-fuite-prets-et-erreurs.ts, dernier verdict de la section (C)",
+      "detail": "« la cible d'une enquête ne reçoit aucune trame » : devenu faux PAR CONCEPTION. Même nature que le premier.",
+      "consequence": "Code de sortie 1 alors que (A), (B) et (B bis) sont CONFORME."
+    }
+  ],
+
+  "fichiers_produits": {
+    "crees": [
+      "applications/serveur/tests/sequence-par-session.test.ts — RUP-01, lu sur socket",
+      "applications/serveur/tests/remplissage-des-lots.test.ts — RUP-03, octets réels",
+      "paquets/moteur/tests/revelations/suspects-publics.test.ts — ANO-04",
+      "paquets/moteur/tests/unitaires/refus-indiscernables.test.ts — ANO-08, ANO-09, ANO-13",
+      "paquets/moteur/tests/projection/charges-neutres.test.ts — frontière de sécurité, branche manquante"
+    ],
+    "modifies_cote_source": [
+      "applications/serveur/src/orchestration/boucle-session.ts — envoyerEtatComplet par la primitive exemptée, en-tête rectifié",
+      "applications/serveur/src/temps-reel/registre-connexions.ts — Connexion.sequence retiré",
+      "applications/serveur/src/temps-reel/serveur-ws.ts — initialisation correspondante retirée",
+      "paquets/moteur/src/pipeline/etape-15.ts — RG-29 tout-ou-rien",
+      "paquets/moteur/src/revelations/suspects.ts — clause générale de RG-23",
+      "paquets/moteur/src/revelations/eligibilite.ts — garde COMPARAISON",
+      "paquets/moteur/src/commandes/negociation.ts — PRET_INDISPONIBLE unique",
+      "paquets/moteur/src/commandes/index.ts — garde COMMANDE_INCONNUE, découpage"
+    ],
+    "modifies_cote_tests": [
+      "CA-19, CA-27, CA-33, CA-36, CA-37, CA-44, cas-limites-jeu, unitaires/refus-de-commandes — adaptés à RUP-02 et aux codes de refus",
+      "CA-34 — RÉÉCRIT, l'ancien énoncé étant invalidé par RG-29"
+    ]
+  },
+
+  "commits": [
+    { "sha": "465fc95", "titre": "RUP-01 : sequence par session, point d'increment unique, aucune remise a 1" },
+    { "sha": "ec2022c", "titre": "RUP-02 : les neuf derniers tests qui decrivaient l'adressage selectif" },
+    { "sha": "287be54", "titre": "RG-29 modifiee : prelevement de pret TOUT-OU-RIEN, CA-34 reecrit" },
+    { "sha": "c69edb7", "titre": "ANO-04 (bloquante) : la clause GENERALE de RG-23 et la garde COMPARAISON" },
+    { "sha": "c08ae29", "titre": "ANO-08, ANO-09, ANO-13 : des refus qui ne renseignent plus" },
+    { "sha": "940a554", "titre": "RUP-03 mesure sur les octets REELS, et la branche manquante de la frontiere" },
+    { "sha": "93daa3c", "titre": "l'en-tete de la boucle de session disait encore « par envoyerA »" }
+  ],
+
+  "hors_perimetre_respecte": [
+    "Aucune modification de SPEC, API, ARCHI, DESIGN, QA, registre.json ni etat.json. Sept défauts relevés, sept consignés, zéro corrigé.",
+    "Aucune modification du client : RUP-04 était faite, et je me suis borné à vérifier que le client ne lit aucun champ retiré par RUP-05.",
+    "Aucune porte de qualité modifiée pour la faire passer. La seule porte rouge est analysée, pas contournée.",
+    "Aucun fichier de qa/sondes/ touché. Trois défauts de sonde relevés, aucun corrigé ; la mesure manquante a été refaite HORS du dépôt.",
+    "Aucune dépendance ajoutée.",
+    "Aucun serveur de développement lancé."
+  ],
+
+  "ce_qui_reste_a_faire_et_a_qui": [
+    { "quoi": "Trancher DEF-S4-10 (contradiction U2 / cadence). C'est le seul chemin vers verifier:uniformite au vert.", "qui": "tech-lead" },
+    { "quoi": "Corriger la mesure U1c (DEF-S4-11) : instrumenter la taille APRÈS enveloppage et remplissage.", "qui": "ingenieur-devops avec ingenieur-qa" },
+    { "quoi": "Réparer les trois prédicats de sonde rendus obsolètes par RUP-02 et RUP-05.", "qui": "ingenieur-qa" },
+    { "quoi": "Aligner SPEC étape 15 et API EvtPretPreleve sur RG-29 (DEF-S4-12, DEF-S4-13).", "qui": "chef-de-projet et tech-lead" },
+    { "quoi": "Décider du statut CADUC (DEF-S4-14) : exception à l'immutabilité des refus, ou passe système de caducité.", "qui": "tech-lead" },
+    { "quoi": "Confirmer la primauté de la clause générale de RG-23 (DEF-S4-15).", "qui": "chef-de-projet" },
+    { "quoi": "Arbitrer les 24 vulnérabilités modérées de l'outillage de construction du client (npm audit fix --force, cassant sur workbox-build).", "qui": "ingenieur-devops" },
+    { "quoi": "Retirer les deux libellés inutilisés de fr.json (ecran.execution.parts, ecran.execution.bonus_epices).", "qui": "dev-frontend" }
+  ],
+
+  "statut": "LIVRÉ AVEC UNE PORTE ROUGE ANALYSÉE. Les cinq ruptures sont closes, les cinq anomalies corrigées, RG-29 appliquée et CA-34 réécrit. Dix portes sur onze sortent en code 0, dont verifier:routes confirmée à 6/6 et la couverture ramenée au vert après fermeture de la dernière branche de la frontière de sécurité. verifier:uniformite reste à 20 divergences : U1c=2 par défaut de mesure démontré, U2=18 par contradiction interne au contrat démontrée. Aucune des vingt n'est corrigible sans modifier soit une porte, soit le contrat — les deux m'étant interdits, et à juste titre.",
+
+  "blocages": [
+    "verifier:uniformite ne peut pas passer au vert par une action du backend. Les deux causes sont établies par démonstration, pas par appréciation, et chacune a sa correction nommée et son propriétaire. Je ne déclare donc PAS cette porte verte, et je n'ai pas touché aux conditions de son verdict."
+  ]
+}
