@@ -246,11 +246,32 @@ export class BoucleSession {
     this.emettre(partie.etat, [{ type: 'joueur_rejoint', joueur_id: joueurId }]);
   }
 
-  /** Envoie l'état projeté COMPLET au seul joueur authentifié (RG-73, CA-42). */
+  /**
+   * Envoie l'état projeté COMPLET au seul joueur authentifié (RG-73, CA-42).
+   *
+   * SEULE émission du serveur qui n'emprunte PAS le lot, et c'est la première
+   * des deux exemptions de la liste FERMÉE du contrat : son déclencheur est une
+   * (re)connexion, laquelle est déjà publique — EvtJoueurReconnecte est de
+   * classe tous. Sa présence ne révèle donc rien que la table n'apprenne par
+   * ailleurs.
+   *
+   * RUP-01, et c'est le point qui coûtait cher : la trame ne CONSOMME PAS de
+   * numéro de séquence. Passer par le lot en aurait consommé un — le lot n'a
+   * qu'un destinataire, puisque la projection rend null pour les N−1 autres —
+   * et aurait creusé un TROU de séquence chez eux. Or un trou de séquence est
+   * précisément ce qui déclenche une reconnexion côté client : chaque
+   * reconnexion en aurait provoqué N−1 autres, chacune creusant son propre
+   * trou. C'est pourquoi l'appel se fait à envoyerA, dont la documentation
+   * porte l'interdit d'incrément, et non à emettre.
+   */
   envoyerEtatComplet(partie: Partie, joueurId: string): void {
-    this.emettre(partie.etat, [
+    const charge = projeterEvenement(
+      partie.etat,
       { type: 'etat_complet_prive', destinataire_joueur_id: joueurId },
-    ]);
+      joueurId,
+    );
+    if (charge === null) return;
+    this.diffuseur.envoyerA(joueurId, 'etat_complet_prive', charge);
   }
 
   /**

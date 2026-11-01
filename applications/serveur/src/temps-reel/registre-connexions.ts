@@ -5,10 +5,17 @@
 //   même joueur sont refusés : ils doubleraient les projections privées sans
 //   bénéfice. » (API / x-temps-reel.authentification)
 //
-// Le numéro de séquence est porté ICI, par connexion, parce qu'il est monotone
-// PAR DESTINATAIRE et remis à 1 après chaque etat_complet_prive : deux joueurs
-// n'ont ni les mêmes numéros ni le même nombre de messages, et c'est la
-// conséquence directe de la projection par destinataire.
+// RUP-01 — LE NUMÉRO DE SÉQUENCE N'EST PLUS ICI. Il était porté par la
+// connexion, monotone PAR DESTINATAIRE et remis à 1 après chaque
+// etat_complet_prive : deux joueurs n'avaient ni les mêmes numéros ni le même
+// nombre de messages, et cette phrase était écrite au contrat comme une
+// conséquence assumée de la projection par destinataire. C'était la TRACE de la
+// fuite que ANO-01 et ANO-02 ont exploitée. Le compteur a migré vers la SESSION
+// (diffuseur.ts), avec un point d'incrément unique et aucune remise à 1.
+//
+// Le champ n'est pas conservé « au cas où » : une structure qui porte encore un
+// compteur par destinataire est une invitation à s'en servir, et deux compteurs
+// recréeraient exactement la divergence que la rupture supprime.
 
 import type { WebSocket } from 'ws';
 
@@ -18,7 +25,6 @@ export interface Connexion {
   readonly socket: WebSocket;
   readonly joueur_id: string;
   readonly session_id: string;
-  sequence: number;
   pongs_manques: number;
   depassements: number;
   horodatages_commandes: number[];

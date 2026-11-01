@@ -248,7 +248,6 @@ export class ServeurTempsReel {
       socket,
       joueur_id: resultat.joueur_id,
       session_id: resultat.session_id,
-      sequence: 0,
       pongs_manques: 0,
       depassements: 0,
       horodatages_commandes: [],
