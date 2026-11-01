@@ -5,10 +5,16 @@
 //   2. PERSISTER — journal et audit dans la même transaction, avant toute
 //      émission : un client ne doit jamais voir un effet qui n'a pas survécu ;
 //   3. PROJETER  — une projection PAR DESTINATAIRE, par le moteur (ADR-TL-09) ;
-//   4. ÉMETTRE   — une trame par destinataire, par envoyerA et par rien d'autre.
+//   4. ÉMETTRE   — les N trames en UN LOT, par envoyerLot (RUP-02), et la
+//      seule trame exemptée par envoyerA. Aucune autre primitive n'existe.
 //
 // Un « événement public » est la BOUCLE de l'étape 3 : trente destinataires,
 // trente projections recalculées. Il n'existe aucun objet d'état global.
+//
+// Les DEUX appels à envoyerA du serveur sont les deux exemptions de la liste
+// FERMÉE du contrat, et rien d'autre : etat_complet_prive (ci-dessous) et les
+// cinq codes d'erreur de protocole (temps-reel/refus.ts). Tout le reste passe
+// par le lot.
 
 import type { CodeErreur, TypeCommande } from '@gdv/partage';
 import { definirConnexion, projeterEvenement } from '@gdv/moteur';
