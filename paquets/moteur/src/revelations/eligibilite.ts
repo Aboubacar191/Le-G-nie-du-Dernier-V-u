@@ -11,7 +11,11 @@ import { MINIMUM_SUSPECTS_PUBLICS, type Gabarit } from '@gdv/partage';
 
 import { declareDe, payeDe, voisinsDe } from '../etat/acces.ts';
 import type { EtatSession, Manche } from '../etat/types.ts';
-import { suspectsApresEmission, suspectsPublics } from './suspects.ts';
+import {
+  menteurDetermineParComparaison,
+  suspectsApresEmission,
+  suspectsPublics,
+} from './suspects.ts';
 
 export interface CandidatRevelation {
   readonly gabarit: Gabarit;
@@ -78,17 +82,17 @@ function candidatsExoneration(etat: EtatSession, manche: Manche): readonly Candi
 
 // --- COMPARAISON : « {a} a payé plus que {b}. » ------------------------------
 /**
- * « Interdit si l'énoncé combiné aux déclarations publiques suffit à désigner un
- *   menteur unique. »
+ * SPEC 1.4.1, catalogue_revelations.gabarits / COMPARAISON : « Interdit si
+ * l'énoncé désigne un menteur unique, au sens FORMEL suivant, et pas au sens
+ * d'une appréciation : la désignation est unique exactement quand l'ensemble des
+ * suspects publics après émission se réduit à la paire {a, b} ET qu'un seul des
+ * deux a menti. »
  *
- * LECTURE FORMALISÉE, consignée au rapport : l'énoncé désigne un menteur unique
- * exactement quand l'ensemble des suspects publics après émission se réduit à
- * la paire {a, b} ET qu'un seul des deux a menti. Dans cette configuration, la
- * comparaison lue avec le total public pointe le menteur. Dès qu'un troisième
- * suspect subsiste, ou que les deux ont menti, ou qu'aucun n'a menti, aucune
- * désignation unique n'est possible. La phrase de la SPEC n'est pas décidable
- * telle quelle ; cette formalisation l'est, et elle est strictement plus
- * prudente qu'une absence de contrôle.
+ * Cette formalisation est celle de la SPEC et elle est conservée telle quelle.
+ * Elle ne suffisait PAS : à 6 suspects, les cinq candidats de la manche
+ * nommaient un menteur et passaient tous (ANO-04, bloquante, mesurée). C'est le
+ * second prédicat, l'inférence par les déclarations, qui ferme la fuite ; les
+ * deux sont appliqués, et aucun ne remplace l'autre.
  */
 function designeUnMenteurUnique(
   etat: EtatSession,
@@ -113,6 +117,14 @@ function candidatsComparaison(etat: EtatSession, manche: Manche): readonly Candi
       if (a.id === b.id) continue;
       if (payeDe(manche, a.id) <= payeDe(manche, b.id)) continue;
       if (designeUnMenteurUnique(etat, manche, a.id, b.id)) continue;
+      // CLAUSE GÉNÉRALE DE RG-23, et c'est le correctif de ANO-04 : si
+      // déclaré(a) <= déclaré(b), l'énoncé DÉTERMINE que b a menti — par
+      // payé(b) < payé(a) <= déclaré(a) <= déclaré(b), RG-09 bornant le
+      // paiement par la déclaration. Le candidat nomme donc un menteur, ce que
+      // la troisième loi du génie interdit, et il sort de l'ensemble des
+      // suspects, ce que la deuxième loi compte. Le candidat n'est pas filtré
+      // en sortie : il n'est jamais PRODUIT.
+      if (menteurDetermineParComparaison(manche, a.id, b.id) !== null) continue;
       candidats.push({
         gabarit: 'COMPARAISON',
         cibles: [a.id, b.id],
