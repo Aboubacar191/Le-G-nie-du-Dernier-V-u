@@ -57,10 +57,10 @@ test('les fichiers générés portent l’avertissement « GÉNÉRÉ »', () => 
   assert.ok(css.includes('npm run jetons'), 'la commande de régénération doit être nommée');
 });
 
-test('les 29 noms de couleur du contrat sont exposés en TypeScript', () => {
+test('les 30 noms de couleur du contrat sont exposés en TypeScript', () => {
   const attendus = Object.keys(contrat.couleur.theme_clair).filter((cle) => !cle.startsWith('_'));
   assert.deepEqual([...JETONS_COULEUR], attendus);
-  assert.equal(JETONS_COULEUR.length, 29);
+  assert.equal(JETONS_COULEUR.length, 30);
 });
 
 test('les DEUX thèmes sont des livrables égaux, pas une option', () => {

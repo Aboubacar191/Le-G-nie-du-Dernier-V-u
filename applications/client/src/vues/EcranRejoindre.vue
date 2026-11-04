@@ -24,6 +24,7 @@ import BandeauAlerte from '../composants/BandeauAlerte.vue';
 import BoutonAction from '../composants/BoutonAction.vue';
 import ChampTexteCourt from '../composants/ChampTexteCourt.vue';
 import EtatVide from '../composants/EtatVide.vue';
+import ScannerQrAdhesion from '../composants/ScannerQrAdhesion.vue';
 import { texte } from '../logique/contenu.ts';
 import { utiliserMagasin } from '../magasin/injection.ts';
 import { apercevoirSession, rejoindreSession } from '../transport/rest.ts';
@@ -35,7 +36,8 @@ const ETATS_CLOS = ['ABANDONNEE', 'TERMINEE'];
 const magasin = utiliserMagasin();
 
 const code = ref(magasin.codeAdhesionPrerempli());
-const pseudo = ref('');
+// Repris de ECR-01 · Bienvenue, modifiable ici sans reressaisie forcée.
+const pseudo = ref(magasin.pseudoPrerempli());
 const verrouille = ref(code.value.length === LONGUEUR_CODE);
 const chargement = ref(false);
 const erreurCode = ref('');
@@ -46,7 +48,7 @@ const pretARejoindre = computed(
   () => code.value.length === LONGUEUR_CODE && pseudo.value.trim() !== '',
 );
 
-onMounted(async () => {
+async function verifierCode(): Promise<void> {
   if (code.value.length !== LONGUEUR_CODE) return;
   const apercu = await apercevoirSession(code.value);
   if (!apercu.ok) return;
@@ -54,7 +56,17 @@ onMounted(async () => {
   if (!apercu.valeur.peut_rejoindre && apercu.valeur.motif_refus !== null) {
     erreurCode.value = texte(`code_erreur.${apercu.valeur.motif_refus}`);
   }
-});
+}
+
+/** QR décodé : même chemin que l'adhésion par URL, un seul contact restant. */
+function surCodeScanne(codeDetecte: string): void {
+  code.value = codeDetecte;
+  verrouille.value = true;
+  erreurCode.value = '';
+  void verifierCode();
+}
+
+onMounted(verifierCode);
 
 function classerErreur(code_: string): void {
   const cible = code_ === 'PSEUDO_INDISPONIBLE' ? erreurPseudo : erreurCode;
@@ -102,6 +114,13 @@ async function rejoindre(): Promise<void> {
         :cle-contenu="magasin.etat.alerte.cle_contenu"
         :valeurs="magasin.etat.alerte.valeurs"
       />
+
+      <template v-if="!verrouille">
+        <ScannerQrAdhesion @code-detecte="surCodeScanne" />
+        <p class="rejoindre__separateur">
+          {{ texte('ecran.rejoindre.ou') }}
+        </p>
+      </template>
 
       <ChampTexteCourt
         v-model:valeur="code"
@@ -163,5 +182,12 @@ async function rejoindre(): Promise<void> {
   margin: 0;
   font-size: var(--gdv-role-titre-ecran);
   line-height: var(--gdv-interligne-titre);
+}
+
+.rejoindre__separateur {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-etiquette);
+  text-align: center;
 }
 </style>

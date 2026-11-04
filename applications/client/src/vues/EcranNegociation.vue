@@ -70,6 +70,10 @@ const preteur = computed(() => magasin.etat.moi?.role_secret === 'PRETEUR');
       </template>
     </CercleDesPlaces>
 
+    <p class="negociation__rappel">
+      {{ texte('ecran.negociation.rappel_oral') }}
+    </p>
+
     <footer class="negociation__pied">
       <BoutonAction
         :libelle="texte('ecran.negociation.transferer')"
@@ -111,6 +115,13 @@ const preteur = computed(() => magasin.etat.moi?.role_secret === 'PRETEUR');
   flex-direction: column;
   gap: var(--gdv-espacement-16);
   padding: var(--gdv-gouttiere-ecran);
+}
+
+.negociation__rappel {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
+  text-align: center;
 }
 
 .negociation__pied {

@@ -70,6 +70,15 @@ const clePhase = computed(() => `${magasin.etat.numero_manche ?? 0}-${magasin.et
       <span class="voeu__nombre">{{ voeu.objectif }}</span>
     </p>
 
+    <!-- Règle générique, vraie à CHAQUE manche : n'indique rien sur la clause
+         de celle-ci, donc sans risque pour M7. -->
+    <p
+      v-if="voeu !== null"
+      class="voeu__regle"
+    >
+      {{ texte('ecran.voeu.partage_regle') }}
+    </p>
+
     <!-- Rendue SANS CONDITION : c'est la mesure M7-a. Ne jamais remplacer ce
          composant par un v-if sur `clause` — ce serait rouvrir la fuite. -->
     <VoileSecret
@@ -80,6 +89,15 @@ const clePhase = computed(() => `${magasin.etat.numero_manche ?? 0}-${magasin.et
       <template #secret>
         <span class="voeu__pli">
           {{ clause === null ? texte('ecran.voeu.aucun_pli') : texte(`clause.${clause}`) }}
+        </span>
+        <!-- Le masquage extérieur reste inconditionnel (M7-a) ; une fois la
+             fenêtre ouverte, le conseil ne s'affiche que pour qui a une
+             clause à jouer — ce choix n'est visible que du joueur lui-même. -->
+        <span
+          v-if="clause !== null"
+          class="voeu__pli-conseil"
+        >
+          {{ texte('ecran.voeu.pli_conseil') }}
         </span>
       </template>
     </VoileSecret>
@@ -116,6 +134,13 @@ const clePhase = computed(() => `${magasin.etat.numero_manche ?? 0}-${magasin.et
   font-variant-numeric: var(--gdv-chiffres-variant);
 }
 
+.voeu__regle {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
+  text-align: center;
+}
+
 /* M4 — le secret est lu DANS la lucarne de secret.largeur_fenetre_lecture par
    secret.hauteur_fenetre_lecture, et il n’y est PAS rapetissé pour y entrer :
    « on réduit l’empreinte physique et l’angle utile, pas la lisibilité ».
@@ -123,6 +148,14 @@ const clePhase = computed(() => `${magasin.etat.numero_manche ?? 0}-${magasin.et
    dépasse défile dans la lucarne, qui ne se dilate plus. */
 .voeu__pli {
   font-family: var(--gdv-famille-interface);
+  font-size: var(--gdv-role-corps);
+  text-align: center;
+}
+
+.voeu__pli-conseil {
+  display: block;
+  margin-block-start: var(--gdv-espacement-8);
+  color: var(--gdv-texte-secondaire);
   font-size: var(--gdv-role-corps);
   text-align: center;
 }

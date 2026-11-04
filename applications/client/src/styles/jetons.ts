@@ -52,7 +52,7 @@ export const SECRET = {
 export const THEMES = ['clair', 'sombre'] as const;
 export type Theme = (typeof THEMES)[number];
 
-/** Noms des 29 jetons sémantiques de couleur, identiques dans les deux thèmes. */
+/** Noms des 30 jetons sémantiques de couleur, identiques dans les deux thèmes. */
 export const JETONS_COULEUR = [
   'surface-fond',
   'surface-primaire',
@@ -82,5 +82,6 @@ export const JETONS_COULEUR = [
   'statut-info',
   'marque-public',
   'marque-prive',
+  'avatar-texte-initiale',
   'ombre-teinte',
 ] as const;

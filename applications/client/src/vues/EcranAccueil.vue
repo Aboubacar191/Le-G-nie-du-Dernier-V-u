@@ -1,19 +1,18 @@
 <script setup lang="ts">
-// ECR-01 — Accueil. Orienter en un coup d'œil : créer une partie ou en
-// rejoindre une. Rien d'autre.
+// ECR-01 — orchestrateur du parcours d'entrée A → B → C (voir le commentaire
+// sur etapeEntree plus bas). L'étape C elle-même est composants/AccueilMenu.vue ;
+// ce fichier ne fait plus que porter l'état partagé entre les trois étapes.
 //
-// « Rejoindre » est en variante PRINCIPALE et « Créer » en secondaire : sur une
-// table de 5 à 8 joueurs, un seul crée et 4 à 7 rejoignent. L'action
-// majoritaire porte l'accent (Von Restorff).
-//
-// ÉTATS (DESIGN ECR-01)
-// chargement   : vérification d'un éventuel jeton stocké. Les deux boutons sont
-//                affichés dès le premier rendu ; seule l'entrée « Reprendre ma
+// ÉTATS (DESIGN ECR-01), rendus par composants/AccueilMenu.vue (étape C) :
+// chargement   : vérification d'un éventuel jeton stocké. Les deux cartes sont
+//                affichées dès le premier rendu ; seule l'entrée « Reprendre ma
 //                partie » arrive en squelette. L'écran n'est jamais vide.
-// contenu      : titre, Rejoindre, Créer, réglages en pied.
-// vide         : état NOMINAL — aucune partie en cours, les deux actions sont
-//                la sortie. Un EtatVide explicite le dit sans dramatiser.
-// erreur       : serveur injoignable. Les deux actions restent AFFICHÉES mais
+// contenu      : en-tête personnalisé, citation, cartes Créer/Rejoindre,
+//                progression du Dernier Vœu, règle d'or.
+// vide         : non atteignable depuis cette page — accueil n'a rien à
+//                charger qui puisse être vide ; les cartes sont toujours la
+//                sortie, nominal ou non.
+// erreur       : serveur injoignable. Les deux cartes restent AFFICHÉES mais
 //                désactivées, avec la raison : les masquer ferait chercher.
 // acces_refuse : non atteignable — l'accueil n'exige aucun droit.
 //
@@ -33,30 +32,83 @@
 
 import { onMounted, computed, ref } from 'vue';
 
+import AccueilBienvenue from '../composants/AccueilBienvenue.vue';
+import AccueilMenu from '../composants/AccueilMenu.vue';
 import BadgeLampe from '../composants/BadgeLampe.vue';
-import BandeauAlerte from '../composants/BandeauAlerte.vue';
-import BoutonAction from '../composants/BoutonAction.vue';
-import EtatVide from '../composants/EtatVide.vue';
-import IndicateurConnexion from '../composants/IndicateurConnexion.vue';
-import SqueletteChargement from '../composants/SqueletteChargement.vue';
 import { utiliserSondeSante } from '../composables/sonde-sante.ts';
 import { texte } from '../logique/contenu.ts';
-import { utiliserMagasin } from '../magasin/injection.ts';
+import { COULEURS_JOUEUR } from '../logique/couleurs-joueur.ts';
+import { utiliserMagasin, utiliserStockage } from '../magasin/injection.ts';
+import { appliquerTheme, ecrireTheme, relireTheme, type ChoixTheme } from '../magasin/preferences.ts';
+import { relireJetonGroupe } from '../transport/stockage-jeton.ts';
+import { lireGroupeCourant } from '../transport/rest.ts';
 
 const magasin = utiliserMagasin();
+const stockage = utiliserStockage();
 const sonde = utiliserSondeSante();
 
 const chargement = ref(true);
 const jetonPresent = ref(false);
 
-// ECR-01 Accueil s'ouvre désormais sur l'écran A · Lancement du prototype :
-// badge, titre, accroche, invite tactile — aucun bouton, exactement comme la
-// référence. Un tapotement n'importe où révèle le contenu existant (Rejoindre
-// / Créer / réglages). Non persisté à dessein : « Lancement de l'appli »
-// rejoue à chaque ouverture, pas seulement à la première.
-const lancementFranchi = ref(false);
+// Même source que EcranCreationSession.vue (ECR-03) : la progression du
+// groupe vers le Dernier Vœu. Dupliqué plutôt que partagé par composable pour
+// ne pas élargir le périmètre de cette page au refactor d'un écran existant.
+const partiesTerminees = ref(0);
+const partiesRequises = ref(0);
+
+// Thème clair/sombre : app.vue applique déjà la préférence stockée au montage
+// (RACINE-HORS-COMPOSANT, sur document.documentElement). Ce bouton n'ajoute
+// qu'un DEUXIÈME point d'écriture, sur le MÊME stockage et la MÊME fonction
+// appliquerTheme — jamais une seconde logique divergente.
+const themeActuel = ref<ChoixTheme>(relireTheme(stockage));
+function basculerTheme(): void {
+  const suivant: ChoixTheme = themeActuel.value === 'sombre' ? 'clair' : 'sombre';
+  themeActuel.value = suivant;
+  ecrireTheme(stockage, suivant);
+  appliquerTheme(globalThis.document.documentElement, suivant);
+}
+
+// ECR-01 s'ouvre désormais sur le parcours A → B → C du prototype, en trois
+// états purement locaux à CE composant (aucun des trois n'est une intention
+// de navigation du contrat — resolution-ecran.ts n'en sait rien, et c'est
+// voulu : le contrat de conception ferme la liste à 32 écrans, « sans
+// exception ni ajout » (vues/index.ts) ; A et B ne sont pas des écrans
+// nouveaux, ce sont des états internes du même ECR-01) :
+//  · lancement  — A, badge+titre+invite, aucun bouton, tapotement plein écran ;
+//  · bienvenue  — B, pseudo + aperçu d'avatar + couleur, UNE SEULE FOIS par
+//    ouverture (non persisté, comme A) ;
+//  · accueil    — C, le contenu existant (Rejoindre / Créer / réglages).
+// Non persisté à dessein : le parcours rejoue à chaque ouverture de l'appli,
+// pas seulement à la première — « Lancement de l'appli », pas « Premier
+// lancement ».
+/** Identique à LONGUEUR_MAX_PSEUDO de EcranCreationSession/EcranRejoindre. */
+const LONGUEUR_MAX_PSEUDO = 12;
+
+type EtapeEntree = 'lancement' | 'bienvenue' | 'accueil';
+const etapeEntree = ref<EtapeEntree>('lancement');
+
 function franchirLancement(): void {
-  lancementFranchi.value = true;
+  etapeEntree.value = 'bienvenue';
+}
+
+// État de B, local : le pseudo n'est confirmé dans le magasin qu'à la sortie
+// de cette étape (preremplirPseudo), pour que ECR-02/05 le reprennent sans
+// ressaisie. La couleur, elle, ne quitte jamais ce composant — voir
+// composants/SelecteurCouleurJoueur.vue.
+const pseudoBienvenue = ref(magasin.pseudoPrerempli());
+const couleurBienvenue = ref(magasin.couleurPrerempli() || (COULEURS_JOUEUR[0]?.id ?? ''));
+const erreurPseudoBienvenue = ref('');
+
+function entrerDansLaCite(): void {
+  const valeur = pseudoBienvenue.value.trim();
+  if (valeur === '') {
+    erreurPseudoBienvenue.value = texte('ecran.accueil.bienvenue_pseudo_requis');
+    return;
+  }
+  erreurPseudoBienvenue.value = '';
+  magasin.preremplirPseudo(valeur);
+  magasin.preremplirCouleur(couleurBienvenue.value);
+  etapeEntree.value = 'accueil';
 }
 
 /** Seul l'état MESURÉ « injoignable » bloque. « inconnu » ne bloque rien. */
@@ -65,11 +117,18 @@ const raisonIndisponible = computed(() =>
   serveurInjoignable.value ? texte('ecran.accueil.serveur_injoignable') : '',
 );
 
-onMounted(() => {
+onMounted(async () => {
   // L'entrée « Reprendre ma partie » n'apparaît que si un jeton est mémorisé :
   // proposer de reprendre une partie qui n'existe pas mène à l'écran de refus.
   jetonPresent.value = magasin.jetonMemorise();
   chargement.value = false;
+
+  const jetonGroupe = relireJetonGroupe(stockage);
+  if (jetonGroupe === null) return;
+  const groupe = await lireGroupeCourant(jetonGroupe);
+  if (!groupe.ok) return;
+  partiesTerminees.value = groupe.valeur.parties_terminees;
+  partiesRequises.value = groupe.valeur.parties_requises;
 });
 
 function reprendre(): void {
@@ -86,7 +145,7 @@ function reprendre(): void {
        <a> englobant ; ici un <button> plein, pour garder un élément natif
        accessible au clavier sans rôle ARIA à maintenir à la main). -->
   <main
-    v-if="!lancementFranchi"
+    v-if="etapeEntree === 'lancement'"
     class="accueil accueil--lancement"
   >
     <button
@@ -113,85 +172,41 @@ function reprendre(): void {
     </button>
   </main>
 
-  <!-- ECR-01-C · Accueil — le contenu existant (Rejoindre / Créer / réglages),
-       révélé après le tapotement sur l'écran de lancement. -->
+  <!-- ECR-01-B · Bienvenue — voir composants/AccueilBienvenue.vue. -->
+  <main
+    v-else-if="etapeEntree === 'bienvenue'"
+    class="accueil"
+  >
+    <AccueilBienvenue
+      v-model:pseudo="pseudoBienvenue"
+      v-model:couleur="couleurBienvenue"
+      :erreur-pseudo="erreurPseudoBienvenue"
+      :longueur-max-pseudo="LONGUEUR_MAX_PSEUDO"
+      @entrer="entrerDansLaCite"
+    />
+  </main>
+
+  <!-- ECR-01-C · Accueil — voir composants/AccueilMenu.vue. -->
   <main
     v-else
     class="accueil"
   >
-    <header class="accueil__entete">
-      <!-- La marque, et le seul élément décoratif du contrat. Elle n'est admise
-           QUE sur cet écran et sur l'état de chargement de premier démarrage ;
-           le h1 ci-dessous répète le nom du jeu en texte réel, donc le badge est
-           déclaré aria-hidden pour ne pas l'annoncer deux fois. -->
-      <BadgeLampe :titre-adjacent="true" />
-      <div class="accueil__ligne-titre">
-        <h1 class="accueil__titre">
-          {{ texte('commun.titre_application') }}
-        </h1>
-        <IndicateurConnexion :liaison="magasin.etat.liaison" />
-      </div>
-    </header>
-
-    <!-- « Réessayer » SONDE, au lieu de masquer le bandeau : l'ancien
-         @reprendre remettait serveurInjoignable à faux sans rien vérifier, ce
-         qui réactivait les boutons devant un serveur toujours absent. -->
-    <BandeauAlerte
-      v-if="serveurInjoignable"
-      variante="erreur"
-      cle-contenu="ecran.accueil.serveur_injoignable"
-      :action-libelle="texte('commun.reessayer')"
-      @reprendre="sonde.relancer()"
+    <AccueilMenu
+      :pseudo="magasin.pseudoPrerempli()"
+      :couleur-id="magasin.couleurPrerempli()"
+      :theme="themeActuel"
+      :serveur-injoignable="serveurInjoignable"
+      :raison-indisponible="raisonIndisponible"
+      :chargement="chargement"
+      :jeton-present="jetonPresent"
+      :parties-terminees="partiesTerminees"
+      :parties-requises="partiesRequises"
+      @rejoindre="magasin.naviguer('adhesion')"
+      @creer="magasin.naviguer('creation')"
+      @reprendre="reprendre"
+      @relancer-sonde="sonde.relancer()"
+      @basculer-theme="basculerTheme"
     />
-
-    <EtatVide
-      v-else
-      :titre="texte('ecran.accueil.nominal')"
-    />
-
-    <div class="accueil__actions">
-      <BoutonAction
-        :libelle="texte('ecran.accueil.rejoindre')"
-        variante="principal"
-        taille="lg"
-        pleine-largeur
-        :desactive="serveurInjoignable"
-        :raison="raisonIndisponible"
-        @agir="magasin.naviguer('adhesion')"
-      />
-      <BoutonAction
-        :libelle="texte('ecran.accueil.creer')"
-        variante="secondaire"
-        taille="lg"
-        pleine-largeur
-        :desactive="serveurInjoignable"
-        :raison="raisonIndisponible"
-        @agir="magasin.naviguer('creation')"
-      />
-
-      <SqueletteChargement
-        v-if="chargement"
-        :lignes="1"
-        hauteur="var(--gdv-hauteur-bouton-md)"
-        :libelle="texte('commun.chargement')"
-      />
-      <BoutonAction
-        v-else-if="jetonPresent"
-        :libelle="texte('ecran.accueil.reprendre')"
-        variante="discret"
-        taille="md"
-        @agir="reprendre"
-      />
-    </div>
-
-    <footer class="accueil__pied">
-      <BoutonAction
-        :libelle="texte('commun.reglages')"
-        variante="discret"
-        taille="md"
-        @agir="magasin.naviguer('reglages')"
-      />
-    </footer>
   </main>
 </template>
 
@@ -263,21 +278,6 @@ function reprendre(): void {
   font-size: var(--gdv-role-meta);
 }
 
-.accueil__entete {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--gdv-espacement-16);
-}
-
-.accueil__ligne-titre {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gdv-espacement-12);
-  inline-size: 100%;
-}
-
 /* famille.titre n'est admise que sur titre-ecran, titre-section et voix-genie.
    L'or y est autorisé : le rôle est à 24 px, bien au-delà des 20 px du seuil
    de couleur._regle_or_jamais_en_texte_courant. */
@@ -291,17 +291,4 @@ function reprendre(): void {
   letter-spacing: var(--gdv-suivi-titre);
 }
 
-/* Un seul bouton de variante principale, isolé par espacement.24 de tout autre
-   élément actionnable (Von Restorff). */
-.accueil__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gdv-espacement-24);
-  margin-block-start: auto;
-}
-
-.accueil__pied {
-  display: flex;
-  justify-content: center;
-}
 </style>

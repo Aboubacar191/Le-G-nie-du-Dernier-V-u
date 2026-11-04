@@ -47,7 +47,7 @@
   "_convention": "Nommage par INTENTION, jamais par apparence. Aucun nom de teinte, de metal ni de police d'identite. Un changement d'univers se fait en remplacant les valeurs de couleur.theme_clair et couleur.theme_sombre, sans toucher a un composant ni a un ecran.",
   "_reference": "Dans composants et ecrans, toute valeur de style est un chemin de token (ex. couleur.accent-action, espacement.16, cible.confortable). Aucune valeur litterale n'y figure.",
   "couleur": {
-   "_note": "29 tokens semantiques, declines en deux jeux de valeurs. Le jeu est joue en soiree comme en plein jour : les deux themes sont des livrables egaux, pas une option. Choix du theme : prefers-color-scheme, surchargeable par un reglage local persiste par appareil.",
+   "_note": "30 tokens semantiques (29 + avatar-texte-initiale, ajoute pour l'apercu d'avatar, meme valeur dans les deux themes par construction — voir contraste_verifie._note_couleurs_de_joueur), declines en deux jeux de valeurs. Le jeu est joue en soiree comme en plein jour : les deux themes sont des livrables egaux, pas une option. Choix du theme : prefers-color-scheme, surchargeable par un reglage local persiste par appareil.",
    "theme_clair": {
     "surface-fond": "#F4EEDF",
     "surface-primaire": "#FFFCF5",
@@ -77,6 +77,7 @@
     "statut-info": "#4A3C9B",
     "marque-public": "#4A4468",
     "marque-prive": "#6B5A33",
+    "avatar-texte-initiale": "#15122A",
     "ombre-teinte": "rgba(21,18,42,0.14)",
     "_lecture": "Jour a Zafyr : parchemin et encre indigo. surface-fond #F4EEDF est la creme du prototype (releve, elle y sert de texte-principal) ; texte-principal #15122A est l'indigo du prototype (releve, il y sert de surface). L'or clair du prototype (#E6B95A) ne mesure que 1,79:1 sur parchemin : il est INEMPLOYABLE en theme clair des qu'il porte du sens. accent-action prend donc le bronze #6B5A33, qui est la valeur d'or SOMBRE du prototype (releve, il y borde la carte secrete) et mesure 6,54:1. Meme famille de teinte, meme identite, contraste tenu."
    },
@@ -109,6 +110,7 @@
     "statut-info": "#B8A6F2",
     "marque-public": "#D9D3EE",
     "marque-prive": "#E6B95A",
+    "avatar-texte-initiale": "#15122A",
     "ombre-teinte": "rgba(4,3,12,0.62)",
     "_lecture": "Nuit a Zafyr, fidele au prototype. Releves tels quels : surface-fond #0B0A18 (ecran Lancement), surface-primaire #15122A (fond de tous les ecrans de jeu), surface-secondaire #221E3D (cartes), surface-desactivee #1A1730, texte-principal #F4EEDF, texte-secondaire #B9B2D6 (c'est aussi la fumee mauve de la lampe), accent-action #E6B95A, accent-action-survol #F4D28A (regle a:hover du prototype), accent-focus #E6B95A (regle input:focus du prototype, outline 2px offset 2px), marque-public #D9D3EE (pastille « Visible par tous »), marque-prive #E6B95A (pastille « Secret »), statut-succes #7FD6C4, statut-echec et urgence-critique #F0A090 (corail), statut-avertissement et urgence-tension #E89A6B (cuivre), statut-info #B8A6F2 (lavande), texte-desactive derive de #8F88AE (couleur de placeholder du prototype). DERIVES : accent-action-actif #CFA24B (etat presse, absent d'une maquette statique), secret-voile #06050F (le voile doit etre plus sombre que toute surface pour masquer), bordure-structurante et bordure-champ (voir _ecart_assume_prototype)."
    },
@@ -279,14 +281,16 @@
     "zone_maintien_secret": "cible.geante",
     "ligne_tableau": "cible.minimale",
     "carte_joueur": "cible.geante",
-    "badge_lampe": "composant.largeur.badge_lampe"
+    "badge_lampe": "composant.largeur.badge_lampe",
+    "avatar_apercu": "composant.largeur.avatar_apercu"
    },
    "largeur": {
     "pas_incrementeur": "cible.confortable",
     "carte_joueur": "cible.geante",
     "anneau_minuteur": "cible.minimale",
     "badge_lampe": "192px",
-    "glyphe_lampe": "128px"
+    "glyphe_lampe": "128px",
+    "avatar_apercu": "112px"
    },
    "gouttiere_ecran": "espacement.16",
    "gouttiere_ecran_large": "espacement.24",
@@ -3141,7 +3145,7 @@
   "_note_bordure_secret_claire": "clair | bordure-secret est la paire la plus contrainte du contrat, et c'est structurel : la meme bordure doit atteindre 3:1 CONTRE le voile sombre (#3A3463) ET contre la carte claire (#FFFCF5). La fenetre de luminance relative admissible est [0,2277 ; 0,2916] — etroite mais reelle. #A8873C s'y place a 0,2598, soit 3,35:1 d'un cote et 3,31:1 de l'autre. Toute retouche future de surface-primaire ou de secret-voile en theme clair DEPLACE cette fenetre et doit etre accompagnee d'une remesure de ces deux paires.",
   "_note_focus": "L'anneau de focus est trace sur la surface environnante, separe du composant par un espace de espacement.4 — le prototype pose exactement outline 2px solid #E6B95A avec outline-offset 2px, ce que accent-focus et trait.moyen reproduisent. La paire pertinente est accent-focus sur surface, mesuree ci-dessous entre 8.67:1 et 10.69:1 en sombre et entre 9.99:1 et 13.33:1 en clair.",
   "_note_ombres": "Les ombres (token elevation) sont decoratives et ne portent aucune information : elles ne sont pas soumises a un seuil. En theme sombre, ombre-teinte est quasi inoperante sur un fond deja quasi noir : la hierarchie y est portee par l'echelonnement des trois surfaces (#0B0A18, #15122A, #221E3D) et par bordure-structurante, toutes deux mesurees.",
-  "_note_couleurs_de_joueur": "Le prototype propose six couleurs d'avatar (Or #E6B95A, Turquoise #7FD6C4, Cuivre #E89A6B, Lavande #B8A6F2, Corail #F0A090, Menthe #A8D67F). Elles ne sont PAS des tokens de theme et n'entrent pas dans la palette : ce sont des donnees de joueur. Deux consequences a tenir par dev-frontend : (1) une couleur de joueur ne sert jamais de fond a du texte, seulement de pastille bordee, parce que six couleurs libres ne peuvent pas garantir un ratio ; (2) l'identite d'un joueur est TOUJOURS portee par son pseudonyme, jamais par sa seule couleur — quatre de ces six teintes sont par ailleurs confondues par un deuteranope.",
+  "_note_couleurs_de_joueur": "REVISE — decision explicite de l'utilisateur apres mesure reelle, qui remplace la prudence initiale ci-dessous (conservee pour tracer le raisonnement). Le prototype propose six couleurs d'avatar (Or #E6B95A, Turquoise #7FD6C4, Cuivre #E89A6B, Lavande #B8A6F2, Corail #F0A090, Menthe #A8D67F). Elles restent PAS des tokens de theme : ce sont des donnees de joueur (logique/couleurs-joueur.ts). DECISION REVISEE : la couleur PEUT porter l'initiale du pseudo en texte, comme au prototype — mesure avec l'outil d'equipe (contraste.mjs) sur chaque teinte contre un texte fonce FIXE #15122A, non lie au theme (couleur.avatar-texte-initiale, meme valeur dans les deux themes) : les 6 teintes rendent entre 8.04:1 et 10.93:1, toutes AAA, seuil 3:1 largement depasse. La reserve initiale (« six couleurs libres ne peuvent pas garantir un ratio ») supposait un texte qui varie avec le theme ; ici il ne varie pas, donc elle ne s'applique pas. Le risque de confusion par un deuteranope sur 4 des 6 teintes RESTE reel et n'est pas efface par la mesure de contraste : il est ACCEPTE, pas nie, pour deux raisons verifiees dans le code et non supposees : (1) aucun champ de couleur n'existe dans le contrat API ni dans CarteJoueurCercle.vue — la couleur n'est donc jamais, nulle part ailleurs dans le jeu, un signal d'identification entre joueurs ; elle n'apparait que sur l'ecran ou CE joueur choisit SA PROPRE couleur ; (2) le pseudo reste affiche en texte a cote du medaillon, jamais remplace par lui. Implemente dans composants/AvatarApercu.vue et composants/SelecteurCouleurJoueur.vue. Raisonnement initial, conserve : deux consequences avaient ete tenues par dev-frontend : (1) une couleur de joueur ne sert jamais de fond a du texte, seulement de pastille bordee, parce que six couleurs libres ne peuvent pas garantir un ratio ; (2) l'identite d'un joueur est TOUJOURS portee par son pseudonyme, jamais par sa seule couleur — quatre de ces six teintes sont par ailleurs confondues par un deuteranope.",
   "paires": {
    "clair | texte-principal sur surface-fond": "15.75:1 — seuil 4.5 (courant) — OK — AAA",
    "clair | texte-principal sur surface-primaire": "17.79:1 — seuil 4.5 (courant) — OK — AAA",

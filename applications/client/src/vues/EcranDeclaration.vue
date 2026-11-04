@@ -66,6 +66,10 @@ function declarer(): void {
 
 <template>
   <section class="declaration">
+    <h1 class="declaration__titre">
+      {{ texte('ecran.declaration.titre') }}
+    </h1>
+
     <BandeauAlerte
       v-if="magasin.etat.alerte !== null"
       :variante="magasin.etat.alerte.variante"
@@ -125,6 +129,12 @@ function declarer(): void {
   flex-direction: column;
   gap: var(--gdv-espacement-12);
   padding: var(--gdv-gouttiere-ecran);
+}
+
+.declaration__titre {
+  margin: 0;
+  font-size: var(--gdv-role-titre-ecran);
+  line-height: var(--gdv-interligne-titre);
 }
 
 .declaration__avancement {

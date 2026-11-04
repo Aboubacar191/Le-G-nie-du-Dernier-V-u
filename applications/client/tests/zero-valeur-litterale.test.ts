@@ -31,6 +31,18 @@ const SOURCE = resolve(ICI, '..', 'src');
 /** Fichiers générés : ils portent les valeurs, c'est leur rôle. */
 const GENERES = ['styles/jetons.css', 'styles/jetons.ts'];
 
+/**
+ * UNE exception de plus, et motivée comme les trois ci-dessus : les couleurs
+ * d'avatar de logique/couleurs-joueur.ts ne sont pas des jetons de thème, le
+ * contrat de conception le dit explicitement (DESIGN-GDV-001.json,
+ * contraste_verifie._note_couleurs_de_joueur) — ce sont des DONNÉES DE JOUEUR,
+ * au même titre qu'un nom de rôle ou de clause. Le fichier documente lui-même
+ * les deux règles qui en découlent (jamais de fond de texte, pseudonyme
+ * toujours primaire). Aucun composant ni écran n'est exempté : seule cette
+ * source de données l'est.
+ */
+const DONNEES_NON_THEME = ['logique/couleurs-joueur.ts'];
+
 function fichiers(racine: string, extensions: readonly string[]): string[] {
   const trouves: string[] = [];
   for (const entree of readdirSync(racine, { withFileTypes: true })) {
@@ -52,7 +64,7 @@ const chemin = (absolu: string): string => relative(SOURCE, absolu).split('\\').
 // traversé la porte sans l'émouvoir. Le trou était dans la mesure, pas dans la
 // règle. Toute feuille de style du client est désormais dedans.
 const SOURCES = fichiers(SOURCE, ['.vue', '.ts', '.css']).filter(
-  (absolu) => !GENERES.includes(chemin(absolu)),
+  (absolu) => !GENERES.includes(chemin(absolu)) && !DONNEES_NON_THEME.includes(chemin(absolu)),
 );
 
 test('le périmètre analysé n’est pas vide', () => {
@@ -145,7 +157,7 @@ test('toute variable CSS employée est préfixée gdv et définie par le compila
   assert.deepEqual([...inconnues], [], `variables non définies : ${[...inconnues].join(' | ')}`);
 });
 
-test('les deux thèmes sont livrés, et avec les mêmes 29 noms de jeton', () => {
+test('les deux thèmes sont livrés, et avec les mêmes 30 noms de jeton', () => {
   const jetons = readFileSync(resolve(SOURCE, 'styles', 'jetons.css'), 'utf8');
   assert.ok(jetons.includes("[data-theme='sombre']"), 'thème sombre absent');
   assert.ok(jetons.includes(':root,'), 'thème clair absent de la racine');
@@ -164,7 +176,7 @@ test('les deux thèmes sont livrés, et avec les mêmes 29 noms de jeton', () =>
 
   const clair = bloc(":root,\n[data-theme='clair'] {");
   const sombre = bloc("[data-theme='sombre'] {");
-  assert.equal(sombre.size, 29, `le thème sombre porte ${sombre.size} jetons de couleur`);
+  assert.equal(sombre.size, 30, `le thème sombre porte ${sombre.size} jetons de couleur`);
   for (const nom of sombre) {
     assert.ok(clair.has(nom), `${nom} manque au thème clair`);
   }

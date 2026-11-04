@@ -41,6 +41,7 @@
   --gdv-statut-info: #4A3C9B;
   --gdv-marque-public: #4A4468;
   --gdv-marque-prive: #6B5A33;
+  --gdv-avatar-texte-initiale: #15122A;
   --gdv-ombre-teinte: rgba(21,18,42,0.14);
 
   /* Dimensions, durées, courbes et seuils — indépendants du thème. */
@@ -138,11 +139,13 @@
   --gdv-hauteur-ligne-tableau: var(--gdv-cible-minimale);
   --gdv-hauteur-carte-joueur: var(--gdv-cible-geante);
   --gdv-hauteur-badge-lampe: var(--gdv-largeur-badge-lampe);
+  --gdv-hauteur-avatar-apercu: var(--gdv-largeur-avatar-apercu);
   --gdv-largeur-pas-incrementeur: var(--gdv-cible-confortable);
   --gdv-largeur-carte-joueur: var(--gdv-cible-geante);
   --gdv-largeur-anneau-minuteur: var(--gdv-cible-minimale);
   --gdv-largeur-badge-lampe: 192px;
   --gdv-largeur-glyphe-lampe: 128px;
+  --gdv-largeur-avatar-apercu: 112px;
   --gdv-gouttiere-ecran: var(--gdv-espacement-16);
   --gdv-gouttiere-ecran-large: var(--gdv-espacement-24);
 }
@@ -177,6 +180,7 @@
   --gdv-statut-info: #B8A6F2;
   --gdv-marque-public: #D9D3EE;
   --gdv-marque-prive: #E6B95A;
+  --gdv-avatar-texte-initiale: #15122A;
   --gdv-ombre-teinte: rgba(4,3,12,0.62);
 }
 
@@ -214,6 +218,7 @@
     --gdv-statut-info: #B8A6F2;
     --gdv-marque-public: #D9D3EE;
     --gdv-marque-prive: #E6B95A;
+    --gdv-avatar-texte-initiale: #15122A;
     --gdv-ombre-teinte: rgba(4,3,12,0.62);
   }
 }

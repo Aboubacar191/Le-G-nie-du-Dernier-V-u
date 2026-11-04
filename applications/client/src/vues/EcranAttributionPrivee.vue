@@ -49,6 +49,10 @@ const attributionRecue = computed(() => role.value !== null);
 
 <template>
   <main class="attribution">
+    <p class="attribution__discretion">
+      {{ texte('ecran.attribution.avertissement_discretion') }}
+    </p>
+
     <h1 class="attribution__titre">
       {{ texte('ecran.attribution.titre') }}
     </h1>
@@ -77,6 +81,10 @@ const attributionRecue = computed(() => role.value !== null);
         </span>
       </template>
     </VoileSecret>
+
+    <p class="attribution__note">
+      {{ texte('ecran.attribution.pied_accessible', { pastille: texte('solde.pastille') }) }}
+    </p>
 
     <footer class="attribution__pied">
       <BoutonAction
@@ -107,6 +115,22 @@ const attributionRecue = computed(() => role.value !== null);
   margin: 0;
   font-size: var(--gdv-role-titre-ecran);
   line-height: var(--gdv-interligne-titre);
+}
+
+.attribution__discretion {
+  margin: 0;
+  padding: var(--gdv-espacement-12) var(--gdv-espacement-16);
+  border-left: var(--gdv-trait-epais) solid var(--gdv-statut-echec);
+  border-radius: var(--gdv-rayon-moyen);
+  background: var(--gdv-surface-secondaire);
+  color: var(--gdv-texte-principal);
+  font-size: var(--gdv-role-etiquette);
+}
+
+.attribution__note {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
 }
 
 /* M4 — le secret est lu DANS la lucarne de secret.largeur_fenetre_lecture par

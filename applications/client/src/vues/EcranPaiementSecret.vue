@@ -82,6 +82,10 @@ function sceller(): void {
     />
 
     <template v-else>
+      <h1 class="paiement__titre">
+        {{ texte('ecran.paiement.titre') }}
+      </h1>
+
       <!-- Zone PUBLIQUE : le montant déclaré y figure, car il est déjà public.
            Le montant PAYÉ n'y figure jamais, sous aucune forme. -->
       <BandeauAlerte
@@ -155,6 +159,12 @@ function sceller(): void {
   flex-direction: column;
   gap: var(--gdv-espacement-12);
   padding: var(--gdv-gouttiere-ecran);
+}
+
+.paiement__titre {
+  margin: 0;
+  font-size: var(--gdv-role-titre-ecran);
+  line-height: var(--gdv-interligne-titre);
 }
 
 .paiement__rappel {

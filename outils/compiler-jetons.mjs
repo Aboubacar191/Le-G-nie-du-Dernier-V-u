@@ -11,7 +11,7 @@
 // par attribut data-theme sur la racine.
 //
 // Pourquoi un générateur local plutôt que l'outil d'équipe compiler-tokens.mjs :
-// l'arbre de jetons porte DEUX jeux de valeurs pour les mêmes 29 noms de
+// l'arbre de jetons porte DEUX jeux de valeurs pour les mêmes 30 noms de
 // couleur (couleur.theme_clair et couleur.theme_sombre) et des valeurs qui
 // RÉFÉRENCENT d'autres jetons (« inset 0 0 0 trait.moyen couleur.bordure-secret »).
 // Un aplatissement générique produirait --gdv-couleur-theme-clair-surface-fond
@@ -245,7 +245,7 @@ ${blocTs(
 export const THEMES = ['clair', 'sombre'] as const;
 export type Theme = (typeof THEMES)[number];
 
-/** Noms des 29 jetons sémantiques de couleur, identiques dans les deux thèmes. */
+/** Noms des 30 jetons sémantiques de couleur, identiques dans les deux thèmes. */
 export const JETONS_COULEUR = [
 ${Object.keys(jetons.couleur.theme_clair)
   .filter((cle) => !cle.startsWith('_'))

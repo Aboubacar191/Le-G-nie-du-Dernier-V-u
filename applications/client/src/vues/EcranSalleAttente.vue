@@ -92,11 +92,35 @@ function abandonner(): void {
     </p>
     <p class="attente__bornes">
       {{ texte('ecran.salle_attente.bornes', { min: bornesEffectif.min, max: bornesEffectif.max }) }}
-      ·
-      {{ magasin.etat.session?.mode_avance_actif
-        ? texte('ecran.salle_attente.mode_avance_actif')
-        : texte('ecran.salle_attente.mode_avance_inactif') }}
     </p>
+
+    <div class="attente__mode-avance">
+      <svg
+        viewBox="0 0 20 20"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <rect
+          x="4"
+          y="9"
+          width="12"
+          height="8"
+          rx="2"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+        <path
+          d="M7 9V6a3 3 0 0 1 6 0v3"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+      </svg>
+      <span>{{ magasin.etat.session?.mode_avance_actif
+        ? texte('ecran.salle_attente.mode_avance_actif')
+        : texte('ecran.salle_attente.mode_avance_inactif') }}</span>
+    </div>
 
     <SqueletteChargement
       v-if="chargement"
@@ -114,25 +138,28 @@ function abandonner(): void {
       @agir="magasin.naviguer('invitation')"
     />
 
-    <!-- Chaque arrivée s'insère SANS déplacer les lignes existantes : la liste
-         suit l'ordre d'arrivée projeté par le serveur. -->
-    <ul
-      v-else
-      class="attente__liste"
-    >
-      <li
-        v-for="joueur in magasin.etat.joueurs"
-        :key="joueur.joueur_id"
-      >
-        <CarteJoueurCercle
-          :pseudo="joueur.pseudo"
-          :position-cercle="joueur.position_cercle"
-          :connecte="joueur.connecte"
-          :relation="joueur.joueur_id === magasin.etat.moi?.joueur_id ? 'moi' : 'en_face'"
-          variante="etendue"
-        />
-      </li>
-    </ul>
+    <template v-else>
+      <p class="attente__ordre">
+        {{ texte('ecran.salle_attente.ordre_places') }}
+      </p>
+
+      <!-- Chaque arrivée s'insère SANS déplacer les lignes existantes : la liste
+           suit l'ordre d'arrivée projeté par le serveur. -->
+      <ul class="attente__liste">
+        <li
+          v-for="joueur in magasin.etat.joueurs"
+          :key="joueur.joueur_id"
+        >
+          <CarteJoueurCercle
+            :pseudo="joueur.pseudo"
+            :position-cercle="joueur.position_cercle"
+            :connecte="joueur.connecte"
+            :relation="joueur.joueur_id === magasin.etat.moi?.joueur_id ? 'moi' : 'en_face'"
+            variante="etendue"
+          />
+        </li>
+      </ul>
+    </template>
 
     <footer class="attente__pied">
       <BoutonAction
@@ -206,6 +233,32 @@ function abandonner(): void {
 }
 
 .attente__bornes {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
+}
+
+.attente__mode-avance {
+  display: flex;
+  align-items: center;
+  gap: var(--gdv-espacement-12);
+  padding: var(--gdv-espacement-12) var(--gdv-espacement-16);
+  border: var(--gdv-trait-fin) dashed var(--gdv-bordure-champ);
+  border-radius: var(--gdv-rayon-moyen);
+  color: var(--gdv-texte-secondaire);
+}
+
+.attente__mode-avance svg {
+  inline-size: var(--gdv-espacement-16);
+  block-size: var(--gdv-espacement-16);
+  flex-shrink: 0;
+}
+
+.attente__mode-avance span {
+  font-size: var(--gdv-role-meta);
+}
+
+.attente__ordre {
   margin: 0;
   color: var(--gdv-texte-secondaire);
   font-size: var(--gdv-role-meta);

@@ -242,10 +242,18 @@ test('l’écran d’accueil ne traite PAS « inconnu » comme une panne', () =>
     /sonde\.etat\.value === 'injoignable'/u,
     'seul l’état mesuré « injoignable » doit désactiver les actions',
   );
+  // EcranAccueil transmet la relance à AccueilMenu (porteur du BandeauAlerte
+  // depuis l'introduction du parcours A → B → C), qui la retransmet ici.
+  assert.match(accueil, /@relancer-sonde="sonde\.relancer\(\)"/u);
+
+  const menu = readFileSync(
+    new URL('../src/composants/AccueilMenu.vue', import.meta.url),
+    'utf8',
+  );
   // L'ancien correctif de façade : remettre l'indicateur à faux sans sonder.
   assert.ok(
-    !/@reprendre="serveurInjoignable = false"/u.test(accueil),
+    !/@reprendre="serveurInjoignable = false"/u.test(menu),
     'la reprise ne doit pas se contenter de masquer le bandeau',
   );
-  assert.match(accueil, /@reprendre="sonde\.relancer\(\)"/u);
+  assert.match(menu, /@reprendre="emettre\('relancerSonde'\)"/u);
 });

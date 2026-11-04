@@ -31,6 +31,13 @@ const scores = computed(() => magasin.etat.scores);
 const hote = computed(() => magasin.etat.moi?.est_hote === true);
 const modeAvance = computed(() => magasin.etat.session?.mode_avance_actif === true);
 
+/** Annonce nominative seulement dans le cas simple : un vainqueur unique. */
+const vainqueurUnique = computed(() => {
+  const liste = scores.value?.vainqueurs ?? [];
+  if (liste.length !== 1) return null;
+  return scores.value?.classement.find((ligne) => ligne.joueur_id === liste[0]) ?? null;
+});
+
 function rejouer(): void {
   // RG-59 : rejouer avec le même groupe crée une NOUVELLE session. Le jeton de
   // groupe persiste sur l'appareil de l'hôte et porte le compteur.
@@ -40,8 +47,16 @@ function rejouer(): void {
 
 <template>
   <main class="scores">
-    <h1 class="scores__titre">
+    <p
+      v-if="vainqueurUnique !== null"
+      class="scores__eyebrow"
+    >
       {{ texte('scores.titre') }}
+    </p>
+    <h1 class="scores__titre">
+      {{ vainqueurUnique === null
+        ? texte('scores.titre')
+        : texte('scores.vainqueur_annonce', { pseudo: vainqueurUnique.pseudo }) }}
     </h1>
 
     <TableauScores
@@ -90,6 +105,14 @@ function rejouer(): void {
   padding: var(--gdv-gouttiere-ecran);
   background: var(--gdv-surface-fond);
   color: var(--gdv-texte-principal);
+}
+
+.scores__eyebrow {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
+  text-transform: uppercase;
+  letter-spacing: var(--gdv-suivi-titre);
 }
 
 .scores__titre {

@@ -8,10 +8,11 @@
 // Aucun état durable : un trou de séquence ou une reconnexion provoque une
 // RE-PROJECTION complète (etat_complet_prive), jamais un rejeu.
 
-import { reactive, readonly, type DeepReadonly } from 'vue';
+import { reactive, readonly, ref, type DeepReadonly, type Ref } from 'vue';
 
 import type { EnveloppeEvenement, TypeCommande } from '@gdv/partage';
 
+import { COULEURS_JOUEUR } from '../logique/couleurs-joueur.ts';
 import type { IntentionLocale } from '../logique/resolution-ecran.ts';
 import {
   creerClientTempsReel,
@@ -50,23 +51,45 @@ export interface Magasin {
   quitter(): void;
   codeAdhesionPrerempli(): string;
   preremplirCode(code: string): void;
+  /** Pseudo saisi sur ECR-01 · Bienvenue, repris sans ressaisie sur ECR-02/05. */
+  pseudoPrerempli(): string;
+  preremplirPseudo(pseudo: string): void;
+  /** Couleur choisie sur ECR-01 · Bienvenue, reprise par l'avatar d'en-tête. */
+  couleurPrerempli(): string;
+  preremplirCouleur(couleurId: string): void;
   /**
-   * Surcharge d'équilibrage retenue par l'hôte sur ECR-03, en attente de la
-   * création de session. Null quand l'hôte n'a écarté aucune valeur vérifiée :
-   * le corps de POST /sessions ne porte alors aucune surcharge.
+   * Surcharge d'équilibrage retenue par l'hôte sur ECR-02/ECR-03, en attente
+   * de la création de session. Null quand l'hôte n'a écarté aucune valeur
+   * vérifiée : le corps de POST /sessions ne porte alors aucune surcharge.
+   * La valeur reste un nombre pour les 21 paramètres plats, et un objet pour
+   * `durees_phases_s` — seul paramètre imbriqué du contrat
+   * (SchemaSurchargeConfig, paquets/partage/src/config/schema-config.ts).
    */
-  surchargeEquilibrage(): Readonly<Record<string, number>> | null;
+  surchargeEquilibrage(): Readonly<SurchargeEquilibrage> | null;
   /** Mémorise la surcharge jusqu'à POST /sessions, qui la fige (US-17). */
-  memoriserSurchargeEquilibrage(surcharge: Readonly<Record<string, number>>): void;
+  memoriserSurchargeEquilibrage(surcharge: Readonly<SurchargeEquilibrage>): void;
 }
+
+export type SurchargeEquilibrage = Record<string, number | Readonly<Record<string, number>>>;
 
 interface Contexte {
   readonly options: OptionsMagasin;
   readonly etat: EtatLocal;
   client: ClientTempsReel | null;
-  intention: IntentionLocale;
+  /**
+   * BUG CORRIGÉ : un simple champ `intention: IntentionLocale` sur `ctx`
+   * (objet JS ordinaire, pas `reactive()`) laissait `naviguer()` muter une
+   * valeur que Vue ne pouvait pas voir changer. Le `computed` de app.vue qui
+   * lit `magasin.intention()` ne se réévaluait donc JAMAIS après un clic sur
+   * « Créer une partie » ou « Rejoindre une partie » : aucune erreur, aucune
+   * requête réseau, juste un écran figé indéfiniment — exactement le
+   * symptôme observé. `ref()` rend la lecture traçable par Vue.
+   */
+  readonly intention: Ref<IntentionLocale>;
   code: string;
-  surcharge: Readonly<Record<string, number>>;
+  pseudo: string;
+  couleur: string;
+  surcharge: Readonly<SurchargeEquilibrage>;
 }
 
 function origineParDefaut(): string {
@@ -131,17 +154,30 @@ function envoyer(
   }
 }
 
+/** Les trois préremplissages (code, pseudo, couleur) : même forme, groupés. */
+function creerPrerempli(ctx: Contexte) {
+  return {
+    codeAdhesionPrerempli: () => ctx.code,
+    preremplirCode(code: string): void { ctx.code = code; },
+    pseudoPrerempli: () => ctx.pseudo,
+    preremplirPseudo(pseudo: string): void { ctx.pseudo = pseudo; },
+    couleurPrerempli: () => ctx.couleur,
+    preremplirCouleur(couleurId: string): void { ctx.couleur = couleurId; },
+  };
+}
+
 export function creerMagasin(options: OptionsMagasin): Magasin {
   const etat = reactive(etatInitial()) as EtatLocal;
   const ctx: Contexte = {
-    options, etat, client: null, intention: 'accueil', code: '', surcharge: {},
+    options, etat, client: null, intention: ref<IntentionLocale>('accueil'), code: '', pseudo: '',
+    couleur: COULEURS_JOUEUR[0]?.id ?? '', surcharge: {},
   };
 
   return {
     etat: readonly(etat) as DeepReadonly<EtatLocal>,
-    intention: () => ctx.intention,
+    intention: () => ctx.intention.value,
     naviguer(cible): void {
-      ctx.intention = cible;
+      ctx.intention.value = cible;
       etat.alerte = null;
     },
     ouvrirSession(jeton): void {
@@ -166,12 +202,9 @@ export function creerMagasin(options: OptionsMagasin): Magasin {
       ctx.client = null;
       purgerJeton(options.stockage);
       Object.assign(etat, etatInitial());
-      ctx.intention = 'accueil';
+      ctx.intention.value = 'accueil';
     },
-    codeAdhesionPrerempli: () => ctx.code,
-    preremplirCode(code): void {
-      ctx.code = code;
-    },
+    ...creerPrerempli(ctx),
     surchargeEquilibrage: () => (Object.keys(ctx.surcharge).length === 0 ? null : ctx.surcharge),
     memoriserSurchargeEquilibrage(surcharge): void {
       ctx.surcharge = surcharge;
