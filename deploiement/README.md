@@ -38,3 +38,28 @@ en proxy inverse vers `127.0.0.1:8096` (conteneur `gdv-client`).
 
 La base SQLite vit dans le volume nommé `gdv_donnees`, indépendant des
 conteneurs : elle survit à un `docker compose up --build`.
+
+## CI/CD
+
+`.github/workflows/deploy.yml` : à chaque push sur `main`,
+
+1. `npm run verifier` — **toutes** les portes qualité du projet (secrets,
+   visibilité, types, lint, couches, tests, couverture, audit, uniformité,
+   routes). Le déploiement ne se lance QUE si cette porte est verte.
+2. Si vert : archive le code (hors `node_modules`/`dist`/`donnees`),
+   l'envoie via une clé SSH dédiée et restreinte (`command=` forcé sur
+   `receive-deploy.sh`, aucun shell libre) vers le VPS, qui reconstruit et
+   relance `gdv-serveur` + `gdv-client`.
+3. Vérifie que `https://legenie.aboubacar-kone.space/` répond.
+
+**État réel au 2026-11-10** : la porte `verifier:uniformite` échoue (20
+divergences — tailles de trames inégales malgré le remplissage, et surtout
+des actes secrets qui changent le NOMBRE de trames reçues par les joueurs
+non impliqués, ce qui est un canal auxiliaire observable). Le pipeline est
+donc rouge tant que ce point n'est pas corrigé : c'est voulu, pas un défaut
+d'outillage — voir le nœud qui traite le remplissage/l'uniformité des
+trames.
+
+Secrets GitHub requis sur ce dépôt (Settings → Secrets and variables →
+Actions) : `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` (clé privée
+dédiée, différente de celle du portfolio).

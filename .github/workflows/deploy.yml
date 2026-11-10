@@ -1,0 +1,57 @@
+name: CI/CD — Le Génie du Dernier Vœu
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.18.1"
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Toutes les portes qualité (secrets, visibilité, types, lint, couches, tests, couverture, audit, uniformité, routes)
+        run: npm run verifier
+
+  deployer:
+    needs: verifier
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Archiver le code source (hors node_modules/dist/données)
+        run: |
+          tar -czf source.tar.gz \
+            package.json package-lock.json tsconfig.base.json \
+            paquets applications deploiement \
+            --exclude='node_modules' --exclude='dist' --exclude='*/donnees' --exclude='*/tests'
+
+      - name: Déployer sur le VPS (build + up docker compose)
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          host=$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')
+          user=$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          cp deploiement/connu_hotes ~/.ssh/known_hosts
+          cat source.tar.gz | ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o UserKnownHostsFile=~/.ssh/known_hosts "$user@$host"
+
+      - name: Vérifier que le site répond
+        run: |
+          sleep 10
+          curl -sf -o /dev/null https://legenie.aboubacar-kone.space/ && echo "Site OK" || (echo "Site injoignable après déploiement" && exit 1)
