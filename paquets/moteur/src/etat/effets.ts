@@ -7,7 +7,7 @@
 // construit par AJOUT de ce qui est autorisé (ADR-TL-09, RG-01).
 //
 // Le champ `type` est le type d'événement du protocole : la table des
-// projections est donc totale sur les 30 types, et un type ajouté au contrat
+// projections est donc totale sur les 31 types, et un type ajouté au contrat
 // sans projection ne compile pas.
 
 import { TYPES_EVENEMENT } from '@gdv/partage';
@@ -59,6 +59,12 @@ export interface EffetJoueurRejoint {
 export interface EffetPresence {
   readonly type: 'joueur_quitte' | 'joueur_reconnecte';
   readonly joueur_id: string;
+}
+
+export interface EffetJoueurPretChange {
+  readonly type: 'joueur_pret_change';
+  readonly joueur_id: string;
+  readonly pret: boolean;
 }
 
 export interface EffetPartieDemarree {
@@ -206,6 +212,7 @@ export type Effet =
   | EffetEtatPartieChange
   | EffetJoueurRejoint
   | EffetPresence
+  | EffetJoueurPretChange
   | EffetPartieDemarree
   | EffetAttributionPrivee
   | EffetVoeuAnnonce

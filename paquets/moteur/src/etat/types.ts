@@ -32,6 +32,13 @@ export interface Joueur {
   readonly est_hote: boolean;
   readonly position_cercle: number | null;
   readonly connecte: boolean;
+  /**
+   * Statut « prêt » de la salle d'attente (écran 1b). PUREMENT INFORMATIF :
+   * ne conditionne AUCUNE garde de demarrer_partie, qui reste gouvernée
+   * uniquement par [joueurs_min, joueurs_max] (RG-02, CA-02). Conservé à la
+   * reconnexion, comme connecte ; sans effet une fois la partie démarrée.
+   */
+  readonly pret: boolean;
   readonly role_secret: Role | null;
   readonly mission_secrete: Mission | null;
   readonly solde_pieces: number;

@@ -90,6 +90,7 @@ test('CA-42 : l’état reçu ne contient AUCUN secret d’autrui', () => {
       'est_hote',
       'joueur_id',
       'position_cercle',
+      'pret',
       'pseudo',
     ]);
   }

@@ -18,7 +18,7 @@
 // JAMAIS de la charge complète pour en retirer les secrets : c'est le mode de
 // défaillance que (P-c) nomme « la charge à moitié vidée » — un développeur qui
 // supprime les champs un par un laissera le champ ajouté la semaine suivante.
-// La table est TOTALE sur les 30 types par le type mappé : un événement ajouté
+// La table est TOTALE sur les 31 types par le type mappé : un événement ajouté
 // au contrat sans charge neutre ne compile pas.
 //
 // L'ensemble des clés produit ici est confronté mécaniquement à
@@ -77,6 +77,9 @@ const NEUTRES: TableNeutres = {
   joueur_rejoint: () => AUCUNE,
   joueur_quitte: () => AUCUNE,
   joueur_reconnecte: () => AUCUNE,
+  // Classe tous, charge identique pour tous : cette entrée est INATTEIGNABLE,
+  // exactement comme joueur_rejoint/joueur_quitte/joueur_reconnecte ci-dessus.
+  joueur_pret_change: () => AUCUNE,
   partie_demarree: () => AUCUNE,
   // Chaque joueur en reçoit exactement une à la distribution : le nombre est
   // déjà uniforme. L'entrée existe pour la totalité de la table.

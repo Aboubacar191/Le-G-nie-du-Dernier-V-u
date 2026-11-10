@@ -40,6 +40,7 @@ export function joueurPublic(joueur: Joueur): JoueurPublic {
     position_cercle: joueur.position_cercle,
     connecte: joueur.connecte,
     est_hote: joueur.est_hote,
+    pret: joueur.pret,
   };
 }
 

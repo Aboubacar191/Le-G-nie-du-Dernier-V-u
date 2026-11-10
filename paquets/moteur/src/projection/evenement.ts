@@ -61,6 +61,7 @@ import {
   projeterDernierVoeuResolu,
   projeterEtatPartieChange,
   projeterExecutionResultat,
+  projeterJoueurPretChange,
   projeterJoueurRejoint,
   projeterPartieAbandonnee,
   projeterPartieDemarree,
@@ -74,7 +75,7 @@ import { appartientALaClasse, estDansLaSession } from './regles-visibilite.ts';
 import { projeterScoresFinaux } from './scores-finaux.ts';
 
 /**
- * Table TOTALE sur les 30 types d'événement. Le type mappé exige UNE entrée par
+ * Table TOTALE sur les 31 types d'événement. Le type mappé exige UNE entrée par
  * type et impose à chaque entrée la variante d'effet correspondante : un
  * événement ajouté au contrat sans projecteur ne compile pas, et un projecteur
  * branché sur le mauvais effet ne compile pas non plus.
@@ -99,6 +100,7 @@ const PROJECTEURS: TableProjecteurs = {
   joueur_rejoint: (etat, effet) => projeterJoueurRejoint(etat, effet),
   joueur_quitte: (etat, effet) => projeterPresence(etat, effet),
   joueur_reconnecte: (etat, effet) => projeterPresence(etat, effet),
+  joueur_pret_change: (etat, effet) => projeterJoueurPretChange(etat, effet),
   partie_demarree: (etat) => projeterPartieDemarree(etat),
   attribution_privee: (etat, effet) => projeterAttributionPrivee(etat, effet),
   voeu_annonce: (etat, effet) => projeterVoeuAnnonce(etat, effet),

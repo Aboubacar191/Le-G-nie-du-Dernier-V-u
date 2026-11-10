@@ -1,14 +1,14 @@
 // ╔════════════════════════════════════════════════════════════════════════╗
-// ║  PREUVE MÉCANIQUE DE RG-01 — les 30 événements, un par un.             ║
+// ║  PREUVE MÉCANIQUE DE RG-01 — les 31 événements, un par un.             ║
 // ╚════════════════════════════════════════════════════════════════════════╝
 //
 // Le fichier voisin, proprietes.test.ts, vérifie (P-a) et (P-b) sur des parties
-// GÉNÉRÉES. Celui-ci les vérifie de façon EXHAUSTIVE : les 30 types
+// GÉNÉRÉES. Celui-ci les vérifie de façon EXHAUSTIVE : les 31 types
 // d'événement du contrat, construits sur un état réel, projetés vers CHAQUE
 // destinataire possible — y compris un étranger à la session.
 //
 // Les deux sont nécessaires. Le tirage aléatoire trouve des états auxquels
-// personne n'avait pensé ; l'exhaustivité garantit qu'aucun des 30 types ne
+// personne n'avait pensé ; l'exhaustivité garantit qu'aucun des 31 types ne
 // passe au travers parce qu'un scénario ne l'a pas produit.
 
 import test from 'node:test';
@@ -21,7 +21,7 @@ import { jouer, type PlanPartie } from './scenario-genere.ts';
 import { verifierAppartenance, verifierCloture } from './verificateurs.ts';
 
 /**
- * Les 30 effets du protocole, construits sur un état réel. Certains sont
+ * Les 31 effets du protocole, construits sur un état réel. Certains sont
  * produits par le TRANSPORT et non par le moteur — accuse_reception, erreur,
  * etat_complet_prive, les trois événements de présence — et n'apparaissent donc
  * pas dans les effets d'une partie jouée. Ils sont néanmoins projetés par la
@@ -47,6 +47,7 @@ function effetsDeBase(etat: EtatSession): readonly Effet[] {
     { type: 'joueur_rejoint', joueur_id: premier },
     { type: 'joueur_quitte', joueur_id: premier },
     { type: 'joueur_reconnecte', joueur_id: premier },
+    { type: 'joueur_pret_change', joueur_id: premier, pret: true },
     { type: 'partie_demarree' },
     { type: 'attribution_privee', joueur_id: premier },
     { type: 'phase_changee' },
@@ -128,7 +129,7 @@ function effetsDePret(pret: EtatSession['prets'][number]): readonly Effet[] {
 }
 
 /**
- * Les 30 effets du protocole, construits sur un état réel. Certains sont
+ * Les 31 effets du protocole, construits sur un état réel. Certains sont
  * produits par le TRANSPORT et non par le moteur — accuse_reception, erreur,
  * etat_complet_prive, les trois événements de présence — et n'apparaissent donc
  * pas dans les effets d'une partie jouée. Ils sont néanmoins projetés par la
@@ -150,9 +151,9 @@ function tousLesEffets(etat: EtatSession): readonly Effet[] {
   ];
 }
 
-test('(P-a) et (P-b) tiennent sur les 30 événements du contrat, pour tout destinataire', () => {
+test('(P-a) et (P-b) tiennent sur les 31 événements du contrat, pour tout destinataire', () => {
   // Une partie complète en mode avancé, avec prêt, enquête, accusation et
-  // révélation : l'état porte de quoi construire les 30 effets.
+  // révélation : l'état porte de quoi construire les 31 effets.
   const plan: PlanPartie = {
     joueurs: 6,
     graine: 'exhaustif',

@@ -12,6 +12,7 @@ export const TYPES_EVENEMENT = [
   'joueur_rejoint',
   'joueur_quitte',
   'joueur_reconnecte',
+  'joueur_pret_change',
   'partie_demarree',
   'attribution_privee',
   'voeu_annonce',

@@ -13,6 +13,7 @@ import {
   appliquer,
   booleenDe,
   cloturer,
+  definirConnexion,
   entierDe,
   expirerPhase,
   listeTexteDe,
@@ -105,6 +106,51 @@ test('abandonner_partie : réservée à l’hôte, confirmation exigée, pas deu
     code(table.cmd('J0', 'abandonner_partie', { confirmation: true })),
     'ETAT_PARTIE_INCOMPATIBLE',
   );
+});
+
+// --- Salle d'attente -----------------------------------------------------------
+
+test('signaler_pret : accepté en SALLE_ATTENTE, N’IMPORTE QUEL joueur, sur SON PROPRE statut', () => {
+  const table = new Table({ joueurs: 6 });
+  assert.equal(table.etat.etat_partie, 'SALLE_ATTENTE');
+
+  // Pas réservé à l'hôte, à la différence de demarrer_partie/abandonner_partie.
+  const resultat = table.cmd('J1', 'signaler_pret', { pret: true });
+  assert.equal(resultat.ok, true);
+  assert.equal(table.etat.joueurs.find((j) => j.id === 'J1')?.pret, true);
+
+  // Aucune usurpation possible : la charge ne porte aucun champ de cible, donc
+  // le statut d'un AUTRE joueur reste intact (CA-44).
+  assert.equal(table.etat.joueurs.find((j) => j.id === 'J0')?.pret, false);
+
+  // L'événement public est émis vers TOUTE la table (classe tous).
+  for (const joueurId of table.joueurs) {
+    const trames = table.tramesDe(joueurId, 'joueur_pret_change');
+    assert.equal(trames.length, 1);
+    assert.deepEqual(trames[0]?.charge, { joueur_id: 'J1', pret: true });
+  }
+
+  // La valeur cible explicite est reprise telle quelle, y compris à faux.
+  table.exiger('J1', 'signaler_pret', { pret: false });
+  assert.equal(table.etat.joueurs.find((j) => j.id === 'J1')?.pret, false);
+});
+
+test('signaler_pret : refusé hors de SALLE_ATTENTE', () => {
+  const table = new Table({ joueurs: 6 }).demarrer();
+  assert.notEqual(table.etat.etat_partie, 'SALLE_ATTENTE');
+  assert.equal(code(table.cmd('J0', 'signaler_pret', { pret: true })), 'ETAT_PARTIE_INCOMPATIBLE');
+});
+
+test('signaler_pret : refusé si le joueur n’est pas connecté', () => {
+  const table = new Table({ joueurs: 6 });
+  table.etat = definirConnexion(table.etat, 'J1', false);
+  assert.equal(code(table.cmd('J1', 'signaler_pret', { pret: true })), 'ETAT_PARTIE_INCOMPATIBLE');
+});
+
+test('signaler_pret : charge malformée', () => {
+  const table = new Table({ joueurs: 6 });
+  assert.equal(code(table.cmd('J0', 'signaler_pret', {})), 'MESSAGE_MALFORME');
+  assert.equal(code(table.cmd('J0', 'signaler_pret', { pret: 'oui' })), 'MESSAGE_MALFORME');
 });
 
 // --- Négociation -------------------------------------------------------------

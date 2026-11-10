@@ -164,6 +164,10 @@ function transferer(): void {
           taille="md"
           @agir="emettre('fermer')"
         />
+
+        <p class="transfert__confidentialite">
+          {{ texte('ecran.transfert.confidentialite') }}
+        </p>
       </template>
     </template>
   </FeuilleModale>
@@ -183,5 +187,11 @@ function transferer(): void {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.transfert__confidentialite {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
 }
 </style>

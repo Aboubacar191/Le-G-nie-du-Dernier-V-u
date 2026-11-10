@@ -19,6 +19,7 @@ export const TYPES_COMMANDE = [
   'accuser',
   'signer_dernier_voeu',
   'abandonner_partie',
+  'signaler_pret',
 ] as const;
 
 export type TypeCommande = (typeof TYPES_COMMANDE)[number];

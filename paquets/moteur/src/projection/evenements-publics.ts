@@ -18,6 +18,7 @@ import type {
   EffetDeclarationPubliee,
   EffetDernierVoeuResolu,
   EffetExecutionResultat,
+  EffetJoueurPretChange,
   EffetJoueurRejoint,
   EffetPartieAbandonnee,
   EffetPresence,
@@ -79,6 +80,21 @@ export function projeterPresence(
   return publique({
     joueur_id: effet.joueur_id,
     nb_connectes: joueursConnectes(etat).length,
+  });
+}
+
+/**
+ * Écran 1b (salle d'attente) : statut PUREMENT INFORMATIF, public comme
+ * connecte et position_cercle. Émis à TOUS, l'auteur compris — même
+ * raisonnement que projeterJoueurRejoint / projeterPresence.
+ */
+export function projeterJoueurPretChange(
+  _etat: EtatSession,
+  effet: EffetJoueurPretChange,
+): ProjectionBrute {
+  return publique({
+    joueur_id: effet.joueur_id,
+    pret: effet.pret,
   });
 }
 

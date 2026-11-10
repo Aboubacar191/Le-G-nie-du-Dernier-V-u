@@ -7,21 +7,23 @@
 // localement, et JAMAIS affichés (ADR-TL-15).
 //
 // ÉTATS (DESIGN ECR-02)
-// chargement   : après Créer, bouton en chargement et champ désactivé. Aucun
-//                écran blanc intermédiaire.
-// contenu      : un champ pseudo à libellé persistant, le nombre de manches,
-//                un résumé des valeurs vérifiées, une bascule de mode avancé
-//                avec sa raison si indisponible, un lien vers les réglages
-//                complets, un bouton principal.
+// chargement   : après Créer, bouton en chargement. Aucun écran blanc
+//                intermédiaire.
+// contenu      : retour vers l'accueil, le nombre de manches, un résumé des
+//                valeurs vérifiées avec la bascule de mode avancé en
+//                dernière ligne, un bouton principal.
 // vide         : non atteignable — c'est un formulaire, il n'a rien à charger.
-// erreur       : pseudo vide ou déjà pris, message SOUS le champ ; échec de
-//                création, bandeau avec reprise et pseudo CONSERVÉ.
+// erreur       : pseudo vide, déjà pris ou échec de création — un seul
+//                bandeau avec reprise, pseudo CONSERVÉ.
 // acces_refuse : non atteignable.
 //
-// ÉCRAN D DU PROTOTYPE — reproduction complète, les deux sélecteurs
-// RÉELLEMENT câblés sur la surcharge d'équilibrage (US-17), même mécanisme
-// que ECR-03, sans écraser ce que l'hôte y aurait déjà réglé (fusion, pas
-// remplacement) :
+// ÉCRAN D DU PROTOTYPE — reproduction fidèle : pas de champ pseudo (déjà
+// capturé sur ECR-01 · Bienvenue, l'écran D ne le réaffiche pas), pas de
+// lien vers les réglages complets (absent de la maquette), la bascule de
+// mode avancé vit DANS la même carte que « Pièces de départ »/« Joueurs »,
+// pas en dessous. Les deux sélecteurs restent RÉELLEMENT câblés sur la
+// surcharge d'équilibrage (US-17), même mécanisme que ECR-03, sans écraser
+// ce que l'hôte y aurait déjà réglé (fusion, pas remplacement) :
 //  · « Nombre de manches » (3/5/7) → nb_manches ;
 //  · « Temps de négociation » (1:30/2:00/3:00) → durees_phases_s.NEGOCIATION,
 //    SEUL paramètre imbriqué du contrat (SchemaSurchargeConfig accepte déjà
@@ -41,9 +43,7 @@
 import { computed, onMounted, ref } from 'vue';
 
 import BandeauAlerte from '../composants/BandeauAlerte.vue';
-import BasculeReglage from '../composants/BasculeReglage.vue';
 import BoutonAction from '../composants/BoutonAction.vue';
-import ChampTexteCourt from '../composants/ChampTexteCourt.vue';
 import CreationResume from '../composants/CreationResume.vue';
 import { texte } from '../logique/contenu.ts';
 import { utiliserMagasin, utiliserStockage } from '../magasin/injection.ts';
@@ -55,7 +55,6 @@ import {
   type ConfigJeuPublique,
 } from '../transport/rest.ts';
 
-const LONGUEUR_MAX_PSEUDO = 12;
 /** Choix fixes du prototype (écran D). Filtrés aux bornes réelles au montage. */
 const CANDIDATS_MANCHES = [3, 5, 7];
 /** 1:30 / 2:00 / 3:00, en secondes — mêmes trois choix que le prototype. */
@@ -75,8 +74,8 @@ const stockage = utiliserStockage();
 const pseudo = ref(magasin.pseudoPrerempli());
 const modeAvance = ref(false);
 const chargement = ref(false);
-const erreurChamp = ref('');
-const erreurGlobale = ref('');
+/** Code d'erreur reçu (clé sous code_erreur.*), vide tant qu'aucune n'est survenue. */
+const codeErreur = ref('');
 const partiesTerminees = ref(0);
 const partiesRequises = ref(0);
 
@@ -182,10 +181,9 @@ onMounted(async () => {
 });
 
 async function creer(): Promise<void> {
-  erreurChamp.value = '';
-  erreurGlobale.value = '';
+  codeErreur.value = '';
   if (pseudo.value.trim() === '') {
-    erreurChamp.value = texte('code_erreur.PSEUDO_INDISPONIBLE');
+    codeErreur.value = 'PSEUDO_INDISPONIBLE';
     return;
   }
   chargement.value = true;
@@ -202,8 +200,7 @@ async function creer(): Promise<void> {
   if (!resultat.ok) {
     // Le pseudo est CONSERVÉ : le reperdre après un refus serveur ferait
     // ressaisir au joueur ce qu'il venait d'écrire.
-    const cible = resultat.code === 'PSEUDO_INDISPONIBLE' ? erreurChamp : erreurGlobale;
-    cible.value = texte(`code_erreur.${resultat.code}`, { pseudo: pseudo.value });
+    codeErreur.value = resultat.code;
     return;
   }
 
@@ -222,26 +219,40 @@ async function creer(): Promise<void> {
 
 <template>
   <main class="creation">
-    <h1 class="creation__titre">
-      {{ texte('ecran.creation.titre') }}
-    </h1>
+    <header class="creation__entete">
+      <button
+        type="button"
+        class="creation__retour"
+        :aria-label="texte('commun.retour_accueil')"
+        @click="magasin.naviguer('accueil')"
+      >
+        <svg
+          viewBox="0 0 20 20"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path
+            d="M15 10H5M9 5l-5 5 5 5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+      <h1 class="creation__titre">
+        {{ texte('ecran.creation.titre') }}
+      </h1>
+    </header>
 
     <BandeauAlerte
-      v-if="erreurGlobale"
+      v-if="codeErreur"
       variante="erreur"
-      cle-contenu="ecran.creation.echec"
+      :cle-contenu="`code_erreur.${codeErreur}`"
+      :valeurs="{ pseudo }"
       :action-libelle="texte('commun.reessayer')"
-      @reprendre="erreurGlobale = ''"
-    />
-
-    <ChampTexteCourt
-      v-model:valeur="pseudo"
-      variante="pseudo"
-      :libelle="texte('ecran.creation.libelle_pseudo')"
-      :aide="texte('ecran.creation.aide_pseudo')"
-      :erreur="erreurChamp"
-      :desactive="chargement"
-      :longueur-max="LONGUEUR_MAX_PSEUDO"
+      @reprendre="codeErreur = ''"
     />
 
     <CreationResume
@@ -251,24 +262,12 @@ async function creer(): Promise<void> {
       :negociation-choisie-s="negociationChoisieS"
       :defauts="defauts"
       :duree-estimee-min="dureeEstimeeMin"
+      :mode-avance="modeAvance"
+      :mode-avance-desactive="!deblocageAcquis"
+      :mode-avance-raison="texte('ecran.creation.mode_avance_verrouille', { requises: partiesRequises })"
       @choisir-manches="choisirManches"
       @choisir-negociation="choisirNegociation"
-    />
-
-    <BasculeReglage
-      v-model:actif="modeAvance"
-      :libelle="texte('ecran.creation.mode_avance')"
-      :mot-actif="texte('ecran.salle_attente.mode_avance_actif')"
-      :mot-inactif="texte('ecran.salle_attente.mode_avance_inactif')"
-      :desactive="!deblocageAcquis"
-      :raison="texte('ecran.creation.mode_avance_verrouille', { requises: partiesRequises })"
-    />
-
-    <BoutonAction
-      :libelle="texte('ecran.creation.regler_equilibrage')"
-      variante="discret"
-      taille="md"
-      @agir="magasin.naviguer('reglages')"
+      @update:mode-avance="modeAvance = $event"
     />
 
     <BoutonAction
@@ -292,6 +291,35 @@ async function creer(): Promise<void> {
   padding: var(--gdv-gouttiere-ecran);
   background: var(--gdv-surface-fond);
   color: var(--gdv-texte-principal);
+}
+
+.creation__entete {
+  display: flex;
+  align-items: center;
+  gap: var(--gdv-espacement-12);
+}
+
+.creation__retour {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  inline-size: var(--gdv-cible-minimale);
+  block-size: var(--gdv-cible-minimale);
+  border: var(--gdv-trait-fin) solid var(--gdv-bordure-champ);
+  border-radius: var(--gdv-rayon-moyen);
+  background: transparent;
+  color: var(--gdv-texte-principal);
+  cursor: pointer;
+}
+
+.creation__retour svg {
+  inline-size: var(--gdv-espacement-16);
+  block-size: var(--gdv-espacement-16);
+}
+
+.creation__retour:focus-visible {
+  outline: var(--gdv-trait-moyen) solid var(--gdv-accent-focus);
+  outline-offset: var(--gdv-espacement-4);
 }
 
 .creation__titre {

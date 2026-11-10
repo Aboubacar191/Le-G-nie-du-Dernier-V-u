@@ -9,6 +9,7 @@ import type {
   ChargeEtatCompletPrive,
   ChargeEtatPartieChange,
   ChargeGroupeMisAJour,
+  ChargeJoueurPretChange,
   ChargeJoueurRejoint,
   ChargePartieAbandonnee,
   ChargePresence,
@@ -132,6 +133,11 @@ export const APPLICATEURS_SESSION: Readonly<Record<string, Applicateur>> = Objec
   joueur_reconnecte: (etat, charge) => {
     const evenement = charge as ChargePresence;
     remplacerJoueur(etat, evenement.joueur_id, (joueur) => ({ ...joueur, connecte: true }));
+  },
+
+  joueur_pret_change: (etat, charge) => {
+    const evenement = charge as ChargeJoueurPretChange;
+    remplacerJoueur(etat, evenement.joueur_id, (joueur) => ({ ...joueur, pret: evenement.pret }));
   },
 
   partie_demarree: (etat, charge) => {

@@ -48,6 +48,16 @@ const proposition = computed(() =>
 
 const expiree = computed(() => magasin.etat.phase !== 'NEGOCIATION');
 
+/** Taux PUBLIC de la configuration de session — un pourcentage, pas une règle. */
+const pourcentageInteret = computed((): number | null => {
+  const config = magasin.etat.session?.config as { taux_interet_pret?: readonly number[] };
+  const taux = config?.taux_interet_pret;
+  if (taux === undefined || taux.length !== 2) return null;
+  const [numerateur, denominateur] = taux as readonly [number, number];
+  if (denominateur === 0) return null;
+  return Math.round((numerateur / denominateur) * 100);
+});
+
 function repondre(accepte: boolean): void {
   if (proposition.value === null) return;
   envoi.value = true;
@@ -102,6 +112,13 @@ function repondre(accepte: boolean): void {
         </template>
       </VoileSecret>
 
+      <p
+        v-if="pourcentageInteret !== null"
+        class="reponse__interets"
+      >
+        {{ texte('ecran.pret.interets_regle', { pourcentage: pourcentageInteret }) }}
+      </p>
+
       <BoutonAction
         :libelle="texte('ecran.pret.accepter')"
         variante="principal"
@@ -131,6 +148,13 @@ function repondre(accepte: boolean): void {
 .reponse__montants {
   font-family: var(--gdv-famille-interface);
   font-size: var(--gdv-role-corps);
+  text-align: center;
+}
+
+.reponse__interets {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
   text-align: center;
 }
 </style>

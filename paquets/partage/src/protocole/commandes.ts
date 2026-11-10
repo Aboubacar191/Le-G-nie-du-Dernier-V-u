@@ -135,6 +135,10 @@ export const CmdAbandonnerPartie = z.strictObject({
   confirmation: z.literal(true),
 });
 
+export const CmdSignalerPret = z.strictObject({
+  pret: z.boolean(),
+});
+
 /**
  * Table de validation, une entrée par type de commande du protocole.
  * Un type absent du catalogue est rejeté avec COMMANDE_INCONNUE : le serveur
@@ -154,6 +158,7 @@ export const SCHEMAS_COMMANDE = {
   accuser: CmdAccuser,
   signer_dernier_voeu: CmdSignerDernierVoeu,
   abandonner_partie: CmdAbandonnerPartie,
+  signaler_pret: CmdSignalerPret,
 } as const satisfies Readonly<Record<TypeCommande, z.ZodType>>;
 
 /** Nom du schéma OpenAPI correspondant, pour les messages de refus et les tests. */
@@ -169,6 +174,7 @@ export type ChargeLancerEnquete = z.infer<typeof CmdLancerEnquete>;
 export type ChargeAccuser = z.infer<typeof CmdAccuser>;
 export type ChargeSignerDernierVoeu = z.infer<typeof CmdSignerDernierVoeu>;
 export type ChargeAbandonnerPartie = z.infer<typeof CmdAbandonnerPartie>;
+export type ChargeSignalerPret = z.infer<typeof CmdSignalerPret>;
 
 /** Vrai si le type reçu appartient au catalogue (sinon : COMMANDE_INCONNUE). */
 export function estTypeCommande(type: unknown): type is TypeCommande {

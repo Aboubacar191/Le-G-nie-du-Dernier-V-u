@@ -117,13 +117,25 @@ function jouerDernierVoeu(table: Table, plan: PlanPartie): void {
   table.expirer();
 }
 
+/**
+ * Écran 1b : au moins un joueur bascule son statut prêt pendant SALLE_ATTENTE,
+ * avant que l'hôte ne démarre. Couvre joueur_pret_change sans peser sur le
+ * reste du plan — purement informatif, aucune incidence sur demarrer_partie.
+ */
+function jouerSalleAttente(table: Table): void {
+  const premier = table.joueurs[0];
+  if (premier !== undefined) table.cmd(premier, 'signaler_pret', { pret: true });
+}
+
 /** Joue le plan à travers le moteur réel et rend la table, trames comprises. */
 export function jouer(plan: PlanPartie): Table {
   const table = new Table({
     joueurs: plan.joueurs,
     graine: plan.graine,
     mode_avance: plan.mode_avance,
-  }).demarrer();
+  });
+  jouerSalleAttente(table);
+  table.demarrer();
 
   for (const manche of plan.manches) {
     if (table.etat.etat_partie !== 'MANCHE_EN_COURS') break;

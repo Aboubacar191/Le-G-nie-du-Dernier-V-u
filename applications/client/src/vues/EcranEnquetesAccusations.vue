@@ -121,6 +121,11 @@ function enqueter(cible: string): void {
             <span class="enquetes__cout">
               {{ texte('ecran.enquetes.cout_sous_voile', { cout: coutEnquete }) }}
             </span>
+            <ul class="enquetes__discretion">
+              <li>{{ texte('ecran.enquetes.enquete_discretion_1') }}</li>
+              <li>{{ texte('ecran.enquetes.enquete_discretion_2') }}</li>
+              <li>{{ texte('ecran.enquetes.enquete_discretion_3') }}</li>
+            </ul>
           </template>
         </VoileSecret>
       </template>
@@ -182,6 +187,18 @@ function enqueter(cible: string): void {
    role.corps est le plancher de lecture mobile (role._regle_mobile) ; ce qui
    dépasse défile dans la lucarne, qui ne se dilate plus. */
 .enquetes__cout {
+  font-family: var(--gdv-famille-interface);
+  font-size: var(--gdv-role-corps);
+  text-align: center;
+}
+
+.enquetes__discretion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gdv-espacement-8);
+  margin: var(--gdv-espacement-8) 0 0;
+  padding: 0;
+  list-style: none;
   font-family: var(--gdv-famille-interface);
   font-size: var(--gdv-role-corps);
   text-align: center;

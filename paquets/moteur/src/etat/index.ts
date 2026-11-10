@@ -33,6 +33,7 @@ function nouveauJoueur(joueurId: string, pseudo: string, estHote: boolean): Joue
     est_hote: estHote,
     position_cercle: null,
     connecte: true,
+    pret: false,
     role_secret: null,
     mission_secrete: null,
     solde_pieces: 0,

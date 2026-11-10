@@ -4,6 +4,7 @@
 // vues/EcranCreationSession.vue (porte de lint max-lines) : purement
 // présentationnel, tout le calcul reste porté par l'appelant.
 
+import BasculeReglage from './BasculeReglage.vue';
 import { texte } from '../logique/contenu.ts';
 import type { ConfigJeuPublique } from '../transport/rest.ts';
 
@@ -14,10 +15,17 @@ interface Props {
   negociationChoisieS: number;
   defauts: ConfigJeuPublique | null;
   dureeEstimeeMin: number | null;
+  modeAvance: boolean;
+  modeAvanceDesactive: boolean;
+  modeAvanceRaison: string;
 }
 
 const props = defineProps<Props>();
-const emettre = defineEmits<{ choisirManches: [n: number]; choisirNegociation: [s: number] }>();
+const emettre = defineEmits<{
+  choisirManches: [n: number];
+  choisirNegociation: [s: number];
+  'update:modeAvance': [actif: boolean];
+}>();
 
 /** « 90 » → « 1:30 ». Affichage de pastille uniquement, pas une donnée de jeu. */
 function minSec(secondes: number): string {
@@ -96,6 +104,17 @@ function minSec(secondes: number): string {
         }) }}
       </dd>
     </div>
+    <div class="resume__ligne resume__ligne--bascule">
+      <BasculeReglage
+        :actif="props.modeAvance"
+        :libelle="texte('ecran.creation.mode_avance')"
+        :mot-actif="texte('ecran.salle_attente.mode_avance_actif')"
+        :mot-inactif="texte('ecran.salle_attente.mode_avance_inactif')"
+        :desactive="props.modeAvanceDesactive"
+        :raison="props.modeAvanceRaison"
+        @update:actif="emettre('update:modeAvance', $event)"
+      />
+    </div>
   </dl>
 
   <p
@@ -155,11 +174,10 @@ function minSec(secondes: number): string {
 .resume__liste {
   display: flex;
   flex-direction: column;
-  gap: var(--gdv-espacement-8);
   margin: 0;
-  padding: var(--gdv-espacement-12);
   border-radius: var(--gdv-rayon-moyen);
   background: var(--gdv-surface-secondaire);
+  overflow: hidden;
 }
 
 .resume__ligne {
@@ -167,6 +185,15 @@ function minSec(secondes: number): string {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--gdv-espacement-12);
+  padding: var(--gdv-espacement-12);
+}
+
+.resume__ligne:not(:last-child) {
+  border-bottom: var(--gdv-trait-fin) solid var(--gdv-bordure-champ);
+}
+
+.resume__ligne--bascule {
+  align-items: center;
 }
 
 .resume__ligne dt {

@@ -61,7 +61,7 @@ test('CA-50 : le contrat n’énumère aucune commande d’exécution, de révé
       );
     }
   }
-  assert.equal(types.length, 13, 'treize commandes, pas une de plus');
+  assert.equal(types.length, 14, 'quatorze commandes, pas une de plus');
 });
 
 test('CA-50 : la table des gestionnaires du moteur ne porte que les commandes du contrat', () => {

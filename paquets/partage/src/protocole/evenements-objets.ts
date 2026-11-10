@@ -27,6 +27,7 @@ export interface JoueurPublic {
   readonly position_cercle: number | null;
   readonly connecte: boolean;
   readonly est_hote: boolean;
+  readonly pret: boolean;
 }
 
 export interface MouvementPiece {

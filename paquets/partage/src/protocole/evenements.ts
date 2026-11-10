@@ -106,6 +106,11 @@ export interface ChargePresence {
   readonly nb_connectes: number;
 }
 
+export interface ChargeJoueurPretChange {
+  readonly joueur_id: string;
+  readonly pret: boolean;
+}
+
 export interface ChargePartieDemarree {
   readonly ordre_cercle: readonly string[];
   readonly nb_joueurs: number;
@@ -273,6 +278,7 @@ export interface ChargesParEvenement {
   readonly joueur_rejoint: ChargeJoueurRejoint;
   readonly joueur_quitte: ChargePresence;
   readonly joueur_reconnecte: ChargePresence;
+  readonly joueur_pret_change: ChargeJoueurPretChange;
   readonly partie_demarree: ChargePartieDemarree;
   readonly attribution_privee: ChargeAttributionPrivee;
   readonly voeu_annonce: ChargeVoeuAnnonce;

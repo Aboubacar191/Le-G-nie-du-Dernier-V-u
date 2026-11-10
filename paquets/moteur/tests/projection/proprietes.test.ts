@@ -120,8 +120,8 @@ test('(P-a) la projection ne rend RIEN pour un destinataire hors session', () =>
   );
 });
 
-test('(P-b) les 30 événements du contrat ont une classe de destinataire déclarée', () => {
-  assert.equal(TYPES_EVENEMENT.length, 30);
+test('(P-b) les 31 événements du contrat ont une classe de destinataire déclarée', () => {
+  assert.equal(TYPES_EVENEMENT.length, 31);
   for (const type of TYPES_EVENEMENT) {
     const classe = VISIBILITE_PAR_EVENEMENT[type];
     assert.ok(CLASSES_ADMISES.includes(classe), `${type} : classe « ${classe} » inconnue`);

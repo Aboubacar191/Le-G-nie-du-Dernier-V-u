@@ -148,7 +148,8 @@
     "lancer_enquete": "Enquêter",
     "accuser": "Accuser",
     "signer_dernier_voeu": "Sceller mon choix",
-    "abandonner_partie": "Abandonner la partie"
+    "abandonner_partie": "Abandonner la partie",
+    "signaler_pret": "Je suis prêt"
   },
 
   "commun": {
@@ -356,7 +357,9 @@
       "rejoindre_description": "Scanne le QR code ou tape le code de l'hôte.",
       "dernier_voeu_titre": "Mode avancé « Dernier Vœu »",
       "dernier_voeu_compte": "{terminees} / {requises} parties",
+      "dernier_voeu_debloque": "débloqué",
       "dernier_voeu_aide": "Joue {requises} parties avec ton groupe pour le débloquer.",
+      "dernier_voeu_aide_debloque": "Active-le en créant une partie : le génie fera une dernière offre en manche 5.",
       "regle_or": "Jeu en présentiel : parlez à voix haute, le téléphone garde vos secrets.",
       "apprendre_regles": "Apprendre les règles",
       "apprendre_regles_description": "3 étapes · moins de 3 minutes"
@@ -401,13 +404,12 @@
       "pieces_depart_valeur": "{valeur} par marchand",
       "joueurs_libelle": "Joueurs",
       "joueurs_valeur": "{min} à {max}",
-      "negociation_libelle": "Temps de négociation",
+      "negociation_libelle": "Temps de négociation par manche",
       "duree_estimee_libelle": "Durée estimée de la partie",
       "duree_estimee_valeur": "≈ {minutes} min",
-      "mode_avance": "Mode Dernier Vœu",
-      "mode_avance_verrouille": "Disponible après {requises} parties terminées par ton groupe",
-      "regler_equilibrage": "Régler l'équilibrage",
-      "creer": "Créer la partie",
+      "mode_avance": "Mode avancé « Dernier Vœu »",
+      "mode_avance_verrouille": "Débloqué après {requises} parties terminées par ton groupe",
+      "creer": "Ouvrir la salle",
       "echec": "La partie n'a pas pu être créée."
     },
     "reglages": {
@@ -456,18 +458,35 @@
       "scan_camera_refusee": "Caméra indisponible. Saisis le code ci-dessous."
     },
     "salle_attente": {
-      "titre": "Salle d'attente",
-      "compteur": "{n} marchands sur {min} minimum",
-      "bornes": "{min} au minimum, {max} au maximum.",
-      "manque": "Il manque {n} marchand(s).",
-      "seul": "Tu es seul dans le cercle.",
-      "montrer_qr": "Montrer le QR",
+      "accroche": "Promets, paie en secret, démasque les menteurs.",
       "quitter": "Quitter la partie",
+      "fermer_salle": "Fermer la salle",
       "demarrer_desactive": "Il faut entre {min} et {max} marchands connectés.",
       "joueur_parti": "{pseudo} a quitté le cercle.",
       "mode_avance_actif": "Mode Dernier Vœu : actif",
       "mode_avance_inactif": "Mode Dernier Vœu : inactif",
-      "ordre_places": "L'ordre des places sert aux révélations du génie."
+      "ordre_places": "L'ordre des places sert aux révélations du génie.",
+      "marchands_titre": "Marchands autour de la table",
+      "marchands_compte": "{n} / {max}",
+      "partager_lien": "Partager le lien",
+      "lien_copie": "Lien copié",
+      "moi": "Toi",
+      "moi_hote": "Toi · hôte",
+      "suffixe_hote": "hôte",
+      "rejoint": "Tu as rejoint la table",
+      "table_de": "La table d'{hote}",
+      "attente_hote": "{hote} invoquera le génie quand tout le monde sera prêt.",
+      "stat_manches": "Manches",
+      "stat_negociation": "Négociation",
+      "stat_depart": "Départ",
+      "prets_compte": "{n} prêts sur {total}",
+      "statut_pret": "Prêt",
+      "statut_pas_encore": "Pas encore",
+      "explication_placement": "L'hôte place chacun selon la vraie table : le génie s'en sert pour dire qui est assis à côté de qui.",
+      "revoir_regles": "Revoir les règles en attendant",
+      "en_attente_de": "Tu es prêt. En attente de {liste}.",
+      "tout_le_monde_pret": "Tu es prêt. Tout le monde l'est.",
+      "pas_encore_bouton": "Pas encore"
     },
     "placement": {
       "titre": "Fixer les places",
@@ -527,7 +546,8 @@
       "aucune_cible": "Aucun marchand n'est joignable pour l'instant.",
       "hors_phase": "Les transferts ne se font que pendant la négociation.",
       "phase_expiree": "La négociation est terminée, ton transfert n'a pas eu lieu.",
-      "choisis_cible": "Choisis d'abord un marchand"
+      "choisis_cible": "Choisis d'abord un marchand",
+      "confidentialite": "Le transfert est immédiat et définitif. Seuls toi et le destinataire le voyez : à vous de l'annoncer, ou non."
     },
     "pret": {
       "titre_proposer": "Proposer un prêt",
@@ -545,7 +565,8 @@
       "refuser": "Refuser",
       "expiree": "Cette proposition n'est plus valable : la négociation est finie.",
       "refus_acceptation": "Le génie a refusé : le prêteur n'a plus l'or promis.",
-      "pastille": "Une proposition t'attend"
+      "pastille": "Une proposition t'attend",
+      "interets_regle": "Intérêts de {pourcentage} % : le remboursement est automatique, sans discussion possible."
     },
     "declaration": {
       "titre": "Ta promesse",
@@ -583,6 +604,9 @@
       "titre": "Soupçons",
       "question": "Qui a menti ?",
       "enqueter": "Maintiens pour enquêter",
+      "enquete_discretion_1": "Tu verras, toi seul, combien ce marchand a vraiment payé.",
+      "enquete_discretion_2": "Il n'est pas prévenu. Personne ne sait sur qui tu enquêtes.",
+      "enquete_discretion_3": "Tu restes libre d'accuser après, ou pas.",
       "cout_sous_voile": "Cette enquête te coûte {cout}.",
       "accuser": "Accuser",
       "choisis_cible": "Choisis d'abord un marchand",

@@ -11,22 +11,39 @@
 //
 // ÉTATS (DESIGN ECR-06)
 // chargement   : squelette de 5 lignes de joueurs, aux dimensions des cartes.
-// contenu      : liste des connectés, compteur « n marchands sur 5 minimum »,
-//                et pour l'hôte le bouton de démarrage.
-// vide         : l'hôte seul — « Tu es seul dans le cercle », sortie vers le QR.
+// contenu      : marque + QR/code pour l'hôte (ÉCRAN 1 du prototype, montré en
+//                permanence, plus besoin d'un détour par ECR-04), compteur
+//                « n / max », liste des connectés, et pour l'hôte le bouton de
+//                démarrage.
+// vide         : l'hôte seul n'est PLUS un état à part — la liste à un élément
+//                ET le QR déjà affiché suffisent, rien à déclarer séparément.
 // erreur       : un joueur perdu passe en carte déconnectée et le bandeau dit
 //                l'effectif restant ; échec de démarrage hors de [min, max].
 // acces_refuse : jeton invalide, redirection vers ECR-32 par le magasin.
+//
+// ÉCRAN 1 DU PROTOTYPE (vue hôte) — la marque (lampe, titre, accroche), le
+// QR/code avec « Partager le lien », l'en-tête « Marchands autour de la
+// table » suivi du compte « n / max », la grille à numéros d'arrivée
+// (jamais position_cercle, NUL avant PLACEMENT — RG-06) et l'encart
+// pointillé du mode avancé en reprennent la présentation.
+//
+// ÉCRAN 1b DU PROTOTYPE (vue invité) — composants/VueInviteAttente.vue : nom
+// de la table de l'hôte, statistiques de la partie, liste à statuts et
+// bascule « Je suis prêt », purement informative (CA-02 inchangée).
+//
+// Le numéro de connexion n'a plus sa place en tête ici dans aucune des deux
+// vues : BandeauPhase (app.vue) la porte déjà globalement.
 
 import { computed, ref } from 'vue';
 
 import BandeauAlerte from '../composants/BandeauAlerte.vue';
+import BoiteInvitationQr from '../composants/BoiteInvitationQr.vue';
 import BoutonAction from '../composants/BoutonAction.vue';
-import CarteJoueurCercle from '../composants/CarteJoueurCercle.vue';
 import DialogueConfirmationIrreversible from '../composants/DialogueConfirmationIrreversible.vue';
-import EtatVide from '../composants/EtatVide.vue';
-import IndicateurConnexion from '../composants/IndicateurConnexion.vue';
+import GrilleJoueursAttente from '../composants/GrilleJoueursAttente.vue';
+import MarqueSalleAttente from '../composants/MarqueSalleAttente.vue';
 import SqueletteChargement from '../composants/SqueletteChargement.vue';
+import VueInviteAttente from '../composants/VueInviteAttente.vue';
 import { texte } from '../logique/contenu.ts';
 import { utiliserMagasin } from '../magasin/injection.ts';
 
@@ -63,7 +80,36 @@ const raisonDemarrage = computed(() =>
   }),
 );
 
-const manquants = computed(() => Math.max(0, bornesEffectif.value.min - nbConnectes.value));
+const code = computed(
+  () => magasin.etat.session?.code_adhesion ?? magasin.codeAdhesionPrerempli(),
+);
+
+const nomHote = computed(
+  () => magasin.etat.joueurs.find((joueur) => joueur.est_hote)?.pseudo ?? '',
+);
+
+const moiPret = computed(() =>
+  magasin.etat.joueurs.some(
+    (joueur) => joueur.joueur_id === magasin.etat.moi?.joueur_id && joueur.pret,
+  ),
+);
+
+interface ConfigPartieAffichee {
+  readonly nb_manches?: number;
+  readonly pieces_initiales?: number;
+  readonly durees_phases_s?: Readonly<Record<string, number>>;
+}
+
+const configAffichee = computed(
+  () => magasin.etat.session?.config as ConfigPartieAffichee | undefined,
+);
+const nbManches = computed(() => configAffichee.value?.nb_manches ?? null);
+const piecesDepart = computed(() => configAffichee.value?.pieces_initiales ?? null);
+const negociationS = computed(() => configAffichee.value?.durees_phases_s?.NEGOCIATION ?? null);
+
+function togglerPret(pret: boolean): void {
+  magasin.envoyer('signaler_pret', { pret });
+}
 
 function abandonner(): void {
   magasin.envoyer('abandonner_partie', { confirmation: true });
@@ -73,54 +119,12 @@ function abandonner(): void {
 
 <template>
   <main class="attente">
-    <header class="attente__entete">
-      <h1 class="attente__titre">
-        {{ texte('ecran.salle_attente.titre') }}
-      </h1>
-      <IndicateurConnexion :liaison="magasin.etat.liaison" />
-    </header>
-
     <BandeauAlerte
       v-if="magasin.etat.alerte !== null"
       :variante="magasin.etat.alerte.variante"
       :cle-contenu="magasin.etat.alerte.cle_contenu"
       :valeurs="magasin.etat.alerte.valeurs"
     />
-
-    <p class="attente__compteur">
-      {{ texte('ecran.salle_attente.compteur', { n: nbConnectes, min: bornesEffectif.min }) }}
-    </p>
-    <p class="attente__bornes">
-      {{ texte('ecran.salle_attente.bornes', { min: bornesEffectif.min, max: bornesEffectif.max }) }}
-    </p>
-
-    <div class="attente__mode-avance">
-      <svg
-        viewBox="0 0 20 20"
-        aria-hidden="true"
-        focusable="false"
-      >
-        <rect
-          x="4"
-          y="9"
-          width="12"
-          height="8"
-          rx="2"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-        />
-        <path
-          d="M7 9V6a3 3 0 0 1 6 0v3"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-        />
-      </svg>
-      <span>{{ magasin.etat.session?.mode_avance_actif
-        ? texte('ecran.salle_attente.mode_avance_actif')
-        : texte('ecran.salle_attente.mode_avance_inactif') }}</span>
-    </div>
 
     <SqueletteChargement
       v-if="chargement"
@@ -129,67 +133,81 @@ function abandonner(): void {
       :libelle="texte('commun.chargement')"
     />
 
-    <EtatVide
-      v-else-if="nbConnectes <= 1"
-      :titre="texte('ecran.salle_attente.seul')"
-      :corps="texte('ecran.salle_attente.manque', { n: manquants })"
-      :progression="texte('ecran.salle_attente.bornes', { min: bornesEffectif.min, max: bornesEffectif.max })"
-      :action-libelle="hote ? texte('ecran.salle_attente.montrer_qr') : ''"
-      @agir="magasin.naviguer('invitation')"
-    />
-
-    <template v-else>
-      <p class="attente__ordre">
-        {{ texte('ecran.salle_attente.ordre_places') }}
-      </p>
-
-      <!-- Chaque arrivée s'insère SANS déplacer les lignes existantes : la liste
-           suit l'ordre d'arrivée projeté par le serveur. -->
-      <ul class="attente__liste">
-        <li
-          v-for="joueur in magasin.etat.joueurs"
-          :key="joueur.joueur_id"
-        >
-          <CarteJoueurCercle
-            :pseudo="joueur.pseudo"
-            :position-cercle="joueur.position_cercle"
-            :connecte="joueur.connecte"
-            :relation="joueur.joueur_id === magasin.etat.moi?.joueur_id ? 'moi' : 'en_face'"
-            variante="etendue"
-          />
-        </li>
-      </ul>
-    </template>
-
-    <footer class="attente__pied">
+    <template v-else-if="hote">
       <BoutonAction
-        v-if="hote"
-        :libelle="texte('cercle.fixer_places')"
-        variante="principal"
-        taille="lg"
-        pleine-largeur
-        :desactive="!effectifSuffisant"
-        :raison="raisonDemarrage"
-        @agir="magasin.envoyer('demarrer_partie')"
-      />
-      <BoutonAction
-        v-else
-        :libelle="texte('ecran.salle_attente.quitter')"
-        variante="discret"
-        taille="md"
-        @agir="magasin.quitter()"
-      />
-
-      <!-- Action destructrice volontairement ÉLOIGNÉE des actions courantes. -->
-      <BoutonAction
-        v-if="hote"
-        class="attente__abandon"
-        :libelle="texte('action.abandonner_partie')"
-        variante="destructeur"
+        class="attente__fermer"
+        :libelle="texte('ecran.salle_attente.fermer_salle')"
+        variante="secondaire"
         taille="md"
         @agir="confirmerAbandon = true"
       />
-    </footer>
+
+      <MarqueSalleAttente />
+
+      <BoiteInvitationQr :code="code" />
+
+      <GrilleJoueursAttente
+        :joueurs="magasin.etat.joueurs"
+        :moi-id="magasin.etat.moi?.joueur_id ?? ''"
+        :hote="hote"
+        :n="nbConnectes"
+        :max="bornesEffectif.max"
+      />
+
+      <div class="attente__mode-avance">
+        <svg
+          viewBox="0 0 20 20"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <rect
+            x="4"
+            y="9"
+            width="12"
+            height="8"
+            rx="2"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          />
+          <path
+            d="M7 9V6a3 3 0 0 1 6 0v3"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          />
+        </svg>
+        <span>{{ magasin.etat.session?.mode_avance_actif
+          ? texte('ecran.salle_attente.mode_avance_actif')
+          : texte('ecran.salle_attente.mode_avance_inactif') }}</span>
+      </div>
+
+      <footer class="attente__pied">
+        <BoutonAction
+          :libelle="texte('cercle.fixer_places')"
+          variante="principal"
+          taille="lg"
+          pleine-largeur
+          :desactive="!effectifSuffisant"
+          :raison="raisonDemarrage"
+          @agir="magasin.envoyer('demarrer_partie')"
+        />
+      </footer>
+    </template>
+
+    <VueInviteAttente
+      v-else
+      :joueurs="magasin.etat.joueurs"
+      :moi-id="magasin.etat.moi?.joueur_id ?? ''"
+      :code="code"
+      :nom-hote="nomHote"
+      :nb-manches="nbManches"
+      :negociation-s="negociationS"
+      :pieces-depart="piecesDepart"
+      :moi-pret="moiPret"
+      @quitter="magasin.quitter()"
+      @toggler-pret="togglerPret"
+    />
 
     <DialogueConfirmationIrreversible
       v-if="confirmerAbandon"
@@ -214,30 +232,6 @@ function abandonner(): void {
   color: var(--gdv-texte-principal);
 }
 
-.attente__entete {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gdv-espacement-12);
-}
-
-.attente__titre {
-  margin: 0;
-  font-size: var(--gdv-role-titre-ecran);
-  line-height: var(--gdv-interligne-titre);
-}
-
-.attente__compteur {
-  margin: 0;
-  font-size: var(--gdv-role-titre-section);
-}
-
-.attente__bornes {
-  margin: 0;
-  color: var(--gdv-texte-secondaire);
-  font-size: var(--gdv-role-meta);
-}
-
 .attente__mode-avance {
   display: flex;
   align-items: center;
@@ -258,21 +252,6 @@ function abandonner(): void {
   font-size: var(--gdv-role-meta);
 }
 
-.attente__ordre {
-  margin: 0;
-  color: var(--gdv-texte-secondaire);
-  font-size: var(--gdv-role-meta);
-}
-
-.attente__liste {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gdv-espacement-8);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 .attente__pied {
   display: flex;
   flex-direction: column;
@@ -280,7 +259,7 @@ function abandonner(): void {
   margin-block-start: auto;
 }
 
-.attente__abandon {
-  align-self: center;
+.attente__fermer {
+  align-self: flex-start;
 }
 </style>

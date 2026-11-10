@@ -234,6 +234,14 @@ export const CARTOGRAPHIE = {
     champs: ['pseudo', 'connecte', 'nb_connectes', 'joueurs', 'joueur', 'moi', 'joueur_id'],
     publication: [],
   },
+  // Qualifié (porteur.champ), PAS en forme nue : « pret » nu désigne déjà
+  // l'objet prêt embarqué (entrée « pret (preteur, emprunteur, montant) ») dans
+  // EvtPretPropose/EvtPretResolu/EvtPretPreleve. Même nom, donnée différente —
+  // même mécanisme que MouvementPiece.motif / EvtPartieAbandonnee.motif.
+  "statut pret (salle d'attente)": {
+    champs: ['JoueurPublic.pret', 'EvtJoueurPretChange.pret'],
+    publication: [],
+  },
   "jeton_session d'un joueur": {
     champs: ['jeton_session', 'jeton', 'jeton_hote', 'jeton_groupe', 'jeton_session_hache'],
     publication: [],

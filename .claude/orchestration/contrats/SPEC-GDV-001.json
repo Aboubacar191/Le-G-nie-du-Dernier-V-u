@@ -378,6 +378,7 @@
       {"donnee": "signature du Dernier Vœu", "visible_par": ["serveur", "signataire"], "devient_public": "ecran de scores finaux (identités) ; le nombre est public à la résolution"},
       {"donnee": "ordre des places dans le cercle", "visible_par": ["tous"], "note": "physiquement visible dans la pièce de toute façon"},
       {"donnee": "pseudo, position, etat de connexion", "visible_par": ["tous"]},
+      {"donnee": "statut pret (salle d'attente)", "visible_par": ["tous"], "note": "écran 1b : purement informatif, ne conditionne aucune garde de demarrer_partie (RG-02, CA-02)."},
       {"donnee": "jeton_session d'un joueur", "visible_par": ["serveur", "proprietaire"], "note": "un jeton fuité permettrait l'usurpation et donc l'accès aux secrets d'autrui"}
     ]
   },

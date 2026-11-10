@@ -38,6 +38,7 @@ const CHARGES_VALIDES: Readonly<Record<TypeCommande, Record<string, unknown>>> =
   accuser: { accuse_joueur_id: UUID },
   signer_dernier_voeu: { a_signe: true },
   abandonner_partie: { confirmation: true },
+  signaler_pret: { pret: true },
 };
 
 test('le piège de Zod 4 est réel : z.object DÉPOUILLE, z.strictObject REFUSE', () => {
@@ -54,8 +55,8 @@ test('le piège de Zod 4 est réel : z.object DÉPOUILLE, z.strictObject REFUSE'
   assert.equal(refus.error?.issues[0]?.code, 'unrecognized_keys');
 });
 
-test('les 13 commandes du contrat ont un schéma', () => {
-  assert.equal(TYPES_COMMANDE.length, 13);
+test('les 14 commandes du contrat ont un schéma', () => {
+  assert.equal(TYPES_COMMANDE.length, 14);
   assert.deepEqual(Object.keys(SCHEMAS_COMMANDE).sort(), [...TYPES_COMMANDE].sort());
 });
 

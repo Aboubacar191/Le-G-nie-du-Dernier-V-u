@@ -363,6 +363,9 @@
       {"besoin": "signer_dernier_voeu(a_signe)", "couvert_par": "CmdSignerDernierVoeu", "ecart": "aucun"},
       {"besoin": "abandonner_partie() [hote]", "couvert_par": "CmdAbandonnerPartie", "ecart": "aucun"}
     ],
+    "commandes_ajoutees": [
+      {"schema": "CmdSignalerPret", "motif": "Écran 1b de la maquette (salle d'attente, vue invité) : statut « prêt » par joueur, PUREMENT INFORMATIF, absent de besoins_protocole. N'importe quel joueur bascule SON PROPRE statut ; AUCUNE incidence sur la garde de demarrer_partie (RG-02, CA-02 inchangées)."}
+    ],
     "evenements_serveur_vers_client": [
       {"besoin": "etat_complet_prive", "couvert_par": "EvtEtatCompletPrive", "ecart": "aucun"},
       {"besoin": "joueur_rejoint / joueur_quitte / joueur_reconnecte", "couvert_par": "EvtJoueurRejoint, EvtJoueurQuitte, EvtJoueurReconnecte", "ecart": "SCINDÉ en trois schémas — charges différentes, et x-visibilite doit être annotable par message."},
@@ -390,7 +393,8 @@
       {"schema": "EvtTransfertEnregistre", "motif": "La commande transferer_pieces existe dans la liste des besoins ; son effet doit être notifié à l'émetteur et au destinataire (matrice_visibilite : transfert visible de l'émetteur et du destinataire)."},
       {"schema": "EvtPretPropose, EvtPretResolu, EvtPretPreleve", "motif": "Les commandes proposer_pret et repondre_pret existent dans la liste ; l'emprunteur doit être sollicité, les deux parties notifiées, et le prélèvement de l'étape 15 porté à leur connaissance."},
       {"schema": "EvtPartieAbandonnee", "motif": "La commande abandonner_partie existe dans la liste ; la table doit apprendre que la partie est close."},
-      {"schema": "EvtGroupeMisAJour", "motif": "US-18 / CA-47 : l'hôte doit voir le compteur de parties s'incrémenter et le mode avancé se débloquer. Seul événement de classe hote."}
+      {"schema": "EvtGroupeMisAJour", "motif": "US-18 / CA-47 : l'hôte doit voir le compteur de parties s'incrémenter et le mode avancé se débloquer. Seul événement de classe hote."},
+      {"schema": "EvtJoueurPretChange", "motif": "Conséquence de CmdSignalerPret (voir commandes_ajoutees) : la table doit voir le compteur « N prêts sur M connectés » et le statut individuel de chaque joueur se mettre à jour en salle d'attente."}
     ]
   },
 
@@ -501,13 +505,14 @@
       "JoueurPublic": {
         "type": "object", "additionalProperties": false,
         "description": "Projection publique d'un joueur. Ne contient JAMAIS solde_pieces, role_secret, mission_secrete ni jeton (matrice_visibilite).",
-        "required": ["joueur_id", "pseudo", "connecte", "est_hote"],
+        "required": ["joueur_id", "pseudo", "connecte", "est_hote", "pret"],
         "properties": {
           "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
           "pseudo": {"type": "string", "minLength": 1, "maxLength": 20},
           "position_cercle": {"type": ["integer", "null"], "minimum": 1, "description": "Nul avant la phase PLACEMENT. Public : l'ordre est physiquement visible dans la pièce."},
           "connecte": {"type": "boolean"},
-          "est_hote": {"type": "boolean"}
+          "est_hote": {"type": "boolean"},
+          "pret": {"type": "boolean", "description": "Statut « prêt » de la salle d'attente (écran 1b). PUREMENT INFORMATIF : ne conditionne aucune garde de demarrer_partie (RG-02, CA-02). Conservé à la reconnexion, comme connecte."}
         }
       },
       "JoueurApercu": {
@@ -705,7 +710,7 @@
         "required": ["id_correlation", "type", "charge"],
         "properties": {
           "id_correlation": {"$ref": "#/components/schemas/Identifiant"},
-          "type": {"type": "string", "enum": ["authentifier", "definir_ordre_places", "demarrer_partie", "avancer_phase", "transferer_pieces", "proposer_pret", "repondre_pret", "declarer_contribution", "payer_secret", "lancer_enquete", "accuser", "signer_dernier_voeu", "abandonner_partie"]},
+          "type": {"type": "string", "enum": ["authentifier", "definir_ordre_places", "demarrer_partie", "avancer_phase", "transferer_pieces", "proposer_pret", "repondre_pret", "declarer_contribution", "payer_secret", "lancer_enquete", "accuser", "signer_dernier_voeu", "abandonner_partie", "signaler_pret"]},
           "charge": {"type": "object", "description": "Validée contre le schéma CmdXxx correspondant au type, en mode strict."}
         }
       },
@@ -714,7 +719,7 @@
         "description": "Enveloppe de toute trame serveur vers client. Produite par projeterEvenement(etat, effet, destinataire) — une par destinataire, jamais un objet partagé. Le remplissage est appliqué par le TRANSPORT, en dernier, juste avant l'écriture sur le socket : la taille d'une trame est une préoccupation de transport, jamais de charge de jeu. C'est aussi pourquoi aucune charge EvtXxx ne porte de champ de remplissage — un seul point d'application, donc un seul endroit où se tromper, et la couverture est automatique pour tout événement ajouté plus tard.",
         "required": ["type", "sequence", "emis_a", "charge"],
         "properties": {
-          "type": {"type": "string", "enum": ["accuse_reception", "erreur", "etat_complet_prive", "etat_partie_change", "joueur_rejoint", "joueur_quitte", "joueur_reconnecte", "partie_demarree", "attribution_privee", "voeu_annonce", "clause_recue", "phase_changee", "declaration_publiee", "paiement_enregistre", "transfert_enregistre", "pret_propose", "pret_resolu", "pret_preleve", "revelation_ecart_total", "revelation", "resultat_enquete", "accusation_declaree", "accusation_resolue", "execution_resultat", "solde_mis_a_jour", "dernier_voeu_propose", "dernier_voeu_resolu", "scores_finaux", "partie_abandonnee", "groupe_mis_a_jour"]},
+          "type": {"type": "string", "enum": ["accuse_reception", "erreur", "etat_complet_prive", "etat_partie_change", "joueur_rejoint", "joueur_quitte", "joueur_reconnecte", "joueur_pret_change", "partie_demarree", "attribution_privee", "voeu_annonce", "clause_recue", "phase_changee", "declaration_publiee", "paiement_enregistre", "transfert_enregistre", "pret_propose", "pret_resolu", "pret_preleve", "revelation_ecart_total", "revelation", "resultat_enquete", "accusation_declaree", "accusation_resolue", "execution_resultat", "solde_mis_a_jour", "dernier_voeu_propose", "dernier_voeu_resolu", "scores_finaux", "partie_abandonnee", "groupe_mis_a_jour"]},
           "sequence": {"type": "integer", "minimum": 1, "description": "RUPTURE 1.1.0 (RUP-01) : monotone PAR SESSION, jamais remis à 1. Les joueurs d'une même session portent les mêmes numéros — c'est la trace vérifiable de l'uniformité du nombre de trames."},
           "emis_a": {"$ref": "#/components/schemas/Horodatage"},
           "id_correlation": {"type": ["string", "null"], "format": "uuid"},
@@ -824,6 +829,14 @@
         "properties": {"confirmation": {"type": "boolean", "const": true, "description": "Garde-fou explicite contre un abandon par trame malformée ou double appui."}},
         "x-autorisation": "émetteur = hôte ; etat_partie différent de TERMINEE. Refus : ACTION_RESERVEE_HOTE, ETAT_PARTIE_INCOMPATIBLE.",
         "x-reponse": "EvtAccuseReception, puis EvtPartieAbandonnee vers TOUS."
+      },
+      "CmdSignalerPret": {
+        "type": "object", "additionalProperties": false,
+        "description": "Écran 1b de la maquette (salle d'attente, vue invité) : statut « prêt » par joueur, PUREMENT INFORMATIF. Le client envoie la valeur CIBLE explicite, pas un bascule implicite — même style que CmdPayerSecret.montant.",
+        "required": ["pret"],
+        "properties": {"pret": {"type": "boolean"}},
+        "x-autorisation": "etat_partie = SALLE_ATTENTE ; émetteur = N'IMPORTE QUEL joueur connecté de la session, sur SON PROPRE statut uniquement — à la différence de demarrer_partie/abandonner_partie, cette commande n'est PAS réservée à l'hôte. Le statut ne conditionne RIEN : demarrer_partie reste gouverné UNIQUEMENT par [joueurs_min, joueurs_max] (RG-02, CA-02), sans aucune garde supplémentaire. Refus : ETAT_PARTIE_INCOMPATIBLE.",
+        "x-reponse": "EvtAccuseReception, puis EvtJoueurPretChange vers TOUS."
       },
 
       "EvtAccuseReception": {
@@ -963,6 +976,17 @@
         "x-justification-emission": "RG-80. « Tous les autres joueurs » était un adressage sélectif de plus : le reconnecté recevait N−1 trames là où ses camarades en recevaient N. Il en reçoit désormais N, dont une qui le concerne lui-même.",
         "required": ["joueur_id", "nb_connectes"],
         "properties": {"joueur_id": {"$ref": "#/components/schemas/Identifiant"}, "nb_connectes": {"type": "integer", "minimum": 0}}
+      },
+      "EvtJoueurPretChange": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs de la session, l'auteur compris.",
+        "x-justification-visibilite": "matrice_visibilite : le statut prêt est public, exactement comme connecte et position_cercle.",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "Classe tous, charge identique pour tous — même raisonnement que EvtJoueurRejoint/EvtJoueurReconnecte : un destinataire de moins serait une trame de moins, donc une divergence de dénombrement, alors que l'information est de toute façon publique.",
+        "description": "Écran 1b : compteur partagé « N prêts sur M connectés » et statut individuel. Émis à CHAQUE changement, pendant SALLE_ATTENTE uniquement.",
+        "required": ["joueur_id", "pret"],
+        "properties": {"joueur_id": {"$ref": "#/components/schemas/Identifiant"}, "pret": {"type": "boolean"}}
       },
       "EvtPartieDemarree": {
         "type": "object", "additionalProperties": false,

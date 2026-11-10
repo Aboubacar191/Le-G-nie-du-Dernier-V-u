@@ -28,7 +28,7 @@
 // — UN bouton, UNE fonction, plutôt que deux boutons visuellement identiques
 // l'un à côté de l'autre comme la première tentative.
 
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import AvatarApercu from './AvatarApercu.vue';
 import BandeauAlerte from './BandeauAlerte.vue';
@@ -62,6 +62,7 @@ const emettre = defineEmits<{
 }>();
 
 const reglesOuvertes = ref(false);
+const debloque = computed(() => props.partiesTerminees >= props.partiesRequises);
 </script>
 
 <template>
@@ -184,6 +185,7 @@ const reglesOuvertes = ref(false);
           {{ texte('ecran.accueil.dernier_voeu_compte', {
             terminees: props.partiesTerminees, requises: props.partiesRequises
           }) }}
+          <template v-if="debloque">· {{ texte('ecran.accueil.dernier_voeu_debloque') }}</template>
         </span>
       </div>
       <div class="menu__dv-piste">
@@ -194,7 +196,11 @@ const reglesOuvertes = ref(false);
           }"
         />
       </div>
-      <span class="menu__dv-aide">{{ texte('ecran.accueil.dernier_voeu_aide') }}</span>
+      <span class="menu__dv-aide">
+        {{ texte(debloque ? 'ecran.accueil.dernier_voeu_aide_debloque' : 'ecran.accueil.dernier_voeu_aide', {
+          requises: props.partiesRequises
+        }) }}
+      </span>
     </section>
 
     <p class="menu__regle-or">

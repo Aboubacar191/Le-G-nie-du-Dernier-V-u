@@ -24,6 +24,7 @@ import { proposerPret, repondrePret, transfererPieces } from './negociation.ts';
 import { declarerContribution, payerSecret, tousOntDeclareEtPaye } from './declaration.ts';
 import { accuser, lancerEnquete } from './enquetes.ts';
 import { signerDernierVoeu } from './dernier-voeu.ts';
+import { signalerPret } from './salle-attente.ts';
 import { auteurDe, refus, succes, type ResultatCommande } from './resultat.ts';
 
 export * from './resultat.ts';
@@ -51,6 +52,7 @@ export const GESTIONNAIRES: Readonly<Record<CommandeDeJeu, GestionnaireCommande>
   accuser: accuser,
   signer_dernier_voeu: signerDernierVoeu,
   abandonner_partie: abandonnerPartie,
+  signaler_pret: signalerPret,
 };
 
 /** Commandes dont l'autorisation dépend de la PHASE, dérivées de la table. */

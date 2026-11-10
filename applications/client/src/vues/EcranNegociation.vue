@@ -31,16 +31,27 @@ import CercleDesPlaces from '../composants/CercleDesPlaces.vue';
 import { texte } from '../logique/contenu.ts';
 import { utiliserMagasin } from '../magasin/injection.ts';
 import EcranPropositionPret from './EcranPropositionPret.vue';
+import EcranReponsePret from './EcranReponsePret.vue';
 import EcranTransfert from './EcranTransfert.vue';
 
 const magasin = utiliserMagasin();
 
 const feuilleTransfert = ref(false);
 const feuillePret = ref(false);
+const feuilleReponsePret = ref(false);
 
 const hote = computed(() => magasin.etat.moi?.est_hote === true);
 /** Le rôle n'est connu que de son porteur : la condition est locale et privée. */
 const preteur = computed(() => magasin.etat.moi?.role_secret === 'PRETEUR');
+
+// ECR-15 : la pastille d'appel ne nomme JAMAIS le prêteur (RG-29) — sa seule
+// présence suffit à dire « une proposition t'attend », le détail est sous
+// voile dans la feuille elle-même.
+const propositionRecue = computed(() =>
+  magasin.etat.prets.some(
+    (pret) => pret.statut === 'PROPOSE' && pret.emprunteur_joueur_id === magasin.etat.moi?.joueur_id,
+  ),
+);
 </script>
 
 <template>
@@ -75,6 +86,17 @@ const preteur = computed(() => magasin.etat.moi?.role_secret === 'PRETEUR');
     </p>
 
     <footer class="negociation__pied">
+      <!-- Neutre, SANS nom de prêteur (RG-29) : voir le commentaire sur
+           propositionRecue. -->
+      <BoutonAction
+        v-if="propositionRecue"
+        :libelle="texte('ecran.pret.pastille')"
+        variante="secondaire"
+        taille="md"
+        pleine-largeur
+        @agir="feuilleReponsePret = true"
+      />
+
       <BoutonAction
         :libelle="texte('ecran.negociation.transferer')"
         variante="principal"
@@ -105,6 +127,11 @@ const preteur = computed(() => magasin.etat.moi?.role_secret === 'PRETEUR');
     <EcranPropositionPret
       v-if="feuillePret"
       @fermer="feuillePret = false"
+    />
+
+    <EcranReponsePret
+      v-if="feuilleReponsePret"
+      @fermer="feuilleReponsePret = false"
     />
   </section>
 </template>
