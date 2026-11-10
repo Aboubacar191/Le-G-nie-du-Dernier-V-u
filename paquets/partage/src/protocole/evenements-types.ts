@@ -20,6 +20,7 @@ export const TYPES_EVENEMENT = [
   'phase_changee',
   'declaration_publiee',
   'paiement_enregistre',
+  'joueur_offrande_scellee',
   'transfert_enregistre',
   'pret_propose',
   'pret_resolu',

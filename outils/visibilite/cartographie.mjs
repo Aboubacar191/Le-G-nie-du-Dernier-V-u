@@ -242,6 +242,10 @@ export const CARTOGRAPHIE = {
     champs: ['JoueurPublic.pret', 'EvtJoueurPretChange.pret'],
     publication: [],
   },
+  'statut scellé du paiement secret (sans montant)': {
+    champs: ['JoueurPublic.offrande_scellee'],
+    publication: [],
+  },
   "jeton_session d'un joueur": {
     champs: ['jeton_session', 'jeton', 'jeton_hote', 'jeton_groupe', 'jeton_session_hache'],
     publication: [],

@@ -2,10 +2,10 @@
 // Classement final et révélation générale — RG-55 à RG-58.
 //
 // C'est le SEUL écran où tous les secrets sortent, donc le seul où AUCUN voile
-// n'est appliqué. Le dévoilement se fait section par section, à la demande, un
-// contact par section, pour que la table commente au rythme de la conversation
-// plutôt que de tout lire en silence. Chaque section est déjà chargée : le
-// dévoilement est purement local, sans aller-retour.
+// n'est appliqué. Fidélité à la maquette (reference-prototype, écran « Fin de
+// partie ») : rôle, mission, paiements et signataires sont visibles D'EMBLÉE,
+// sans contact supplémentaire — c'est justement l'écran où plus rien ne se
+// cache.
 //
 // DEUX exclusions permanentes subsistent malgré RG-58, et la matrice_visibilite
 // prime (CONF-04) : l'identité du porteur de la clause et l'existence des
@@ -14,7 +14,7 @@
 // Aucun score partiel n'est affiché en cas d'échec : un classement faux serait
 // pire qu'un classement absent.
 
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import type { LigneClassement, PaiementHistorique } from '@gdv/partage';
 
@@ -44,8 +44,6 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emettre = defineEmits<{ reessayer: []; rejouer: [] }>();
-
-const devoile = ref({ roles: false, missions: false, paiements: false, signataires: false });
 
 const LIGNES_SQUELETTE = 8;
 
@@ -105,42 +103,6 @@ const vainqueurParLiberation = computed((): LigneClassement | null => {
         {{ texte('scores.classement_informatif') }}
       </p>
 
-      <div class="scores__devoilement">
-        <button
-          type="button"
-          class="scores__section"
-          :aria-pressed="devoile.roles"
-          @click="devoile.roles = !devoile.roles"
-        >
-          {{ texte('scores.devoiler_roles') }}
-        </button>
-        <button
-          type="button"
-          class="scores__section"
-          :aria-pressed="devoile.missions"
-          @click="devoile.missions = !devoile.missions"
-        >
-          {{ texte('scores.devoiler_missions') }}
-        </button>
-        <button
-          type="button"
-          class="scores__section"
-          :aria-pressed="devoile.paiements"
-          @click="devoile.paiements = !devoile.paiements"
-        >
-          {{ texte('scores.devoiler_paiements') }}
-        </button>
-        <button
-          v-if="props.modeAvance"
-          type="button"
-          class="scores__section"
-          :aria-pressed="devoile.signataires"
-          @click="devoile.signataires = !devoile.signataires"
-        >
-          {{ texte('scores.devoiler_signataires') }}
-        </button>
-      </div>
-
       <table class="scores__table">
         <caption class="scores__legende">
           {{ texte('scores.titre') }}
@@ -191,21 +153,21 @@ const vainqueurParLiberation = computed((): LigneClassement | null => {
                 />
               </td>
             </tr>
-            <tr v-if="devoile.roles || devoile.missions || devoile.paiements || devoile.signataires">
+            <tr>
               <td
                 colspan="3"
                 class="scores__detail"
               >
-                <p v-if="devoile.roles">
+                <p>
                   {{ texte('scores.pieces_restantes') }} : {{ ligne.pieces_restantes }} ·
                   {{ texte(`role.${ligne.role_secret}`) }}
                 </p>
-                <p v-if="devoile.missions">
+                <p>
                   {{ ligne.mission_secrete === null ? texte('commun.valeur_indisponible') : texte(`mission.${ligne.mission_secrete}`) }}
                   ·
                   {{ ligne.mission_reussie ? texte('scores.mission_reussie') : texte('scores.mission_echouee') }}
                 </p>
-                <p v-if="devoile.paiements">
+                <p>
                   {{ texte('scores.paiements_par_manche') }} :
                   <span
                     v-for="paiement in paiementsDe(ligne.joueur_id)"
@@ -213,7 +175,7 @@ const vainqueurParLiberation = computed((): LigneClassement | null => {
                     class="scores__paiement"
                   >{{ paiement.montant_declare }}/{{ paiement.montant_paye }}</span>
                 </p>
-                <p v-if="devoile.signataires && props.modeAvance">
+                <p v-if="props.modeAvance">
                   {{ ligne.a_signe_dernier_voeu === true ? texte('scores.a_signe') : texte('scores.n_a_pas_signe') }}
                 </p>
               </td>
@@ -237,34 +199,6 @@ const vainqueurParLiberation = computed((): LigneClassement | null => {
   margin: 0;
   color: var(--gdv-texte-secondaire);
   font-size: var(--gdv-role-meta);
-}
-
-.scores__devoilement {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gdv-espacement-8);
-}
-
-.scores__section {
-  min-block-size: var(--gdv-hauteur-bouton-md);
-  padding-inline: var(--gdv-espacement-16);
-  border: var(--gdv-trait-moyen) solid var(--gdv-bordure-champ);
-  border-radius: var(--gdv-rayon-moyen);
-  background: transparent;
-  /* Rôle étiquette (14 px) : l'or y est explicitement interdit. */
-  color: var(--gdv-texte-principal);
-  font-family: var(--gdv-famille-interface);
-  font-size: var(--gdv-role-etiquette);
-  cursor: pointer;
-}
-
-.scores__section[aria-pressed='true'] {
-  background: var(--gdv-surface-secondaire);
-}
-
-.scores__section:focus-visible {
-  outline: var(--gdv-trait-moyen) solid var(--gdv-accent-focus);
-  outline-offset: var(--gdv-espacement-4);
 }
 
 .scores__table {

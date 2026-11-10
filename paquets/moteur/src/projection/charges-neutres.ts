@@ -89,10 +89,23 @@ const NEUTRES: TableNeutres = {
   clause_recue: (effet) => parManche(effet.numero_manche),
   phase_changee: () => AUCUNE,
   declaration_publiee: () => AUCUNE,
-  // CONF-12 a refusé toute pastille publique « a payé » au motif que savoir QUI
-  // a payé renseigne sur le comportement de la table. La présence de la trame
-  // reconstituait ce compteur à l'insu de cet arbitrage.
+  // CONF-12 avait refusé toute pastille publique « a payé » au motif que
+  // savoir QUI a payé renseigne sur le comportement de la table. La présence
+  // de CETTE trame reconstituait ce compteur à l'insu de cet arbitrage ; elle
+  // reste donc neutre.
+  //
+  // CONF-12 ANNULÉE le 2026-11-10, sur arbitrage explicite : fidélité à la
+  // maquette (écran « Offrande scellée »), qui fait du statut « Scellé /
+  // Réfléchit… » par marchand un ressort social assumé (« Regarde bien qui
+  // hésite : le génie ne le dira pas, mais toi tu peux le voir »). Le SIGNAL
+  // SANS MONTANT est désormais public via joueur_offrande_scellee — voir son
+  // entrée ci-dessous. paiement_enregistre, lui, reste privé et neutre : il ne
+  // porte toujours aucun montant et ne doit pas se confondre avec le nouveau
+  // signal public.
   paiement_enregistre: (effet) => parManche(effet.numero_manche),
+  // Classe tous, charge identique pour tous (joueur_id seul) : inatteignable,
+  // comme joueur_pret_change ci-dessus. Voir l'annulation de CONF-12 ci-dessus.
+  joueur_offrande_scellee: () => AUCUNE,
   // Sa présence disait « un transfert a eu lieu ENTRE CES DEUX JOUEURS », ce que
   // matrice_visibilite interdit précisément parce qu'il permet de recouper les
   // soldes.

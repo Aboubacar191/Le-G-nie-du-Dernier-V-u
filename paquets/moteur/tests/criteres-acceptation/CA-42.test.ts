@@ -89,6 +89,7 @@ test('CA-42 : l’état reçu ne contient AUCUN secret d’autrui', () => {
       'connecte',
       'est_hote',
       'joueur_id',
+      'offrande_scellee',
       'position_cercle',
       'pret',
       'pseudo',

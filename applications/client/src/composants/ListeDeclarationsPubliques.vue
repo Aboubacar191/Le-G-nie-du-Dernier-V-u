@@ -51,6 +51,7 @@ interface Ligne {
   readonly pseudo: string;
   readonly montant: number | null;
   readonly verdict: 'MENTEUR' | 'HONNETE' | null;
+  readonly offrandeScellee: boolean;
 }
 
 const lignes = computed((): readonly Ligne[] => {
@@ -60,6 +61,7 @@ const lignes = computed((): readonly Ligne[] => {
     pseudo: props.joueurs.find((j) => j.joueur_id === joueurId)?.pseudo ?? joueurId,
     montant: props.declarations[joueurId] ?? null,
     verdict: props.verdicts[joueurId] ?? null,
+    offrandeScellee: props.joueurs.find((j) => j.joueur_id === joueurId)?.offrande_scellee ?? false,
   }));
   if (!parMontant.value) return construites;
   return [...construites].sort((a, b) => (b.montant ?? -1) - (a.montant ?? -1));
@@ -152,6 +154,13 @@ const aucuneDeclaration = computed(() => Object.keys(props.declarations).length 
                 v-if="ligne.verdict !== null"
                 class="declarations__verdict"
               >{{ texte(`verdict.${ligne.verdict}`) }}</span>
+              <!-- Fidélité maquette (« Offrande scellée ») : statut SANS montant,
+                   seulement pendant la phase en cours (CONF-12 annulée). -->
+              <span
+                v-else-if="!props.desactive"
+                class="declarations__statut"
+                :class="{ 'declarations__statut--scelle': ligne.offrandeScellee }"
+              >{{ texte(ligne.offrandeScellee ? 'carte_joueur.offrande_scellee' : 'carte_joueur.offrande_reflechit') }}</span>
             </th>
             <td class="declarations__colonne-nombre">
               <JetonMontant
@@ -232,6 +241,17 @@ const aucuneDeclaration = computed(() => Object.keys(props.declarations).length 
   margin-inline-start: var(--gdv-espacement-8);
   color: var(--gdv-texte-secondaire);
   font-size: var(--gdv-role-meta);
+  font-weight: var(--gdv-graisse-gras);
+}
+
+.declarations__statut {
+  margin-inline-start: var(--gdv-espacement-8);
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
+}
+
+.declarations__statut--scelle {
+  color: var(--gdv-statut-succes);
   font-weight: var(--gdv-graisse-gras);
 }
 

@@ -18,6 +18,7 @@ import type {
   EffetDeclarationPubliee,
   EffetDernierVoeuResolu,
   EffetExecutionResultat,
+  EffetJoueurOffrandeScellee,
   EffetJoueurPretChange,
   EffetJoueurRejoint,
   EffetPartieAbandonnee,
@@ -63,7 +64,7 @@ export function projeterJoueurRejoint(
   effet: EffetJoueurRejoint,
 ): ProjectionBrute {
   return publique({
-    joueur: joueurPublic(exigerJoueur(etat, effet.joueur_id)),
+    joueur: joueurPublic(etat, exigerJoueur(etat, effet.joueur_id)),
     nb_joueurs: etat.joueurs.length,
   });
 }
@@ -95,6 +96,22 @@ export function projeterJoueurPretChange(
   return publique({
     joueur_id: effet.joueur_id,
     pret: effet.pret,
+  });
+}
+
+/**
+ * Fidélité maquette (écran « Offrande scellée ») : le scellement du paiement
+ * est public SANS AUCUN MONTANT, exactement comme pret ci-dessus. Vérifié
+ * sans fuite : aucun rôle n'affecte le moment où l'on scelle, c'est un choix
+ * du joueur, et la maquette elle-même en fait un ressort social assumé
+ * (« Regarde bien qui hésite »). Émis à TOUS, l'auteur compris.
+ */
+export function projeterJoueurOffrandeScellee(
+  _etat: EtatSession,
+  effet: EffetJoueurOffrandeScellee,
+): ProjectionBrute {
+  return publique({
+    joueur_id: effet.joueur_id,
   });
 }
 

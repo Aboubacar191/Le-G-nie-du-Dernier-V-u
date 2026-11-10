@@ -119,6 +119,13 @@ function declarer(): void {
         :chargement="envoi"
         @agir="declarer"
       />
+
+      <!-- Rassurance générale, publique par construction (RG déjà expliquée en
+           ecran.regles.etape_2) : ce que RAPPORTERAIT une fausse accusation
+           NE révèle rien sur ce joueur-ci. -->
+      <p class="declaration__regle">
+        {{ texte('ecran.declaration.fausse_accusation_rapport') }}
+      </p>
     </div>
   </section>
 </template>
@@ -161,6 +168,12 @@ function declarer(): void {
 
 /* La marque « Visible par tous » est le pendant lisible du voile : c'est elle
    qui apprend au joueur la différence entre public et secret. */
+.declaration__regle {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
+}
+
 .declaration__marque {
   padding-inline: var(--gdv-espacement-8);
   border-radius: var(--gdv-rayon-pilule);

@@ -81,8 +81,8 @@ function basculerTheme(): void {
 // Non persisté à dessein : le parcours rejoue à chaque ouverture de l'appli,
 // pas seulement à la première — « Lancement de l'appli », pas « Premier
 // lancement ».
-/** Identique à LONGUEUR_MAX_PSEUDO de EcranCreationSession/EcranRejoindre. */
-const LONGUEUR_MAX_PSEUDO = 12;
+/** Identique à LONGUEUR_MAX_PSEUDO d'EcranRejoindre (repli QR sans Bienvenue). */
+const LONGUEUR_MAX_PSEUDO = 14;
 
 type EtapeEntree = 'lancement' | 'bienvenue' | 'accueil';
 const etapeEntree = ref<EtapeEntree>('lancement');

@@ -202,10 +202,28 @@ function ouvrir(ctx: Contexte): void {
   ctx.sequenceAttendue = 1;
   const socket = ctx.fabriquer(ctx.options.url);
   ctx.socket = socket;
-  socket.onopen = () => surOuverture(ctx, socket);
-  socket.onmessage = (evenement) => traiterTrame(ctx, evenement.data);
-  socket.onclose = (evenement) => surFermeture(ctx, evenement.code);
-  socket.onerror = () => ctx.options.journal?.avertir('erreur du canal temps réel');
+  // Un appel concurrent à ouvrir() (reprise manuelle pendant une reconnexion
+  // automatique déjà en vol) remplace ctx.socket avant que CE socket n'ait
+  // fini de s'ouvrir ou de se fermer. Chaque gestionnaire ignore donc tout
+  // événement d'un socket que ctx.socket a déjà supplanté : sans cette garde,
+  // emettre() écrirait sur le NOUVEAU socket via ctx.socket alors qu'il est
+  // encore CONNECTING (InvalidStateError), pour un événement du socket PÉRIMÉ.
+  socket.onopen = () => {
+    if (ctx.socket !== socket) return;
+    surOuverture(ctx, socket);
+  };
+  socket.onmessage = (evenement) => {
+    if (ctx.socket !== socket) return;
+    traiterTrame(ctx, evenement.data);
+  };
+  socket.onclose = (evenement) => {
+    if (ctx.socket !== socket) return;
+    surFermeture(ctx, evenement.code);
+  };
+  socket.onerror = () => {
+    if (ctx.socket !== socket) return;
+    ctx.options.journal?.avertir('erreur du canal temps réel');
+  };
 }
 
 export function creerClientTempsReel(options: OptionsClient): ClientTempsReel {

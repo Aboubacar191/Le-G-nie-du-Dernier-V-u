@@ -242,11 +242,11 @@ test('AUCUNE donnée de jeu n’est persistée avec le jeton', () => {
   }
 });
 
-// --- Couverture des 31 événements --------------------------------------------
+// --- Couverture des 32 événements --------------------------------------------
 
-test('les 31 types d’événement du contrat ont un applicateur', () => {
+test('les 32 types d’événement du contrat ont un applicateur', () => {
   assert.deepEqual([...TYPES_NON_COUVERTS], []);
-  assert.equal(TYPES_EVENEMENT.length, 31);
+  assert.equal(TYPES_EVENEMENT.length, 32);
   for (const type of TYPES_EVENEMENT) {
     assert.equal(typeof APPLICATEURS[type], 'function', `${type} non couvert`);
   }

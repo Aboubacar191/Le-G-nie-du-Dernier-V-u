@@ -32,6 +32,13 @@ import { utiliserMagasin } from '../magasin/injection.ts';
 const magasin = utiliserMagasin();
 const pret = ref(false);
 
+// Solde de DÉPART, identique pour tous : une valeur de configuration PUBLIQUE
+// (pieces_initiales), pas le solde privé — rien à voiler, chacun la connaît
+// déjà avant même la distribution.
+const soldeDepart = computed(() => {
+  const config = magasin.etat.session?.config as { pieces_initiales?: number } | undefined;
+  return config?.pieces_initiales ?? null;
+});
 const role = computed(() => magasin.etat.moi?.role_secret ?? null);
 const mission = computed(() => magasin.etat.moi?.mission_secrete ?? null);
 
@@ -49,6 +56,18 @@ const attributionRecue = computed(() => role.value !== null);
 
 <template>
   <main class="attribution">
+    <header class="attribution__entete">
+      <p class="attribution__eyebrow">
+        {{ texte('ecran.attribution.avant_manche_1') }}
+      </p>
+      <span
+        v-if="soldeDepart !== null"
+        class="attribution__solde"
+      >
+        {{ texte('ecran.attribution.solde_depart', { valeur: soldeDepart }) }}
+      </span>
+    </header>
+
     <p class="attribution__discretion">
       {{ texte('ecran.attribution.avertissement_discretion') }}
     </p>
@@ -109,6 +128,28 @@ const attributionRecue = computed(() => role.value !== null);
   padding: var(--gdv-gouttiere-ecran);
   background: var(--gdv-surface-fond);
   color: var(--gdv-texte-principal);
+}
+
+.attribution__entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gdv-espacement-8);
+}
+
+.attribution__eyebrow {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
+  text-transform: uppercase;
+  letter-spacing: var(--gdv-suivi-titre);
+}
+
+.attribution__solde {
+  font-family: var(--gdv-famille-chiffres);
+  font-size: var(--gdv-role-etiquette);
+  font-variant-numeric: var(--gdv-chiffres-variant);
+  color: var(--gdv-texte-secondaire);
 }
 
 .attribution__titre {

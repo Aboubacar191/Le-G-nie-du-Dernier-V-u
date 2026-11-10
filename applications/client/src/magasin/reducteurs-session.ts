@@ -9,6 +9,7 @@ import type {
   ChargeEtatCompletPrive,
   ChargeEtatPartieChange,
   ChargeGroupeMisAJour,
+  ChargeJoueurOffrandeScellee,
   ChargeJoueurPretChange,
   ChargeJoueurRejoint,
   ChargePartieAbandonnee,
@@ -35,6 +36,11 @@ export function reinitialiserManche(etat: EtatLocal): void {
   etat.execution = null;
   etat.paiement_scelle = false;
   etat.resultats_enquete = [];
+  // offrande_scellee est DÉRIVÉ côté serveur depuis la manche courante (jamais
+  // stocké) : la nouvelle manche n'a encore aucune contribution pour personne.
+  // Sans cette remise à faux ici, les cartes resteraient « Scellé » d'une
+  // manche à l'autre jusqu'au prochain scellement de CHACUN.
+  etat.joueurs = etat.joueurs.map((joueur) => ({ ...joueur, offrande_scellee: false }));
 }
 
 function appliquerEtatComplet(etat: EtatLocal, charge: unknown): void {
@@ -138,6 +144,11 @@ export const APPLICATEURS_SESSION: Readonly<Record<string, Applicateur>> = Objec
   joueur_pret_change: (etat, charge) => {
     const evenement = charge as ChargeJoueurPretChange;
     remplacerJoueur(etat, evenement.joueur_id, (joueur) => ({ ...joueur, pret: evenement.pret }));
+  },
+
+  joueur_offrande_scellee: (etat, charge) => {
+    const evenement = charge as ChargeJoueurOffrandeScellee;
+    remplacerJoueur(etat, evenement.joueur_id, (joueur) => ({ ...joueur, offrande_scellee: true }));
   },
 
   partie_demarree: (etat, charge) => {

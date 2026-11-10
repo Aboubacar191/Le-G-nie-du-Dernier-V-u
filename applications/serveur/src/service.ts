@@ -256,6 +256,7 @@ export function rejoindrePartie(
   if (partie === undefined) return { ok: false, code: 'SESSION_INTROUVABLE' };
 
   const joueurId = creerIdentifiant();
+  const etatPartieAvant = partie.etat.etat_partie;
   const adhesion = rejoindreSession(partie.etat, { joueur_id: joueurId, pseudo });
   if (!adhesion.ok) return { ok: false, code: adhesion.code };
 
@@ -269,7 +270,7 @@ export function rejoindrePartie(
   });
   partie.definirEtat(adhesion.etat);
   service.depot.synchroniser(adhesion.etat);
-  service.boucle.annoncerArrivee(partie, joueurId);
+  service.boucle.annoncerArrivee(partie, joueurId, etatPartieAvant);
 
   return {
     ok: true,

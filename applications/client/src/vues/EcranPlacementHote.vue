@@ -4,73 +4,70 @@
 // C'est l'écran dont dépend tout le gabarit VOISINAGE : un ordre faux produit
 // des révélations VRAIES mais incompréhensibles. Il ne se devine pas.
 //
-// Méthode retenue : DÉSIGNATION SÉQUENTIELLE. L'hôte touche un joueur, il
-// s'assoit au siège courant, le siège suivant s'active. Un contact par siège,
-// aucun glissement. Le glisser-déposer a été écarté d'emblée : plus coûteux,
-// fragile au tactile, inutilisable au clavier, et plus lent (deux gestes par
-// joueur contre un contact).
+// MÉTHODE — fidélité à la maquette (écran 1 · Salle d'attente, « Glisse pour
+// réordonner »), sur arbitrage explicite du 2026-11-10. L'ancienne méthode
+// (désignation séquentielle, un contact par siège) avait écarté le
+// glisser-déposer pour deux reproches précis ; ReordonneurJoueurs.vue les
+// adresse plutôt que de les contourner : le geste est porté par POINTER
+// EVENTS (fiable au tactile, contrairement à l'API HTML5 Drag and Drop), et
+// chaque ligne porte EN PLUS deux boutons Monter/Descendre TOUJOURS visibles,
+// pour le clavier et pour qui ne veut pas glisser.
+//
+// Les joueurs sont TOUS déjà en liste dès l'arrivée sur cet écran (ordre
+// d'arrivée par défaut) : il n'y a plus d'étape « asseoir un par un », donc
+// plus d'état incomplet à valider — l'ordre est une permutation complète par
+// construction, à chaque instant.
 //
 // Le SENS de rotation est affiché en permanence, et un bouton l'inverse sans
 // tout refaire.
 //
 // ÉTATS (DESIGN ECR-07)
-// chargement   : liste des joueurs en squelette, cercle déjà tracé avec le bon
-//                nombre de sièges vides.
-// contenu      : sièges numérotés, joueurs non placés dessous, compteur
-//                « k sur n places fixées », validation désactivée avec raison.
-// vide         : aucun joueur placé — « Commence par toi », action « Me placer
-//                en premier » qui assoit l'hôte au siège 1.
-// erreur       : permutation incomplète, le message NOMME qui manque ; refus
-//                serveur, rien n'est perdu.
+// chargement   : liste en squelette, aux dimensions des lignes.
+// contenu      : liste réordonnable complète, bouton de validation TOUJOURS
+//                actif.
+// vide         : non atteignable — l'hôte seul suffit à peupler la liste.
+// erreur       : refus serveur (ORDRE_PLACES_INVALIDE), rien n'est perdu :
+//                l'ordre local reste affiché, inchangé.
 // acces_refuse : non-hôte — seul l'hôte fixe les places, sortie vers ECR-08.
 
-import { computed, ref } from 'vue';
+import { ref, watch } from 'vue';
 
 import BandeauAlerte from '../composants/BandeauAlerte.vue';
 import BoutonAction from '../composants/BoutonAction.vue';
-import CarteJoueurCercle from '../composants/CarteJoueurCercle.vue';
-import EtatVide from '../composants/EtatVide.vue';
+import ReordonneurJoueurs from '../composants/ReordonneurJoueurs.vue';
 import SqueletteChargement from '../composants/SqueletteChargement.vue';
 import { texte } from '../logique/contenu.ts';
-import { inverserSens, ordreEstValide } from '../logique/positions-cercle.ts';
+import { inverserSens } from '../logique/positions-cercle.ts';
 import { utiliserMagasin } from '../magasin/injection.ts';
 
 const magasin = utiliserMagasin();
 
-const assis = ref<string[]>([]);
+const ordre = ref<string[]>([]);
+const envoi = ref(false);
 
-const joueurs = computed(() => magasin.etat.joueurs);
-const chargement = computed(() => joueurs.value.length === 0);
-const restants = computed(() =>
-  joueurs.value.filter((joueur) => !assis.value.includes(joueur.joueur_id)),
+// Semé UNE FOIS depuis l'ordre d'arrivée, jamais réécrit tant qu'un ordre
+// local existe : un joueur qui se déconnecte pendant le placement ne doit pas
+// faire sauter la liste sous le pouce de l'hôte (RG-46, il reste plaçable).
+watch(
+  () => magasin.etat.joueurs,
+  (joueurs) => {
+    if (ordre.value.length === 0 && joueurs.length > 0) {
+      ordre.value = joueurs.map((joueur) => joueur.joueur_id);
+    }
+  },
+  { immediate: true },
 );
-const complet = computed(() =>
-  ordreEstValide(assis.value, joueurs.value.map((joueur) => joueur.joueur_id)),
-);
 
-const raisonValidation = computed(() =>
-  texte('ecran.placement.valider_desactive', { n: restants.value.length }),
-);
+const chargement = () => ordre.value.length === 0;
 
-const premierManquant = computed(() => restants.value[0]?.pseudo ?? '');
-
-function asseoir(joueurId: string): void {
-  if (assis.value.includes(joueurId)) {
-    // Toucher un joueur déjà placé le RETIRE et réactive son siège.
-    assis.value = assis.value.filter((identifiant) => identifiant !== joueurId);
-    return;
-  }
-  assis.value = [...assis.value, joueurId];
-}
-
-function mePlacerEnPremier(): void {
-  const moi = magasin.etat.moi?.joueur_id;
-  if (moi === undefined) return;
-  assis.value = [moi];
+function retablirOrdreArrivee(): void {
+  ordre.value = magasin.etat.joueurs.map((joueur) => joueur.joueur_id);
 }
 
 function valider(): void {
-  magasin.envoyer('definir_ordre_places', { ordre: assis.value });
+  envoi.value = true;
+  magasin.envoyer('definir_ordre_places', { ordre: ordre.value });
+  envoi.value = false;
 }
 </script>
 
@@ -92,103 +89,37 @@ function valider(): void {
       :valeurs="magasin.etat.alerte.valeurs"
     />
 
-    <p class="placement__compteur">
-      {{ texte('ecran.placement.compteur', { k: assis.length, n: joueurs.length }) }}
-    </p>
-
     <SqueletteChargement
-      v-if="chargement"
+      v-if="chargement()"
       :lignes="5"
-      hauteur="var(--gdv-hauteur-carte-joueur)"
+      hauteur="var(--gdv-cible-geante)"
       :libelle="texte('commun.chargement')"
     />
 
-    <template v-else>
-      <EtatVide
-        v-if="assis.length === 0"
-        :titre="texte('ecran.placement.consigne')"
-        :action-libelle="texte('ecran.placement.me_placer')"
-        @agir="mePlacerEnPremier"
-      />
-
-      <!-- Sièges déjà fixés : liste ORDONNÉE, l'ordre du DOM est l'ordre du
-           cercle, donc l'ordre de tabulation est l'ordre physique. -->
-      <ol
-        v-else
-        class="placement__sieges"
-      >
-        <li
-          v-for="(joueurId, index) in assis"
-          :key="joueurId"
-          class="placement__siege"
-        >
-          <p class="placement__numero">
-            {{ texte('cercle.siege', { numero: index + 1 }) }}
-          </p>
-          <CarteJoueurCercle
-            :pseudo="joueurs.find((j) => j.joueur_id === joueurId)?.pseudo ?? joueurId"
-            :position-cercle="index + 1"
-            :connecte="joueurs.find((j) => j.joueur_id === joueurId)?.connecte ?? false"
-            :relation="joueurId === magasin.etat.moi?.joueur_id ? 'moi' : 'en_face'"
-            variante="selectionnable"
-            selectionnee
-            @choisir="asseoir(joueurId)"
-          />
-        </li>
-      </ol>
-
-      <section
-        v-if="restants.length > 0"
-        class="placement__restants"
-      >
-        <h2 class="placement__sous-titre">
-          {{ texte('ecran.placement.non_places') }}
-        </h2>
-        <p class="placement__indice">
-          {{ texte('ecran.placement.manque_nomme', { pseudo: premierManquant }) }}
-        </p>
-        <ul class="placement__liste">
-          <li
-            v-for="joueur in restants"
-            :key="joueur.joueur_id"
-          >
-            <!-- RG-46 : un joueur déconnecté reste PLAÇABLE, il n'est pas éliminé. -->
-            <CarteJoueurCercle
-              :pseudo="joueur.pseudo"
-              :position-cercle="joueur.position_cercle"
-              :connecte="joueur.connecte"
-              :relation="joueur.joueur_id === magasin.etat.moi?.joueur_id ? 'moi' : 'en_face'"
-              variante="selectionnable"
-              @choisir="asseoir(joueur.joueur_id)"
-            />
-          </li>
-        </ul>
-      </section>
-    </template>
+    <!-- L'ordre du DOM est l'ordre du cercle : l'ordre de tabulation suit
+         donc l'ordre physique, glissé ou non. -->
+    <ReordonneurJoueurs
+      v-else
+      :joueurs="magasin.etat.joueurs"
+      :moi-id="magasin.etat.moi?.joueur_id ?? ''"
+      :ordre="ordre"
+      @update:ordre="ordre = $event"
+    />
 
     <footer class="placement__pied">
       <div class="placement__corrections">
         <BoutonAction
-          :libelle="texte('ecran.placement.defaire')"
-          variante="secondaire"
-          taille="md"
-          :desactive="assis.length === 0"
-          :raison="texte('ecran.placement.consigne')"
-          @agir="assis = assis.slice(0, -1)"
-        />
-        <BoutonAction
           :libelle="texte('cercle.sens_inverse')"
           variante="secondaire"
           taille="md"
-          :desactive="assis.length < 3"
-          :raison="texte('ecran.placement.consigne')"
-          @agir="assis = [...inverserSens(assis)]"
+          :desactive="ordre.length < 3"
+          @agir="ordre = [...inverserSens(ordre)]"
         />
         <BoutonAction
-          :libelle="texte('ecran.placement.tout_recommencer')"
+          :libelle="texte('ecran.placement.retablir_arrivee')"
           variante="discret"
           taille="md"
-          @agir="assis = []"
+          @agir="retablirOrdreArrivee"
         />
       </div>
 
@@ -197,8 +128,7 @@ function valider(): void {
         variante="principal"
         taille="lg"
         pleine-largeur
-        :desactive="!complet"
-        :raison="raisonValidation"
+        :chargement="envoi"
         @agir="valider"
       />
     </footer>
@@ -228,52 +158,6 @@ function valider(): void {
   border-inline-start: var(--gdv-trait-epais) solid var(--gdv-statut-info);
   background: var(--gdv-surface-secondaire);
   font-size: var(--gdv-role-etiquette);
-}
-
-.placement__compteur {
-  margin: 0;
-  font-size: var(--gdv-role-titre-section);
-}
-
-.placement__sieges,
-.placement__liste {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gdv-espacement-8);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.placement__siege {
-  display: flex;
-  align-items: center;
-  gap: var(--gdv-espacement-12);
-}
-
-.placement__numero {
-  margin: 0;
-  min-inline-size: var(--gdv-cible-confortable);
-  color: var(--gdv-texte-secondaire);
-  font-family: var(--gdv-famille-chiffres);
-  font-size: var(--gdv-role-etiquette);
-}
-
-.placement__restants {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gdv-espacement-8);
-}
-
-.placement__sous-titre {
-  margin: 0;
-  font-size: var(--gdv-role-titre-section);
-}
-
-.placement__indice {
-  margin: 0;
-  color: var(--gdv-texte-secondaire);
-  font-size: var(--gdv-role-meta);
 }
 
 .placement__pied {

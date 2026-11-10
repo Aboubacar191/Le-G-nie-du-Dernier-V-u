@@ -394,7 +394,8 @@
       {"schema": "EvtPretPropose, EvtPretResolu, EvtPretPreleve", "motif": "Les commandes proposer_pret et repondre_pret existent dans la liste ; l'emprunteur doit être sollicité, les deux parties notifiées, et le prélèvement de l'étape 15 porté à leur connaissance."},
       {"schema": "EvtPartieAbandonnee", "motif": "La commande abandonner_partie existe dans la liste ; la table doit apprendre que la partie est close."},
       {"schema": "EvtGroupeMisAJour", "motif": "US-18 / CA-47 : l'hôte doit voir le compteur de parties s'incrémenter et le mode avancé se débloquer. Seul événement de classe hote."},
-      {"schema": "EvtJoueurPretChange", "motif": "Conséquence de CmdSignalerPret (voir commandes_ajoutees) : la table doit voir le compteur « N prêts sur M connectés » et le statut individuel de chaque joueur se mettre à jour en salle d'attente."}
+      {"schema": "EvtJoueurPretChange", "motif": "Conséquence de CmdSignalerPret (voir commandes_ajoutees) : la table doit voir le compteur « N prêts sur M connectés » et le statut individuel de chaque joueur se mettre à jour en salle d'attente."},
+      {"schema": "EvtJoueurOffrandeScellee", "motif": "Fidélité maquette (écran « Offrande scellée ») et annulation explicite de CONF-12 le 2026-11-10 : la table doit voir, sans aucun montant, qui a déjà scellé son paiement secret pendant DECLARATION_PAIEMENT."}
     ]
   },
 
@@ -505,14 +506,15 @@
       "JoueurPublic": {
         "type": "object", "additionalProperties": false,
         "description": "Projection publique d'un joueur. Ne contient JAMAIS solde_pieces, role_secret, mission_secrete ni jeton (matrice_visibilite).",
-        "required": ["joueur_id", "pseudo", "connecte", "est_hote", "pret"],
+        "required": ["joueur_id", "pseudo", "connecte", "est_hote", "pret", "offrande_scellee"],
         "properties": {
           "joueur_id": {"$ref": "#/components/schemas/Identifiant"},
           "pseudo": {"type": "string", "minLength": 1, "maxLength": 20},
           "position_cercle": {"type": ["integer", "null"], "minimum": 1, "description": "Nul avant la phase PLACEMENT. Public : l'ordre est physiquement visible dans la pièce."},
           "connecte": {"type": "boolean"},
           "est_hote": {"type": "boolean"},
-          "pret": {"type": "boolean", "description": "Statut « prêt » de la salle d'attente (écran 1b). PUREMENT INFORMATIF : ne conditionne aucune garde de demarrer_partie (RG-02, CA-02). Conservé à la reconnexion, comme connecte."}
+          "pret": {"type": "boolean", "description": "Statut « prêt » de la salle d'attente (écran 1b). PUREMENT INFORMATIF : ne conditionne aucune garde de demarrer_partie (RG-02, CA-02). Conservé à la reconnexion, comme connecte."},
+          "offrande_scellee": {"type": "boolean", "description": "Scellement du paiement secret de la manche courante, SANS AUCUN MONTANT. Dérivé, jamais stocké : toujours faux hors manche. Fidélité maquette (écran « Offrande scellée ») — CONF-12 annulée le 2026-11-10."}
         }
       },
       "JoueurApercu": {
@@ -719,7 +721,7 @@
         "description": "Enveloppe de toute trame serveur vers client. Produite par projeterEvenement(etat, effet, destinataire) — une par destinataire, jamais un objet partagé. Le remplissage est appliqué par le TRANSPORT, en dernier, juste avant l'écriture sur le socket : la taille d'une trame est une préoccupation de transport, jamais de charge de jeu. C'est aussi pourquoi aucune charge EvtXxx ne porte de champ de remplissage — un seul point d'application, donc un seul endroit où se tromper, et la couverture est automatique pour tout événement ajouté plus tard.",
         "required": ["type", "sequence", "emis_a", "charge"],
         "properties": {
-          "type": {"type": "string", "enum": ["accuse_reception", "erreur", "etat_complet_prive", "etat_partie_change", "joueur_rejoint", "joueur_quitte", "joueur_reconnecte", "joueur_pret_change", "partie_demarree", "attribution_privee", "voeu_annonce", "clause_recue", "phase_changee", "declaration_publiee", "paiement_enregistre", "transfert_enregistre", "pret_propose", "pret_resolu", "pret_preleve", "revelation_ecart_total", "revelation", "resultat_enquete", "accusation_declaree", "accusation_resolue", "execution_resultat", "solde_mis_a_jour", "dernier_voeu_propose", "dernier_voeu_resolu", "scores_finaux", "partie_abandonnee", "groupe_mis_a_jour"]},
+          "type": {"type": "string", "enum": ["accuse_reception", "erreur", "etat_complet_prive", "etat_partie_change", "joueur_rejoint", "joueur_quitte", "joueur_reconnecte", "joueur_pret_change", "partie_demarree", "attribution_privee", "voeu_annonce", "clause_recue", "phase_changee", "declaration_publiee", "paiement_enregistre", "joueur_offrande_scellee", "transfert_enregistre", "pret_propose", "pret_resolu", "pret_preleve", "revelation_ecart_total", "revelation", "resultat_enquete", "accusation_declaree", "accusation_resolue", "execution_resultat", "solde_mis_a_jour", "dernier_voeu_propose", "dernier_voeu_resolu", "scores_finaux", "partie_abandonnee", "groupe_mis_a_jour"]},
           "sequence": {"type": "integer", "minimum": 1, "description": "RUPTURE 1.1.0 (RUP-01) : monotone PAR SESSION, jamais remis à 1. Les joueurs d'une même session portent les mêmes numéros — c'est la trace vérifiable de l'uniformité du nombre de trames."},
           "emis_a": {"$ref": "#/components/schemas/Horodatage"},
           "id_correlation": {"type": ["string", "null"], "format": "uuid"},
@@ -1083,13 +1085,24 @@
         "x-justification-visibilite": "matrice_visibilite : montant_paye est visible du serveur, du propriétaire et de l'enquêteur ayant payé une enquête. CA-10 : la valeur ne doit apparaître dans AUCUN message reçu par un autre joueur, sous aucune forme ni aucun nom de champ. Ce message ne porte donc AUCUN montant, même pour son propriétaire : il vient de le saisir, et un champ de montant en moins est une occasion de fuite en moins.",
         "x-emission": "uniforme",
         "x-charge-neutre": ["numero_manche"],
-        "x-justification-emission": "RG-80, fuite DÉDUITE et non mesurée. L'absence de compteur public de paiements est un arbitrage explicite (CONF-12 : « savoir QUI a déjà payé renseignerait sur le comportement de la table »), et le QA a mesuré que la CHARGE est propre — projetée au seul payeur, sans montant ni identité. Mais la PRÉSENCE de la trame reconstituait exactement le compteur que CONF-12 avait refusé : qui a payé, et qui n'a pas encore payé. Émission à tous, charge neutre {numero_manche}. Le champ enregistre reste réservé au payeur : un enregistre à true envoyé à tous serait faux pour sept destinataires sur huit.",
-        "description": "Accusé de prise en compte du paiement. Aucun compteur public de paiements n'existe : savoir QUI a déjà payé renseignerait sur le comportement de la table.",
+        "x-justification-emission": "RG-80, fuite DÉDUITE et non mesurée. L'absence de compteur public de paiements était un arbitrage explicite (CONF-12 : « savoir QUI a déjà payé renseignerait sur le comportement de la table »), et le QA a mesuré que la CHARGE est propre — projetée au seul payeur, sans montant ni identité. Mais la PRÉSENCE de cette trame reconstituerait le compteur que CONF-12 avait refusé : qui a payé, et qui n'a pas encore payé. Émission à tous, charge neutre {numero_manche}. Le champ enregistre reste réservé au payeur : un enregistre à true envoyé à tous serait faux pour sept destinataires sur huit. CONF-12 ANNULÉE le 2026-11-10 (fidélité maquette) : le signal SANS MONTANT est désormais public via EvtJoueurOffrandeScellee ci-dessous — CETTE trame-ci reste privée et neutre, elle ne porte toujours aucun montant.",
+        "description": "Accusé de prise en compte du paiement. Ne porte jamais de montant (CA-10).",
         "required": ["numero_manche", "enregistre"],
         "properties": {
           "numero_manche": {"type": "integer", "minimum": 1},
           "enregistre": {"type": "boolean", "const": true}
         }
+      },
+      "EvtJoueurOffrandeScellee": {
+        "type": "object", "additionalProperties": false,
+        "x-visibilite": "tous",
+        "x-destinataires": "Tous les joueurs de la session, l'auteur compris.",
+        "x-justification-visibilite": "CONF-12 annulée le 2026-11-10 : fidélité à la maquette (écran « Offrande scellée »), qui fait du statut « Scellé / Réfléchit… » par marchand un ressort social assumé. Aucun rôle secret n'affecte le moment où un joueur scelle (vérifié) : c'est uniquement son choix, pas une fuite de matrice_visibilite au sens de RG-01.",
+        "x-emission": "uniforme_charge_identique",
+        "x-justification-emission": "Classe tous, charge identique pour tous — même raisonnement que EvtJoueurPretChange : un destinataire de moins serait une trame de moins pour une information déjà publique.",
+        "description": "Écran « Offrande scellée » : le marchand a scellé son paiement secret de la manche courante. Jamais de montant. Émis une seule fois par manche et par joueur, à la soumission de payer_secret.",
+        "required": ["joueur_id"],
+        "properties": {"joueur_id": {"$ref": "#/components/schemas/Identifiant"}}
       },
       "EvtTransfertEnregistre": {
         "type": "object", "additionalProperties": false,

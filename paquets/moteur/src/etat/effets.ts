@@ -104,6 +104,18 @@ export interface EffetPaiementEnregistre {
   readonly numero_manche: number;
 }
 
+/**
+ * Scellement PUBLIC, sans montant (RG-80 : fidélité à la maquette — « Scellé »
+ * / « Réfléchit… » par marchand, visible de tous). Distinct de
+ * EffetPaiementEnregistre qui reste privé à son auteur : celui-ci ne porte
+ * aucun montant non plus, mais ne doit pas être diffusé à la table pour ne
+ * pas coupler par erreur un futur champ privé à un effet public.
+ */
+export interface EffetJoueurOffrandeScellee {
+  readonly type: 'joueur_offrande_scellee';
+  readonly joueur_id: string;
+}
+
 export interface EffetTransfertEnregistre {
   readonly type: 'transfert_enregistre';
   readonly emetteur_joueur_id: string;
@@ -220,6 +232,7 @@ export type Effet =
   | EffetPhaseChangee
   | EffetDeclarationPubliee
   | EffetPaiementEnregistre
+  | EffetJoueurOffrandeScellee
   | EffetTransfertEnregistre
   | EffetPretPropose
   | EffetPretResolu

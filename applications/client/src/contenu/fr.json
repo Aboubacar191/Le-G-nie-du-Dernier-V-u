@@ -255,11 +255,16 @@
     "incoherent": "Le cercle reçu est incohérent — demande à l'hôte de refaire le placement",
     "acces_refuse": "Seul l'hôte fixe les places",
     "revenir_attente": "Revenir à l'attente",
-    "siege": "Place {numero}"
+    "siege": "Place {numero}",
+    "monter": "Faire monter {pseudo} d'une place",
+    "descendre": "Faire descendre {pseudo} d'une place",
+    "glisser": "Glisser {pseudo} pour le replacer"
   },
 
   "carte_joueur": {
     "pas_encore_parle": "N'a pas encore parlé",
+    "offrande_scellee": "Scellé",
+    "offrande_reflechit": "Réfléchit…",
     "promis": "promis",
     "a_paye": "Promesse tenue au génie",
     "menteur": "Menteur",
@@ -318,10 +323,6 @@
     "mission_echouee": "Mission échouée",
     "a_signe": "A signé",
     "n_a_pas_signe": "N'a pas signé",
-    "devoiler_roles": "Dévoiler les rôles",
-    "devoiler_missions": "Dévoiler les missions",
-    "devoiler_paiements": "Dévoiler les paiements réels",
-    "devoiler_signataires": "Dévoiler les signataires",
     "paiements_par_manche": "Paiements réels par manche",
     "rejouer": "Rejouer avec le même groupe",
     "attendre_relance": "Attendre que l'hôte relance",
@@ -397,8 +398,8 @@
     },
     "creation": {
       "titre": "Créer une partie",
-      "libelle_pseudo": "Ton nom de marchand",
-      "aide_pseudo": "12 caractères au maximum, pour que ta carte reste lisible.",
+      "libelle_pseudo": "Ton pseudo",
+      "aide_pseudo": "14 caractères maximum. Tu pourras le changer plus tard.",
       "nb_manches_libelle": "Nombre de manches",
       "pieces_depart_libelle": "Pièces de départ",
       "pieces_depart_valeur": "{valeur} par marchand",
@@ -490,15 +491,8 @@
     },
     "placement": {
       "titre": "Fixer les places",
-      "consigne": "Commence par toi : touche ton nom, puis tourne.",
-      "me_placer": "Me placer en premier",
-      "compteur": "{k} places sur {n} fixées",
-      "defaire": "Défaire",
-      "tout_recommencer": "Tout recommencer",
-      "valider": "Valider l'ordre",
-      "valider_desactive": "Il manque {n} marchand(s) dans le cercle.",
-      "non_places": "Marchands à asseoir",
-      "manque_nomme": "Il manque {pseudo} dans le cercle. Touche son nom pour l'asseoir."
+      "retablir_arrivee": "Rétablir l'ordre d'arrivée",
+      "valider": "Valider l'ordre"
     },
     "attente_placement": {
       "titre": "Les places",
@@ -510,10 +504,12 @@
       "confirme": "Tu as confirmé ta place."
     },
     "attribution": {
-      "titre": "Ton pli",
+      "avant_manche_1": "Avant la manche 1",
+      "solde_depart": "{valeur} pièces",
+      "titre": "Ton identité",
       "mon_role": "Mon rôle",
       "ma_mission": "Ma mission",
-      "pret": "J'ai lu, je suis prêt",
+      "pret": "J'ai mémorisé, masquer",
       "pret_desactive": "Tu n'as pas encore reçu ton pli.",
       "avancement": "{k} marchands sur {n} ont lu",
       "confirme": "Tu es prêt.",
@@ -579,7 +575,8 @@
       "hors_phase": "La phase des promesses est passée.",
       "refus_serveur": "Le génie a refusé ta promesse : ton or a baissé. Rechoisis, il te reste {temps}.",
       "non_soumise": "Tu n'as rien promis : le génie a inscrit 0. La manche continue.",
-      "avancement": "{k} marchands sur {n} ont promis"
+      "avancement": "{k} marchands sur {n} ont promis",
+      "fausse_accusation_rapport": "Une fausse accusation contre toi te rapporterait 2 pièces."
     },
     "paiement": {
       "titre": "Ton versement",
@@ -588,6 +585,8 @@
       "rappel_declare": "Tu as promis {declare}.",
       "sceller": "Sceller mon paiement",
       "borne": "Entre 0 et ce que tu as promis.",
+      "gap_garde": "Tu gardes {gap} pièce(s) pour toi.",
+      "amende_risque": "Si tu es démasqué : amende de {fine} pièces et part perdue.",
       "refus_serveur": "Le génie a refusé ton paiement. Recommence, il te reste {temps}.",
       "deja_scelle": "Ton paiement est déjà scellé. Tu ne peux pas le changer.",
       "non_soumis": "Tu n'as pas payé à temps. Le génie en a tiré ses conclusions.",
@@ -634,8 +633,8 @@
     },
     "execution": {
       "titre": "Exécution",
-      "reussi": "Vœu réussi",
-      "echoue": "Vœu échoué",
+      "reussi": "Vœu exaucé",
+      "echoue": "Vœu refusé",
       "bilan": "Reçu {total_paye} pour un objectif de {objectif}.",
       "clause_revelee": "La clause de cette manche",
       "parts": "Les parts",

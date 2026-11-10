@@ -22,6 +22,7 @@ import type {
   RevelationPublique,
 } from '@gdv/partage';
 
+import { contributionDe, mancheCourante } from '../etat/acces.ts';
 import { versIso } from '../horloge/iso.ts';
 import type { EtatSession, Joueur, Manche, Mouvement, Pret } from '../etat/types.ts';
 
@@ -30,10 +31,23 @@ const PAGE_PAR_DEFAUT = 50;
 const PAGE_MAXIMUM = 200;
 
 /**
+ * Scellement DÉRIVÉ, jamais stocké : la seule vérité est la contribution de la
+ * manche courante. Un champ mutable sur Joueur aurait exigé une remise à faux
+ * explicite à chaque nouvelle manche — une occasion de drapeau périmé en
+ * moins. Hors manche (SALLE_ATTENTE, DISTRIBUTION), toujours faux.
+ */
+function offrandeScelleeDe(etat: EtatSession, joueurId: string): boolean {
+  const manche = mancheCourante(etat);
+  if (manche === undefined) return false;
+  const contribution = contributionDe(manche, joueurId);
+  return contribution !== undefined && contribution.montant_paye !== null;
+}
+
+/**
  * Projection publique d'un joueur. Ne contient JAMAIS solde_pieces,
  * role_secret, mission_secrete, score_activite ni jeton (matrice_visibilite).
  */
-export function joueurPublic(joueur: Joueur): JoueurPublic {
+export function joueurPublic(etat: EtatSession, joueur: Joueur): JoueurPublic {
   return {
     joueur_id: joueur.id,
     pseudo: joueur.pseudo,
@@ -41,11 +55,12 @@ export function joueurPublic(joueur: Joueur): JoueurPublic {
     connecte: joueur.connecte,
     est_hote: joueur.est_hote,
     pret: joueur.pret,
+    offrande_scellee: offrandeScelleeDe(etat, joueur.id),
   };
 }
 
 export function joueursPublics(etat: EtatSession): readonly JoueurPublic[] {
-  return etat.joueurs.map(joueurPublic);
+  return etat.joueurs.map((joueur) => joueurPublic(etat, joueur));
 }
 
 /** ISO 8601 UTC, calculé en arithmétique entière : Date est banni du moteur. */

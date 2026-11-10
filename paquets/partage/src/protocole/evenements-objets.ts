@@ -28,6 +28,8 @@ export interface JoueurPublic {
   readonly connecte: boolean;
   readonly est_hote: boolean;
   readonly pret: boolean;
+  /** Scellement du paiement secret de la manche courante. Jamais de montant. */
+  readonly offrande_scellee: boolean;
 }
 
 export interface MouvementPiece {

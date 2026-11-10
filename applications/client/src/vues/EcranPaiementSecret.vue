@@ -51,6 +51,18 @@ const declare = computed(() => magasin.etat.moi?.montant_declare ?? null);
 const limites = computed(() => bornes(0, declare.value ?? 0));
 const raccourcis = computed(() => raccourcisPaiement(limites.value, declare.value ?? 0));
 
+/**
+ * Mensonge envisagé et amende qui en découlerait — calculés DANS le voile :
+ * gap = declare - montant expose indirectement le montant payé si on le
+ * publie hors voile (le déclaré, lui, est déjà public). Jamais en dehors.
+ */
+const gap = computed(() => Math.max(0, (declare.value ?? 0) - montant.value));
+const multiplicateurAmende = computed((): number => {
+  const config = magasin.etat.session?.config as { multiplicateur_amende?: number };
+  return config?.multiplicateur_amende ?? 1;
+});
+const amende = computed(() => gap.value * multiplicateurAmende.value);
+
 const horsPhase = computed(() => magasin.etat.phase !== 'DECLARATION_PAIEMENT');
 const scelle = computed(() => magasin.etat.paiement_scelle);
 
@@ -132,6 +144,16 @@ function sceller(): void {
               :chargement="envoi"
               :intitule="texte('ecran.paiement.libelle')"
             />
+            <!-- Conséquence du mensonge envisagé, dans le voile : si c'était
+                 hors voile, « tu gardes N » exposerait le montant payé par
+                 déduction (le déclaré est déjà public). -->
+            <p
+              v-if="gap > 0"
+              class="paiement__consequence"
+            >
+              {{ texte('ecran.paiement.gap_garde', { gap }) }}
+              {{ texte('ecran.paiement.amende_risque', { fine: amende }) }}
+            </p>
             <BoutonAction
               :libelle="texte('action.payer_secret')"
               variante="principal"
@@ -203,6 +225,13 @@ function sceller(): void {
   color: var(--gdv-texte-sur-accent);
   font-size: var(--gdv-role-meta);
   font-weight: var(--gdv-graisse-moyen);
+}
+
+.paiement__consequence {
+  margin: 0;
+  font-family: var(--gdv-famille-interface);
+  font-size: var(--gdv-role-corps);
+  text-align: center;
 }
 
 .paiement__borne {

@@ -16,7 +16,7 @@
 // cinq codes d'erreur de protocole (temps-reel/refus.ts). Tout le reste passe
 // par le lot.
 
-import type { CodeErreur, TypeCommande } from '@gdv/partage';
+import type { CodeErreur, EtatPartie, TypeCommande } from '@gdv/partage';
 import { definirConnexion, projeterEvenement } from '@gdv/moteur';
 import type { Effet, EtatSession, Resultat } from '@gdv/moteur';
 
@@ -247,9 +247,22 @@ export class BoucleSession {
     this.emettre(cloture.etat, cloture.effets);
   }
 
-  /** Arrivée d'un joueur : pseudo et état de connexion sont publics. */
-  annoncerArrivee(partie: Partie, joueurId: string): void {
-    this.emettre(partie.etat, [{ type: 'joueur_rejoint', joueur_id: joueurId }]);
+  /**
+   * Arrivée d'un joueur : pseudo et état de connexion sont publics.
+   *
+   * `etatPartieAvant` est l'état_partie D'AVANT cette adhésion : la toute
+   * première adhésion fait passer CREEE → SALLE_ATTENTE (RG-02) à l'intérieur
+   * même du réducteur `rejoindreSession`, sans effet dédié — sans ce rappel,
+   * aucun appareil DÉJÀ connecté (l'hôte, en particulier) n'apprend jamais la
+   * transition, et reste figé sur l'écran d'invitation pour toute la partie.
+   */
+  annoncerArrivee(partie: Partie, joueurId: string, etatPartieAvant: EtatPartie): void {
+    const effets: Effet[] =
+      etatPartieAvant === partie.etat.etat_partie
+        ? []
+        : [{ type: 'etat_partie_change' }];
+    effets.push({ type: 'joueur_rejoint', joueur_id: joueurId });
+    this.emettre(partie.etat, effets);
   }
 
   /**

@@ -1,8 +1,16 @@
 <script setup lang="ts">
 // ECR-05 — Rejoindre par code ou par QR (US-02).
 //
-// Par voie QR, le code est pré-rempli et verrouillé : il ne reste que le
-// pseudo, soit un seul contact. « Corriger le code » le déverrouille.
+// Par voie QR, le code est pré-rempli et verrouillé : il ne reste qu'à
+// confirmer, un seul contact. « Corriger le code » le déverrouille.
+//
+// Le pseudo n'est PAS ressaisi ici (fidélité à la maquette) : il a été
+// choisi une fois pour toutes à l'écran Bienvenue et repris en silence,
+// exactement comme ECR-02. SEULE EXCEPTION : un lien ou QR d'adhésion peut
+// amener un joueur qui n'a JAMAIS vu Bienvenue (routeur/index.ts route
+// « /adhesion/:code » directement sur cet écran, sans passer par ECR-01).
+// Dans ce seul cas, le champ pseudo réapparaît — sans lui, ce joueur ne
+// pourrait tout simplement pas rejoindre.
 //
 // Le jeton reçu est stocké localement et JAMAIS affiché. Aucune liste de
 // joueurs n'est montrée avant l'adhésion effective : avant d'avoir rejoint,
@@ -10,9 +18,8 @@
 //
 // ÉTATS (DESIGN ECR-05)
 // chargement   : vérification du code, barre indéterminée sous le champ,
-//                bouton en chargement, champs désactivés.
-// contenu      : deux champs à libellés persistants, écart libellé-champ 4 et
-//                écart entre champs 16. Un seul bouton.
+//                bouton en chargement, champ désactivé.
+// contenu      : champ code à libellé persistant. Un seul bouton.
 // vide         : non atteignable — c'est un formulaire.
 // erreur       : code inconnu, partie pleine, partie déjà démarrée, pseudo
 //                déjà pris. Chaque message NOMME l'action suivante.
@@ -30,14 +37,17 @@ import { utiliserMagasin } from '../magasin/injection.ts';
 import { apercevoirSession, rejoindreSession } from '../transport/rest.ts';
 
 const LONGUEUR_CODE = 6;
-const LONGUEUR_MAX_PSEUDO = 12;
+const LONGUEUR_MAX_PSEUDO = 14;
 const ETATS_CLOS = ['ABANDONNEE', 'TERMINEE'];
 
 const magasin = utiliserMagasin();
 
 const code = ref(magasin.codeAdhesionPrerempli());
-// Repris de ECR-01 · Bienvenue, modifiable ici sans reressaisie forcée.
+// Repris de ECR-01 · Bienvenue. Absent si déjà choisi (fidélité maquette) ;
+// ressaisi seulement pour le joueur arrivé directement par lien/QR (voir
+// l'en-tête du fichier).
 const pseudo = ref(magasin.pseudoPrerempli());
+const pseudoAResaisir = pseudo.value.trim() === '';
 const verrouille = ref(code.value.length === LONGUEUR_CODE);
 const chargement = ref(false);
 const erreurCode = ref('');
@@ -104,9 +114,32 @@ async function rejoindre(): Promise<void> {
     />
 
     <template v-else>
-      <h1 class="rejoindre__titre">
-        {{ texte('ecran.rejoindre.titre') }}
-      </h1>
+      <header class="rejoindre__entete">
+        <button
+          type="button"
+          class="rejoindre__retour"
+          :aria-label="texte('commun.retour_accueil')"
+          @click="magasin.naviguer('accueil')"
+        >
+          <svg
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M15 10H5M9 5l-5 5 5 5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <h1 class="rejoindre__titre">
+          {{ texte('ecran.rejoindre.titre') }}
+        </h1>
+      </header>
 
       <BandeauAlerte
         v-if="magasin.etat.alerte !== null"
@@ -142,6 +175,7 @@ async function rejoindre(): Promise<void> {
       />
 
       <ChampTexteCourt
+        v-if="pseudoAResaisir"
         v-model:valeur="pseudo"
         variante="pseudo"
         :libelle="texte('ecran.creation.libelle_pseudo')"
@@ -176,6 +210,35 @@ async function rejoindre(): Promise<void> {
   padding: var(--gdv-gouttiere-ecran);
   background: var(--gdv-surface-fond);
   color: var(--gdv-texte-principal);
+}
+
+.rejoindre__entete {
+  display: flex;
+  align-items: center;
+  gap: var(--gdv-espacement-12);
+}
+
+.rejoindre__retour {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  inline-size: var(--gdv-cible-minimale);
+  block-size: var(--gdv-cible-minimale);
+  border: var(--gdv-trait-fin) solid var(--gdv-bordure-champ);
+  border-radius: var(--gdv-rayon-moyen);
+  background: transparent;
+  color: var(--gdv-texte-principal);
+  cursor: pointer;
+}
+
+.rejoindre__retour svg {
+  inline-size: var(--gdv-espacement-16);
+  block-size: var(--gdv-espacement-16);
+}
+
+.rejoindre__retour:focus-visible {
+  outline: var(--gdv-trait-moyen) solid var(--gdv-accent-focus);
+  outline-offset: var(--gdv-espacement-4);
 }
 
 .rejoindre__titre {

@@ -75,6 +75,22 @@ export function tousOntDeclareEtPaye(etat: EtatSession): boolean {
   });
 }
 
+/** Débite le payeur, sauf si le paiement est nul (aucun mouvement de 0). */
+function avecDebit(
+  etat: EtatSession,
+  manche: Manche,
+  auteur: string,
+  montant: number,
+  contexte: ContexteMoteur,
+): EtatSession {
+  if (montant === 0) return etat;
+  return appliquerMouvement(
+    etat,
+    { joueur_id: auteur, delta: -montant, motif: 'paiement_voeu', manche_numero: manche.numero },
+    ecritureDe(contexte),
+  );
+}
+
 /** CA-09 : payer plus que déclaré est refusé. CA-10 : le montant ne sort jamais. */
 export function payerSecret(
   etat: EtatSession,
@@ -108,22 +124,11 @@ export function payerSecret(
     paye_at: contexte.horloge.maintenant(),
   };
   const enregistre = avecContribution(etat, manche, paye);
-  const apres =
-    montant === 0
-      ? enregistre
-      : appliquerMouvement(
-          enregistre,
-          {
-            joueur_id: auteur,
-            delta: -montant,
-            motif: 'paiement_voeu',
-            manche_numero: manche.numero,
-          },
-          ecritureDe(contexte),
-        );
+  const apres = avecDebit(enregistre, manche, auteur, montant, contexte);
 
   const effets: Effet[] = [
     { type: 'paiement_enregistre', joueur_id: auteur, numero_manche: manche.numero },
+    { type: 'joueur_offrande_scellee', joueur_id: auteur },
     { type: 'solde_mis_a_jour', joueur_id: auteur },
   ];
   return succes(apres, effets);

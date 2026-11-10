@@ -154,6 +154,11 @@ export interface ChargePaiementEnregistre {
   readonly enregistre: true;
 }
 
+/** Public, sans montant : voir l'annulation de CONF-12 (charges-neutres.ts). */
+export interface ChargeJoueurOffrandeScellee {
+  readonly joueur_id: string;
+}
+
 export interface ChargeTransfertEnregistre {
   readonly emetteur_joueur_id: string;
   readonly destinataire_joueur_id: string;
@@ -286,6 +291,7 @@ export interface ChargesParEvenement {
   readonly phase_changee: ChargePhaseChangee;
   readonly declaration_publiee: ChargeDeclarationPubliee;
   readonly paiement_enregistre: ChargePaiementEnregistre;
+  readonly joueur_offrande_scellee: ChargeJoueurOffrandeScellee;
   readonly transfert_enregistre: ChargeTransfertEnregistre;
   readonly pret_propose: ChargePretPropose;
   readonly pret_resolu: ChargePretResolu;

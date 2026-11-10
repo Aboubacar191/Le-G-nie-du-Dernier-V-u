@@ -379,6 +379,7 @@
       {"donnee": "ordre des places dans le cercle", "visible_par": ["tous"], "note": "physiquement visible dans la pièce de toute façon"},
       {"donnee": "pseudo, position, etat de connexion", "visible_par": ["tous"]},
       {"donnee": "statut pret (salle d'attente)", "visible_par": ["tous"], "note": "écran 1b : purement informatif, ne conditionne aucune garde de demarrer_partie (RG-02, CA-02)."},
+      {"donnee": "statut scellé du paiement secret (sans montant)", "visible_par": ["tous"], "a_partir_de": "soumission de payer_secret, remis à faux à chaque nouvelle manche", "note": "CONF-12 ANNULÉE le 2026-11-10 : fidélité à la maquette (écran « Offrande scellée »), qui fait de ce statut un ressort social assumé (« regarde qui hésite »). Distinct de montant_paye (ligne ci-dessus), qui reste proprietaire seul : seul le FAIT d'avoir scellé devient public, jamais le montant."},
       {"donnee": "jeton_session d'un joueur", "visible_par": ["serveur", "proprietaire"], "note": "un jeton fuité permettrait l'usurpation et donc l'accès aux secrets d'autrui"}
     ]
   },
