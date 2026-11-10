@@ -1,0 +1,20 @@
+# Image de bord : sert le PWA client (@gdv/client) et route /api et /tr vers
+# le serveur (conteneur gdv-serveur, même réseau docker).
+# Construite depuis la racine du mono-repo : docker build -f deploiement/Dockerfile.client .
+
+FROM node:24-alpine AS construire
+WORKDIR /app
+
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY paquets/partage/package.json paquets/partage/
+COPY applications/client/package.json applications/client/
+RUN npm ci
+
+COPY paquets/partage paquets/partage
+COPY applications/client applications/client
+RUN npm run construire --workspace @gdv/client
+
+FROM nginx:alpine AS execution
+COPY --from=construire /app/applications/client/dist /usr/share/nginx/html
+COPY deploiement/nginx-edge.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80

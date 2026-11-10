@@ -1,0 +1,30 @@
+# Image du serveur (@gdv/serveur) : transport, persistance, sécurité.
+# Construite depuis la racine du mono-repo : docker build -f deploiement/Dockerfile.serveur .
+
+FROM node:24-alpine AS construire
+WORKDIR /app
+
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY paquets/partage/package.json paquets/partage/
+COPY paquets/moteur/package.json paquets/moteur/
+COPY applications/serveur/package.json applications/serveur/
+RUN npm ci
+
+COPY paquets/partage paquets/partage
+COPY paquets/moteur paquets/moteur
+COPY applications/serveur applications/serveur
+RUN npm run construire --workspace @gdv/partage --workspace @gdv/moteur --workspace @gdv/serveur
+
+FROM node:24-alpine AS execution
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=construire /app/node_modules ./node_modules
+COPY --from=construire /app/package.json ./
+COPY --from=construire /app/paquets/partage ./paquets/partage
+COPY --from=construire /app/paquets/moteur ./paquets/moteur
+COPY --from=construire /app/applications/serveur ./applications/serveur
+
+WORKDIR /app/applications/serveur
+EXPOSE 8443
+CMD ["node", "dist/index.js"]

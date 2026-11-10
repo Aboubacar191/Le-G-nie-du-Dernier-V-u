@@ -1,0 +1,38 @@
+services:
+  gdv-serveur:
+    build:
+      context: ..
+      dockerfile: deploiement/Dockerfile.serveur
+    container_name: gdv-serveur
+    restart: unless-stopped
+    environment:
+      PORT: "8443"
+      HOTE: "0.0.0.0"
+      CHEMIN_BDD: "/app/donnees/gdv.sqlite"
+      ORIGINE_AUTORISEE: "https://legenie.aboubacar-kone.space"
+      MODE: "developpement"
+    volumes:
+      - gdv_donnees:/app/donnees
+    networks:
+      - gdv_net
+
+  gdv-client:
+    build:
+      context: ..
+      dockerfile: deploiement/Dockerfile.client
+    container_name: gdv-client
+    restart: unless-stopped
+    depends_on:
+      - gdv-serveur
+    ports:
+      - "127.0.0.1:8096:80"
+    networks:
+      - gdv_net
+
+networks:
+  gdv_net:
+    name: gdv_net
+
+volumes:
+  gdv_donnees:
+    name: gdv_donnees
