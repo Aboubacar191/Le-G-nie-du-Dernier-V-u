@@ -21,6 +21,12 @@ jobs:
         run: npm ci
 
       - name: Toutes les portes qualité (secrets, visibilité, types, lint, couches, tests, couverture, audit, uniformité, routes)
+        env:
+          # outils/verifier-secrets.mjs cherche d'abord ~/.claude/equipe/outils/
+          # scanner-secrets.mjs : un outil du poste de développement, absent de
+          # tout runner CI. GDV_SCANNER_SECRETS est le mécanisme déjà prévu pour
+          # cela — on le pointe vers la copie figée versionnée dans ce dépôt.
+          GDV_SCANNER_SECRETS: ${{ github.workspace }}/outils/scanner-secrets-ci.mjs
         run: npm run verifier
 
   deployer:
