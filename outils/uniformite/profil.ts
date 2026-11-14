@@ -12,11 +12,15 @@
 // de types est donc exactement le contrôle de séquence, et c'est le moins
 // coûteux de la porte — il ne demande aucune instrumentation du transport.
 //
-// Ce module ne lit JAMAIS une charge, à une exception près et elle est
-// déclarée : le test P-c compare l'ENSEMBLE DES CLÉS émises aux variantes du
-// contrat. Il regarde les noms des clés, jamais les valeurs.
+// Ce module ne lit JAMAIS une charge, à DEUX exceptions près et elles sont
+// déclarées : le test P-c compare l'ENSEMBLE DES CLÉS émises aux variantes du
+// contrat (il regarde les noms des clés, jamais les valeurs), et U1c (ci-
+// dessous) réexpose la charge au SEUL remplissage de remplissage.ts — une
+// transformation qui ne connaît, elle non plus, aucun champ : elle compte des
+// octets. Aucune des deux lectures ne compare de VALEUR de champ.
 // =============================================================================
 
+import { cibleCommune, completer, octets as octetsDe } from '../../applications/serveur/src/temps-reel/remplissage.ts';
 import type { Trame } from '../../qa/sondes/banc.ts';
 import type { SchemaEvt, Signaler } from './contrat.ts';
 
@@ -25,6 +29,7 @@ export interface Profil {
   readonly types: readonly string[];
   readonly octets: readonly number[];
   readonly ordres: readonly number[];
+  readonly charges: readonly Readonly<Record<string, unknown>>[];
 }
 
 export function profils(trames: readonly Trame[], joueurs: readonly string[]): readonly Profil[] {
@@ -35,6 +40,7 @@ export function profils(trames: readonly Trame[], joueurs: readonly string[]): r
       types: siennes.map((trame) => trame.type),
       octets: siennes.map((trame) => trame.octets),
       ordres: siennes.map((trame) => trame.ordre),
+      charges: siennes.map((trame) => trame.charge),
     };
   });
 }
@@ -141,15 +147,46 @@ export interface EcartTaille {
   readonly exemple: string | null;
 }
 
-/** U1c — mesure brute de l'écart de taille, rang par rang. */
+/**
+ * U1c — écart de taille APRÈS remplissage, rang par rang.
+ *
+ * La mesure BRUTE (avant remplissage) diffère presque toujours d'un joueur à
+ * l'autre — un pseudo plus long, un montant à trois chiffres — et c'est
+ * précisément ce que RUP-03 existe pour absorber. La comparer sans appliquer
+ * le remplissage reviendrait à juger un correctif sur l'état d'AVANT le
+ * correctif : ce module applique donc la MÊME fonction que diffuseur.ts,
+ * cibleCommune puis completer, sur chaque lot (les N charges d'un même rang),
+ * et compare les tailles qui en résultent — celles qui partent réellement sur
+ * le socket. Par construction, cibleCommune choisit le maximum du lot comme
+ * cible : toutes les trames du lot sont donc complétées à la MÊME taille,
+ * sauf dans le seul cas où completer y renonce — une trame qui, même nue,
+ * dépasse déjà le plafond TAILLE_MAX_TRAME_SORTANTE_OCTETS (le résidu
+ * EvtEtatCompletPrive, inscrit en dette assumée par ARCHI-GDV-001.json /
+ * ADR-TL-20, consequence (5)). C'est l'unique façon dont ce contrôle peut
+ * encore trouver un écart.
+ *
+ * Simulé sur une ENVELOPPE, jamais sur la charge nue : diffuseur.ts appelle
+ * cibleCommune et completer sur l'enveloppe entière (type, sequence, emis_a,
+ * id_correlation, charge), qui porte toujours au moins une clé. Simuler sur
+ * la seule charge ferait, pour toute charge neutre VIDE ({}), disparaître la
+ * virgule séparatrice que JSON.stringify insère devant « remplissage » dès
+ * qu'une clé existe déjà — un octet de différence introduit par la mesure,
+ * pas par le transport.
+ */
+const ENVELOPPE_FACTICE = { type: 't', sequence: 0, emis_a: '2026-01-01T00:00:00.000Z', id_correlation: null };
+
 export function mesurerEcartsDeTaille(mesures: readonly Profil[]): EcartTaille {
   const reference = premier(mesures);
   if (reference === undefined) return { rangs: 0, ecartMax: 0, exemple: null };
   let rangs = 0;
   let ecartMax = 0;
   let exemple: string | null = null;
-  for (let rang = 0; rang < reference.octets.length; rang += 1) {
-    const tailles = mesures.map((profil) => profil.octets[rang] ?? 0);
+  for (let rang = 0; rang < reference.charges.length; rang += 1) {
+    const chargesDuLot = mesures.map((profil) => profil.charges[rang]).filter((c) => c !== undefined);
+    if (chargesDuLot.length === 0) continue;
+    const enveloppesDuLot = chargesDuLot.map((charge) => ({ ...ENVELOPPE_FACTICE, charge }));
+    const cible = cibleCommune(enveloppesDuLot.map((enveloppe) => JSON.stringify(enveloppe)));
+    const tailles = enveloppesDuLot.map((enveloppe) => octetsDe(completer(enveloppe, cible)));
     const mini = Math.min(...tailles);
     const maxi = Math.max(...tailles);
     if (maxi === mini) continue;
@@ -158,7 +195,7 @@ export function mesurerEcartsDeTaille(mesures: readonly Profil[]): EcartTaille {
     ecartMax = maxi - mini;
     exemple =
       `rang ${String(rang)}, type « ${String(reference.types[rang])} » : ` +
-      `${String(mini)} à ${String(maxi)} octets`;
+      `${String(mini)} à ${String(maxi)} octets après remplissage (cible ${String(cible)})`;
   }
   return { rangs, ecartMax, exemple };
 }

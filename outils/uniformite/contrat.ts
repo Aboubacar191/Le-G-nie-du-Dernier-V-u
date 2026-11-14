@@ -38,6 +38,9 @@ interface ApiBrute {
   readonly 'x-temps-reel'?: {
     readonly uniformite_de_forme?: {
       readonly exceptions?: Readonly<Record<string, unknown>>;
+      readonly verification?: {
+        readonly U2_exceptions_fermees?: Readonly<Record<string, unknown>>;
+      };
     };
   };
 }
@@ -89,7 +92,18 @@ export interface VueContrat {
   readonly schemas: readonly SchemaEvt[];
   readonly parType: ReadonlyMap<string, SchemaEvt>;
   readonly exceptions: ReadonlySet<string>;
+  readonly exceptionsU2: ReadonlySet<string>;
 }
+
+/**
+ * Clés admises de verification.U2_exceptions_fermees : les trois IDENTIFIANTS
+ * de paire (pas des types d'événement, pas des clés libres) que U2_regle
+ * exempte — voir le contrat pour la justification complète, qui renvoie à
+ * ADR-TL-20. `_regle` et `note_sur_les_quatre_autres_scenarios` sont de la
+ * prose, pas des exemptions : les lire comme des identifiants ouvrirait une
+ * exception que personne n'a décidée.
+ */
+const CLES_U2_EXCEPTIONS_CONNUES: ReadonlySet<string> = new Set(['U2/2', 'U2/3', 'U2/6']);
 
 function lireSchema(nom: string, brut: SchemaBrut): SchemaEvt {
   return {
@@ -130,6 +144,32 @@ function lireExceptions(api: ApiBrute, signaler: Signaler): ReadonlySet<string> 
   return exemptes;
 }
 
+/**
+ * Lit verification.U2_exceptions_fermees : une clé qui commence par « U2/ »
+ * et n'est pas dans la liste connue ferme la porte, exactement comme pour
+ * lireExceptions — une prose (`_regle`, `note_sur_...`) ne commence jamais
+ * ainsi et n'est donc jamais confondue avec une exemption.
+ */
+function lireExceptionsU2(api: ApiBrute, signaler: Signaler): ReadonlySet<string> {
+  const declarees = api['x-temps-reel']?.uniformite_de_forme?.verification?.U2_exceptions_fermees;
+  const exemptes = new Set<string>();
+  if (declarees === undefined) return exemptes;
+  for (const cle of Object.keys(declarees)) {
+    if (!cle.startsWith('U2/')) continue;
+    if (!CLES_U2_EXCEPTIONS_CONNUES.has(cle)) {
+      signaler(
+        'U2',
+        `exception « ${cle} » déclarée au contrat et inconnue de l’outil. La liste des ` +
+          `exceptions de U2 est FERMÉE à U2/2, U2/3 et U2/6 : une ligne de plus est une ` +
+          `décision d’architecture, pas un ajustement.`,
+      );
+      continue;
+    }
+    exemptes.add(cle);
+  }
+  return exemptes;
+}
+
 export function lireContrat(dossier: string, signaler: Signaler): VueContrat {
   const api = JSON.parse(
     readFileSync(join(dossier, 'API-GDV-001.json'), 'utf8'),
@@ -146,5 +186,6 @@ export function lireContrat(dossier: string, signaler: Signaler): VueContrat {
     schemas,
     parType: new Map(schemas.map((schema) => [schema.type, schema])),
     exceptions: lireExceptions(api, signaler),
+    exceptionsU2: lireExceptionsU2(api, signaler),
   };
 }

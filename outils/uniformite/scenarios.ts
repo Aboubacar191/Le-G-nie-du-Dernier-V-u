@@ -60,6 +60,7 @@ export function partieComplete(joueurs: number): Banc {
 }
 
 export interface Paire {
+  readonly id: string;
   readonly etiquette: string;
   readonly a: Banc;
   readonly b: Banc;
@@ -168,47 +169,12 @@ function pretAccepte(accepte: boolean): Banc {
  */
 export function pairesDifferentielles(): readonly Paire[] {
   return [
-    {
-      etiquette: 'U2/1 paiement secret de J5 (3 contre 1, déclaration inchangée)',
-      a: paiement(MONTANT),
-      b: paiement(MONTANT_MENTEUR),
-      acteur: 'J5',
-    },
-    {
-      etiquette: 'U2/2 enquête secrète de J2 sur J0 (lancée contre non lancée)',
-      a: enquete(false),
-      b: enquete(true),
-      acteur: 'J2',
-    },
-    {
-      etiquette: 'U2/3 transfert de J1 vers J2 (effectué contre non effectué)',
-      a: transfert(false),
-      b: transfert(true),
-      acteur: 'J1',
-    },
-    {
-      etiquette: 'U2/4 permutation des rôles secrets de J4 et J5',
-      a: roles(false),
-      b: roles(true),
-      acteur: 'J4',
-    },
-    {
-      etiquette: 'U2/5 identité du porteur de la clause (J3 contre J4)',
-      a: porteurClause('J3'),
-      b: porteurClause('J4'),
-      acteur: 'J3',
-    },
-    {
-      etiquette: 'U2/6 prêt proposé par J1 à J2 (proposé contre non proposé)',
-      a: pretPropose(false),
-      b: pretPropose(true),
-      acteur: 'J1',
-    },
-    {
-      etiquette: 'U2/7 réponse de J2 au prêt (accepté contre refusé)',
-      a: pretAccepte(false),
-      b: pretAccepte(true),
-      acteur: 'J2',
-    },
+    { id: 'U2/1', etiquette: 'U2/1 paiement secret de J5 (3 contre 1, déclaration inchangée)', a: paiement(MONTANT), b: paiement(MONTANT_MENTEUR), acteur: 'J5' },
+    { id: 'U2/2', etiquette: 'U2/2 enquête secrète de J2 sur J0 (lancée contre non lancée)', a: enquete(false), b: enquete(true), acteur: 'J2' },
+    { id: 'U2/3', etiquette: 'U2/3 transfert de J1 vers J2 (effectué contre non effectué)', a: transfert(false), b: transfert(true), acteur: 'J1' },
+    { id: 'U2/4', etiquette: 'U2/4 permutation des rôles secrets de J4 et J5', a: roles(false), b: roles(true), acteur: 'J4' },
+    { id: 'U2/5', etiquette: 'U2/5 identité du porteur de la clause (J3 contre J4)', a: porteurClause('J3'), b: porteurClause('J4'), acteur: 'J3' },
+    { id: 'U2/6', etiquette: 'U2/6 prêt proposé par J1 à J2 (proposé contre non proposé)', a: pretPropose(false), b: pretPropose(true), acteur: 'J1' },
+    { id: 'U2/7', etiquette: 'U2/7 réponse de J2 au prêt (accepté contre refusé)', a: pretAccepte(false), b: pretAccepte(true), acteur: 'J2' },
   ];
 }

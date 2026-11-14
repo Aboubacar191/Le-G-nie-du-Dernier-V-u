@@ -68,7 +68,6 @@
 // Sortie : 0 = CONFORME, 1 = DIVERGENCE (porte fermée)
 // =============================================================================
 
-import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -181,22 +180,15 @@ constats.push(
 // --- U1 : profil de forme, effectif 6 puis 8 ---------------------------------
 
 /**
- * Le remplissage par paliers est appliqué par le TRANSPORT, en dernier, juste
- * avant l'écriture sur le socket (RUP-03). Le harnais mesure la charge projetée
- * par le moteur : il ne peut donc pas constater un remplissage qui n'existe
- * pas. Cette sonde répond à « le transport complète-t-il ses trames ? ».
+ * Le remplissage par paliers (RUP-03) est appliqué par le TRANSPORT, en
+ * dernier, juste avant l'écriture sur le socket — diffuseur.ts, cibleCommune
+ * puis completer. mesurerEcartsDeTaille (outils/uniformite/profil.ts) appelle
+ * désormais CES MÊMES fonctions sur chaque lot mesuré ici : comparer la taille
+ * BRUTE aurait jugé le correctif sur l'état d'avant le correctif, ce qui a été
+ * la source d'un faux négatif de cette porte. Un grep sur le mot « remplissage »
+ * dans ce dossier n'est donc plus nécessaire : un remplissage absent ferait
+ * échouer l'IMPORT de profil.ts, pas une mesure a posteriori.
  */
-function transportRemplitLesTrames(): boolean {
-  for (const fichier of readdirSync(DOSSIER_TRANSPORT)) {
-    if (!fichier.endsWith('.ts')) continue;
-    if (/\bremplissage\b/u.test(readFileSync(join(DOSSIER_TRANSPORT, fichier), 'utf8'))) {
-      return true;
-    }
-  }
-  return false;
-}
-
-const REMPLISSAGE_PRESENT = transportRemplitLesTrames();
 const deFait = new Set<string>();
 
 for (const effectif of [6, 8]) {
@@ -207,20 +199,13 @@ for (const effectif of [6, 8]) {
   const sequence = controlerSequence(mesures, etiquette, signaler);
   const alignement = controlerAlignement(mesures, etiquette, signaler);
   const tailles = mesurerEcartsDeTaille(mesures);
-  if (!REMPLISSAGE_PRESENT) {
+  if (tailles.rangs > 0) {
     signaler(
       'U1c',
-      `${etiquette} — aucun remplissage de trame dans ${DOSSIER_TRANSPORT} : le champ ` +
-        `EnveloppeEvenement.remplissage exigé par RUP-03 n'est produit par aucun module du ` +
-        `transport. L'écart de taille brut est donc l'écart réel sur le fil, TLS préservant ` +
-        `les longueurs. Mesure : ${String(tailles.rangs)} rang(s) de taille inégale, écart ` +
-        `maximal ${String(tailles.ecartMax)} octets${tailles.exemple === null ? '' : ` (${tailles.exemple})`}.`,
-    );
-  } else if (tailles.rangs > 0) {
-    signaler(
-      'U1c',
-      `${etiquette} — ${String(tailles.rangs)} rang(s) de taille inégale malgré un remplissage ` +
-        `présent dans le transport, écart maximal ${String(tailles.ecartMax)} octets.`,
+      `${etiquette} — ${String(tailles.rangs)} rang(s) de taille inégale APRÈS remplissage : ` +
+        `écart maximal ${String(tailles.ecartMax)} octets${tailles.exemple === null ? '' : ` (${tailles.exemple})`}. ` +
+        `Seul cas possible : une trame nue qui dépasse déjà TAILLE_MAX_TRAME_SORTANTE_OCTETS et ` +
+        `part sans remplissage (résidu EvtEtatCompletPrive, ADR-TL-20 consequence (5)).`,
     );
   }
   for (const type of exceptionsDeFait(banc.trames, banc.joueurs)) deFait.add(type);
@@ -240,21 +225,38 @@ for (const effectif of [6, 8]) {
 // --- U2 : invariance différentielle ------------------------------------------
 
 let pairesConformes = 0;
+const u2ExceptionsExercees = new Set<string>();
 const paires = pairesDifferentielles();
 for (const paire of paires) {
+  const exemptee = contrat.exceptionsU2.has(paire.id);
+  const detailsLocaux: string[] = [];
   const conforme = controlerDifferentiel(
     profils(paire.a.trames, paire.a.joueurs),
     profils(paire.b.trames, paire.b.joueurs),
     paire.etiquette,
-    signaler,
+    exemptee ? (_controle, detail) => detailsLocaux.push(detail) : signaler,
   );
-  if (conforme) pairesConformes += 1;
+  if (conforme) {
+    pairesConformes += 1;
+  } else if (exemptee) {
+    u2ExceptionsExercees.add(paire.id);
+    for (const detail of detailsLocaux) {
+      constats.push(`U2 — ${paire.id} EXEMPTÉE (verification.U2_exceptions_fermees) : ${detail}`);
+    }
+  }
 }
 constats.push(
   `U2 — ${String(pairesConformes)}/${String(paires.length)} paires différentielles invariantes ` +
-    `(acteur compris). Actes couverts : paiement, enquête, transfert, rôles, porteur de clause, ` +
-    `prêt proposé, réponse au prêt.`,
+    `(acteur compris), ${String(contrat.exceptionsU2.size)} exemptée(s) par le contrat. Actes ` +
+    `couverts : paiement, enquête, transfert, rôles, porteur de clause, prêt proposé, réponse au prêt.`,
 );
+for (const declaree of contrat.exceptionsU2) {
+  if (u2ExceptionsExercees.has(declaree)) continue;
+  constats.push(
+    `U2 — l’exception déclarée « ${declaree} » n’est pas exercée par le code sur ce scénario : ` +
+      `rien à comparer, aucune conclusion tirée.`,
+  );
+}
 
 // --- U4 : exceptions fermées -------------------------------------------------
 
@@ -289,7 +291,7 @@ for (const { controle } of anomalies) {
 
 console.log('PORTE — uniformité de forme : RG-80 / API x-emission (ADR-TL-20)');
 console.log(`  contrats : ${DOSSIER_CONTRATS}`);
-console.log(`  transport : ${DOSSIER_TRANSPORT} — remplissage ${REMPLISSAGE_PRESENT ? 'présent' : 'ABSENT'}`);
+console.log(`  transport : ${DOSSIER_TRANSPORT} — remplissage simulé via les fonctions réelles de remplissage.ts`);
 console.log('-'.repeat(78));
 // « mes. » et non « ok » : un constat est une MESURE, pas un succes. Afficher
   // « ok 0 route sur 6 » serait un mensonge de presentation.
