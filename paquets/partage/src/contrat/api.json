@@ -1338,7 +1338,7 @@
         "description": "US-15. Permet de vérifier a posteriori qui a menti et de constater que le génie ne pouvait pas tricher.",
         "x-emission": "uniforme_charge_identique",
         "x-justification-emission": "Classe tous, charge identique. Annoté en 1.2.0 pour U3. C'est la trame la plus VOLUMINEUSE du protocole — classement et paiements_historiques à 8 joueurs sur 5 manches — mais sa taille est identique pour tous les destinataires, donc elle ne porte aucune information de forme. Elle reste complétée au prochain multiple du palier et doit tenir sous taille_max_trame_sortante_octets. ESTIMATION, NON MESURÉE, au pire cas de 8 joueurs et 5 manches : paiements_historiques = 40 entrées d'environ 110 octets sérialisés, soit environ 4,4 Ko ; classement = 8 entrées d'environ 200 octets, soit environ 1,6 Ko ; total d'environ 6,5 Ko, complété à 7168 octets. Le plafond de 16384 octets tient avec un facteur 2,3. Si une configuration portait nb_manches au-delà d'environ 13, le plafond serait franchi : c'est une borne à vérifier au nœud de mesure, pas un défaut aujourd'hui.",
-        "required": ["classement", "vainqueurs", "genie_libere", "paiements_historiques"],
+        "required": ["classement", "vainqueurs", "genie_libere", "paiements_historiques", "duree_s"],
         "properties": {
           "classement": {
             "type": "array",
@@ -1374,7 +1374,8 @@
                 "montant_paye": {"$ref": "#/components/schemas/Pieces"}
               }
             }
-          }
+          },
+          "duree_s": {"type": "integer", "minimum": 0, "description": "Durée totale de la partie en secondes (scores_calcules_le − cree_le). Fidélité maquette, écran « Fin de partie ». Collective, jamais individuelle : aucune fuite."}
         }
       },
       "EvtPartieAbandonnee": {

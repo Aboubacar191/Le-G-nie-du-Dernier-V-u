@@ -32,6 +32,13 @@ const scores = computed(() => magasin.etat.scores);
 const hote = computed(() => magasin.etat.moi?.est_hote === true);
 const modeAvance = computed(() => magasin.etat.session?.mode_avance_actif === true);
 
+// Fidélité maquette (« Fin de partie · 27 min ») : durée collective, jamais
+// individuelle — rien à voiler. Arrondie à la minute la plus proche.
+const dureeMinutes = computed(() => {
+  const dureeS = scores.value?.duree_s;
+  return dureeS === undefined ? null : Math.round(dureeS / 60);
+});
+
 /** Annonce nominative seulement dans le cas simple : un vainqueur unique. */
 const vainqueurUnique = computed(() => {
   const liste = scores.value?.vainqueurs ?? [];
@@ -49,7 +56,13 @@ function rejouer(): void {
 <template>
   <main class="scores">
     <p
-      v-if="vainqueurUnique !== null"
+      v-if="dureeMinutes !== null"
+      class="scores__eyebrow"
+    >
+      {{ texte('scores.duree_partie', { minutes: dureeMinutes }) }}
+    </p>
+    <p
+      v-else-if="vainqueurUnique !== null"
       class="scores__eyebrow"
     >
       {{ texte('scores.titre') }}

@@ -69,6 +69,16 @@ export function projeterScoresFinaux(etat: EtatSession): ProjectionBrute | null 
     if (ligne === null) return null;
     lignes.push(ligne);
   }
+  // Fidélité maquette (écran « Fin de partie », « 27 min ») : la durée totale
+  // d'une partie ne révèle rien d'individuel — chaque joueur l'a VÉCUE en
+  // entier, ensemble. scores_calcules_le est posé par entrerEnScores (machine/
+  // fin-de-partie.ts), avant l'émission de cet événement — termine_le ne
+  // convient pas : il ne se pose qu'à TERMINEE/ABANDONNEE (CHECK SQL).
+  const dureeS =
+    etat.scores_calcules_le === null
+      ? 0
+      : Math.max(0, Math.round((etat.scores_calcules_le - etat.cree_le) / 1000));
+
   return {
     proprietaires: [],
     charge: {
@@ -77,6 +87,7 @@ export function projeterScoresFinaux(etat: EtatSession): ProjectionBrute | null 
       victoire_par_liberation: etat.genie_libere === true && etat.vainqueurs.length === 1,
       genie_libere: etat.genie_libere === true,
       paiements_historiques: paiementsHistoriques(etat),
+      duree_s: dureeS,
     },
   };
 }

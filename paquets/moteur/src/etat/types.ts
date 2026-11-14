@@ -192,6 +192,9 @@ export interface EtatSession {
   readonly groupe: EtatGroupeSession;
   readonly cree_le: number;
   readonly termine_le: number | null;
+  /** Instant d'entrée en SCORES — distinct de termine_le (TERMINEE/ABANDONNEE
+   *  seulement). Sert au seul calcul de duree_s (projection/scores-finaux.ts). */
+  readonly scores_calcules_le: number | null;
 }
 
 export interface ErreurMetier {

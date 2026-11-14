@@ -44,8 +44,18 @@ export function entrerEnDernierVoeu(etat: EtatSession, contexte: ContexteMoteur)
 }
 
 export function entrerEnScores(etat: EtatSession, contexte: ContexteMoteur): Transition {
-  const classement = calculerClassement({ ...etat, etat_partie: 'SCORES', phase: null, phase_fin_at: null });
-  void contexte;
+  // scores_calcules_le, PAS termine_le : termine_le ne se pose qu'à TERMINEE
+  // ou ABANDONNEE (contrainte CHECK, persistance/sqlite/audit.ts). scores_
+  // finaux est émis à CETTE étape (état SCORES), une transition plus tôt ;
+  // la durée de partie qu'il publie (projection/scores-finaux.ts) a donc
+  // besoin de son propre instant, posé ici.
+  const classement = calculerClassement({
+    ...etat,
+    etat_partie: 'SCORES',
+    phase: null,
+    phase_fin_at: null,
+    scores_calcules_le: contexte.horloge.maintenant(),
+  });
   return { etat: classement.etat, effets: [{ type: 'etat_partie_change' }, { type: 'scores_finaux' }] };
 }
 

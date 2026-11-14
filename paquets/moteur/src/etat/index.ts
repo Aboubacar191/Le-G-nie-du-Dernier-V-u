@@ -70,6 +70,7 @@ export function creerSession(parametres: ParametresCreation): EtatSession {
     groupe: parametres.groupe,
     cree_le: parametres.maintenant,
     termine_le: null,
+    scores_calcules_le: null,
   };
 }
 

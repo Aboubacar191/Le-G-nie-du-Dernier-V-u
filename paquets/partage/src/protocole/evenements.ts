@@ -255,6 +255,8 @@ export interface ChargeScoresFinaux {
   readonly victoire_par_liberation: boolean;
   readonly genie_libere: boolean;
   readonly paiements_historiques: readonly PaiementHistorique[];
+  /** Durée totale de la partie, en secondes (fidélité maquette, « Fin de partie »). */
+  readonly duree_s: number;
 }
 
 export type MotifAbandon = 'ABANDON_HOTE' | 'INACTIVITE_DEPASSEE';

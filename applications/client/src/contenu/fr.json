@@ -336,7 +336,8 @@
     "erreur": "Les comptes du génie n'ont pas pu être relus",
     "close": "Cette partie est close",
     "resume_voeux": "{exauces} vœu(x) exaucé(s) sur {total}",
-    "resume_mensonges": "{nombre} mensonge(s) démasqué(s) cette partie"
+    "resume_mensonges": "{nombre} mensonge(s) démasqué(s) cette partie",
+    "duree_partie": "Fin de partie · {minutes} min"
   },
 
   "ecran": {
