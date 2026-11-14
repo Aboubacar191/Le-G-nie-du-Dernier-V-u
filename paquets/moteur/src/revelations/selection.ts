@@ -2,18 +2,22 @@
 //
 // Loi 3 (RG-22) : « à éligibilité égale, le génie cible le joueur au plus haut
 // score d'activité ». Les gabarits sans cible — COMPTAGE, PASSE — n'ont pas de
-// tension mesurable au sens de RG-24 : leur score vaut 0, donc ils ne sont
-// retenus que si aucun gabarit ciblé n'est éligible ou si personne n'a encore
-// agi. Le départage résiduel est totalement ordonné (ordre des gabarits du
-// catalogue, puis identifiants des cibles) : deux exécutions sur la même graine
-// doivent choisir la même révélation.
+// tension mesurable au sens de RG-24 : leur score vaut 0.
+//
+// RG-24, départage : « en cas d'égalité — notamment à la manche 1 où le score
+// est nul pour tous — la cible est tirée UNIFORMÉMENT par la source d'aléa
+// injectée, dont la position ne dépend d'aucun acte secret ». Un départage
+// déterministe (ordre du catalogue, puis identifiants) serait lui-même un
+// canal : à tension égale, il favoriserait toujours la même cible, et un tiers
+// qui connaît le catalogue pourrait deviner lequel des candidats a été retenu
+// avant même de lire la révélation. Puisque la tension ne dépend plus que des
+// accusations (PUBLIQUES, voir score-activite.ts), le fait même qu'il y ait ou
+// non égalité n'est jamais une fonction d'un acte secret.
 //
 // Loi 1 (RG-20) : l'énoncé retenu est REVÉRIFIÉ par verifierEnonce, écrite dans
 // un module distinct qui ne partage aucun code avec la sélection. Si la
 // revérification échoue, RIEN n'est émis — le génie ne se rabat pas sur un
 // autre énoncé, ce qui ferait de la revérification un simple filtre.
-
-import { GABARIT } from '@gdv/partage';
 
 import type { Alea } from '../alea/interface.ts';
 import { trouverJoueur } from '../etat/acces.ts';
@@ -38,25 +42,32 @@ function tensionDe(etat: EtatSession, candidat: CandidatRevelation): number {
   return maximum;
 }
 
-function rangGabarit(candidat: CandidatRevelation): number {
-  return GABARIT.indexOf(candidat.gabarit);
-}
-
-/** Sélection déterministe : tension décroissante, puis ordre total de départage. */
+/**
+ * RG-24 : tension décroissante, puis tirage UNIFORME par l'aléa injecté parmi
+ * les candidats à la tension maximale — jamais un ordre fixe. L'ordre de
+ * `candidats` lui-même (celui de `candidatsEligibles`) n'influence le résultat
+ * qu'à travers ce tirage, jamais par position.
+ */
 export function selectionnerRevelation(
   etat: EtatSession,
   manche: Manche,
+  alea: Alea,
 ): CandidatRevelation | null {
   const candidats = [...candidatsEligibles(etat, manche)];
   if (candidats.length === 0) return null;
-  candidats.sort((a, b) => {
-    const tension = tensionDe(etat, b) - tensionDe(etat, a);
-    if (tension !== 0) return tension;
-    const rang = rangGabarit(a) - rangGabarit(b);
-    if (rang !== 0) return rang;
-    return a.cibles.join(',').localeCompare(b.cibles.join(','));
-  });
-  return candidats[0] ?? null;
+  let meilleurs = [candidats[0]!];
+  let tensionMax = tensionDe(etat, candidats[0]!);
+  for (const candidat of candidats.slice(1)) {
+    const tension = tensionDe(etat, candidat);
+    if (tension > tensionMax) {
+      meilleurs = [candidat];
+      tensionMax = tension;
+    } else if (tension === tensionMax) {
+      meilleurs.push(candidat);
+    }
+  }
+  if (meilleurs.length === 1) return meilleurs[0]!;
+  return meilleurs[alea.entier(0, meilleurs.length - 1)]!;
 }
 
 export interface EmissionRevelation {
@@ -78,7 +89,7 @@ export function emettreRevelation(
     readonly identifiant: () => string;
   },
 ): EmissionRevelation | null {
-  const candidat = selectionnerRevelation(etat, manche);
+  const candidat = selectionnerRevelation(etat, manche, contexte.alea);
   if (candidat === null) return null;
 
   const variante = contexte.alea.entier(0, NOMBRE_VARIANTES_FORMULATION - 1);

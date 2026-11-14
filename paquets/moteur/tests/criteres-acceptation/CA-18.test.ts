@@ -38,14 +38,23 @@ test('CA-18 : VOISINAGE est éligible pour A quand seul F a menti', () => {
 
 test('CA-18 : l’énoncé désigne A sans l’accuser ni l’exonérer', () => {
   const table = tableEnDeclaration({ joueurs: 6 });
-  table.declarerEtPayer([
-    [3, 3],
-    [3, 3],
-    [3, 3],
-    [3, 3],
-    [3, 3],
-    [3, 0],
-  ]);
+  const joueurs = table.joueurs;
+  // Déclare les six, puis paie F (le menteur) ET quatre autres — en laissant
+  // UN paiement en suspens pour empêcher la clôture anticipée (RG-49, CA-49)
+  // d'ÉMETTRE une révélation avant la mesure. F doit avoir payé pour que son
+  // mensonge existe déjà ; qui reste en suspens parmi les autres n'a pas
+  // d'incidence sur l'éligibilité VOISINAGE autour de J0.
+  const couples: readonly (readonly [number, number])[] = [
+    [3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 0],
+  ];
+  joueurs.forEach((joueur, index) => table.exiger(joueur, 'declarer_contribution', { montant: couples[index]![0] }));
+  // J1 : ni F (J5, le menteur) ni l'un de ses deux voisins cycliques (J0, J4).
+  const enSuspens = joueurs[1]!;
+  joueurs.filter((joueur) => joueur !== enSuspens).forEach((joueur) => {
+    const index = joueurs.indexOf(joueur);
+    table.exiger(joueur, 'payer_secret', { montant: couples[index]![1] });
+  });
+
   const avant = suspectsPublics(table.etat, table.manche(1));
   const candidat = candidatsEligibles(table.etat, table.manche(1)).find(
     (c) => c.gabarit === 'VOISINAGE' && c.cibles[0] === 'J0',

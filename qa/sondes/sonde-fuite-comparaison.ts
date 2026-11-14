@@ -13,7 +13,7 @@
 // Attendu SPEC, catalogue_revelations / COMPARAISON : « interdit si l'énoncé
 // combiné aux déclarations publiques suffit à désigner un menteur unique ».
 
-import { candidatsEligibles, declareDe, payeDe, selectionnerRevelation } from '@gdv/moteur';
+import { candidatsEligibles, creerAleaSfc32, declareDe, payeDe, selectionnerRevelation } from '@gdv/moteur';
 
 import { Banc, bilan, mesure, titre, verdict } from './banc.ts';
 
@@ -52,7 +52,7 @@ mesure(
   'candidats éligibles',
   candidats.map((candidat) => [candidat.gabarit, candidat.cibles.join('+')]),
 );
-const choisi = selectionnerRevelation(banc.etat, manche);
+const choisi = selectionnerRevelation(banc.etat, manche, creerAleaSfc32('sonde-fuite-comparaison'));
 mesure('révélation SÉLECTIONNÉE', choisi === null ? null : [choisi.gabarit, choisi.cibles]);
 
 titre('Trame réellement émise à tous les joueurs');

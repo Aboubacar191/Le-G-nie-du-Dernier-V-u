@@ -1,6 +1,6 @@
 // SONDE — cas_limites de la SPEC, choisis parmi les plus susceptibles de casser.
 
-import { candidatsEligibles, rejoindreSession, selectionnerRevelation } from '@gdv/moteur';
+import { candidatsEligibles, creerAleaSfc32, rejoindreSession, selectionnerRevelation } from '@gdv/moteur';
 import type { Clause } from '@gdv/partage';
 
 import { Banc, bilan, mesure, titre, verdict } from './banc.ts';
@@ -58,7 +58,7 @@ tous.declarerPuisPayer([
 ]);
 const candidatsTous = candidatsEligibles(tous.etat, tous.manche(1));
 mesure('gabarits éligibles', [...new Set(candidatsTous.map((candidat) => candidat.gabarit))]);
-mesure('sélection', selectionnerRevelation(tous.etat, tous.manche(1))?.gabarit ?? null);
+mesure('sélection', selectionnerRevelation(tous.etat, tous.manche(1), creerAleaSfc32('cl-04'))?.gabarit ?? null);
 verdict('CL-04 — COMPTAGE écarté quand k == nb_joueurs', !candidatsTous.some((candidat) => candidat.gabarit === 'COMPTAGE'));
 
 titre('CL-05 — somme des poids nulle : tous les contributeurs démasqués');
@@ -184,7 +184,7 @@ minuscule.declarerPuisPayer([
 ]);
 mesure('contributions', minuscule.manche(1).contributions.map((c) => [c.joueur_id, c.montant_declare, c.montant_paye]));
 mesure('candidats éligibles', candidatsEligibles(minuscule.etat, minuscule.manche(1)).map((c) => c.gabarit));
-mesure('sélection', selectionnerRevelation(minuscule.etat, minuscule.manche(1)));
+mesure('sélection', selectionnerRevelation(minuscule.etat, minuscule.manche(1), creerAleaSfc32('cl-05')));
 if (minuscule.etat.phase !== 'REVELATION' && minuscule.etat.phase !== 'ENQUETES_ACCUSATIONS') minuscule.allerA('REVELATION');
 mesure('révélations émises', minuscule.manche(1).revelations.length);
 mesure('écart total émis malgré tout', minuscule.pour('J1', 'revelation_ecart_total').length);

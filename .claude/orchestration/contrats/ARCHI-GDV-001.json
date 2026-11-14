@@ -190,7 +190,7 @@
       "unicite_composite": ["UNIQUE(session_id, pseudo)", "UNIQUE(session_id, position_cercle) WHERE position_cercle IS NOT NULL", "UNIQUE(session_id) WHERE est_hote = 1"],
       "contraintes": ["CHECK(solde_pieces >= 0) — RG-41 garanti aussi par la base, pas seulement par le code", "position_cercle forme une permutation complète des joueurs de la session après PLACEMENT (RG-06)", "pseudo unique au sein d'une session ; le même pseudo dans deux sessions distinctes est autorisé (cas limite SPEC)"],
       "champs_secrets": ["jeton_session_hache", "role_secret", "mission_secrete", "solde_pieces", "score_activite"],
-      "_note_secret": "role_secret, mission_secrete et solde_pieces ne sortent que vers leur propriétaire, jusqu'à l'écran de scores (RG-58). score_activite est ajouté par rapport à la SPEC : il sert la loi 3 du génie (RG-24) et n'est jamais émis, car il laisse deviner les enquêtes lancées, qui sont secrètes (RG-27)."
+      "_note_secret": "role_secret, mission_secrete et solde_pieces ne sortent que vers leur propriétaire, jusqu'à l'écran de scores (RG-58). score_activite est ajouté par rapport à la SPEC : il sert la loi 3 du génie (RG-24) et n'est jamais émis. RÉVISÉ (ANO-03, bloquant, conseil LLM 2026-11-14) : il ne compte plus que les accusations, publiques — AUCUN acte secret ou privé n'y entre (ni enquêtes, ni transferts, ni prêts, ni paiements). Reste classé secret par défense en profondeur, sans que cela soit plus strictement nécessaire pour ce seul champ."
     },
     {
       "entite": "manches",

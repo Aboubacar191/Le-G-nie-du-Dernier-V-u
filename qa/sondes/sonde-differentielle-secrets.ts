@@ -147,11 +147,15 @@ const revelationAvec = avecEnquete.pour('J4', 'revelation').map((trame) => trame
 mesure('révélations publiques vues par le tiers J4, sans enquête', revelationSans);
 mesure('révélations publiques vues par le tiers J4, avec enquête', revelationAvec);
 const identiques = JSON.stringify(revelationSans) === JSON.stringify(revelationAvec);
+// RG-24 (ANO-03, corrigé — conseil LLM 2026-11-14) : score_activite ne compte
+// plus que les accusations, publiques par construction. Avant correction, il
+// comptait aussi les enquêtes (poids 2) et les transferts (poids 1), secrets,
+// et CE test mesurait la fuite exacte décrite ici : à égalité de score par
+// ailleurs, ce seul bit secret faisait basculer la cible nommée en manche 2.
 verdict(
   'la révélation publique ne dépend pas de l’existence d’une enquête secrète',
   identiques,
-  'le choix de cible du génie suit score_activite = 3×accusations + 2×enquêtes + 1×transferts ; ' +
-    'les accusations sont publiques, les enquêtes et les transferts ne le sont pas',
+  'score_activite ne compte plus que les accusations (publiques) — RG-24, ANO-03',
 );
 const ecartsEnquete = diff(fluxDe(sansEnquete, 'J4'), fluxDe(avecEnquete, 'J4'));
 mesure('divergences totales dans le flux du tiers J4', ecartsEnquete.length);

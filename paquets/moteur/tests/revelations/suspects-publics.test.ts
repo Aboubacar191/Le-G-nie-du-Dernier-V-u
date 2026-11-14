@@ -39,17 +39,27 @@ import type { EtatSession, Manche, RevelationEmise } from '@gdv/moteur';
 
 import { tableEnDeclaration, type Table } from '../aide/table.ts';
 
-/** Le scénario EXACT de la sonde : six déclarations à 4, J5 paie 1. */
+/**
+ * Le scénario EXACT de la sonde : six déclarations à 4, J5 paie 1.
+ *
+ * Le paiement de J1 reste EN SUSPENS : les six paiements fermeraient la
+ * manche par anticipation (RG-49, CA-49) et ÉMETTRAIENT une révélation réelle
+ * — exactement ce que ce fixture veut observer AVANT, en en injectant une
+ * FAUSSE à la main plus loin. Depuis la correction RG-24 (ANO-03, tirage
+ * aléatoire à égalité de score), cette émission réelle pourrait nommer
+ * N'IMPORTE quel candidat éligible et fausser la mesure « avant émission ».
+ */
 function tableDeLaSonde(): Table {
   const table = tableEnDeclaration({ joueurs: 6, graine: 'ano-04' });
-  table.declarerEtPayer([
-    [4, 4],
-    [4, 4],
-    [4, 4],
-    [4, 4],
-    [4, 4],
-    [4, 1],
-  ]);
+  const couples: readonly (readonly [number, number])[] = [
+    [4, 4], [4, 4], [4, 4], [4, 4], [4, 4], [4, 1],
+  ];
+  const joueurs = table.joueurs;
+  joueurs.forEach((joueur, index) => table.exiger(joueur, 'declarer_contribution', { montant: couples[index]![0] }));
+  joueurs.filter((joueur) => joueur !== joueurs[1]).forEach((joueur) => {
+    const index = joueurs.indexOf(joueur);
+    table.exiger(joueur, 'payer_secret', { montant: couples[index]![1] });
+  });
   return table;
 }
 
