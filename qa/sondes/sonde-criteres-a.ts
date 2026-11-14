@@ -76,7 +76,14 @@ const fuites = autres.filter((joueur) => {
 });
 mesure('rôles et missions de la table', distribution.etat.joueurs.map((joueur) => [joueur.id, joueur.role_secret, joueur.mission_secrete]));
 mesure('fuites détectées', fuites.map((joueur) => joueur.id));
-verdict('CA-05', attributions.length === 1 && fuites.length === 0);
+// RUP-02 (RG-80) : J0 reçoit une trame attribution_privee par JOUEUR de la
+// table (émission uniforme) — la SIENNE en charge complète, les cinq autres
+// en charge neutre {}. Le compte attendu est donc l'effectif, pas 1.
+const reelles = attributions.filter((trame) => Object.keys(trame.charge).length > 0);
+verdict(
+  'CA-05',
+  attributions.length === distribution.joueurs.length && reelles.length === 1 && fuites.length === 0,
+);
 
 titre('CA-06 — 4 rôles présents, aucun au-delà de 2, 1 rôle et 1 mission par joueur');
 for (const effectif of [5, 6, 7, 8]) {
@@ -166,7 +173,10 @@ mesure('porteur', porteur);
 mesure('faiseurs de contrats', faiseurs);
 mesure('destinataires effectifs', recoivent);
 mesure('charge reçue par le porteur', ca12.pour(porteur, 'clause_recue')[0]?.charge);
-verdict('CA-12', JSON.stringify([...recoivent].sort()) === JSON.stringify([...new Set([porteur, ...faiseurs])].sort()));
+// RUP-02 (RG-80) : émission uniforme, plus d'adressage sélectif — TOUS les
+// joueurs reçoivent clause_recue (porteur et faiseurs en charge complète,
+// les autres en charge neutre). Voir sonde-canaux-indirects.ts, section (II).
+verdict('CA-12', recoivent.length === ca12.joueurs.length);
 verdict(
   'CA-12 — la charge ne nomme jamais le porteur',
   ca12.joueurs.every((joueur) => {
@@ -280,8 +290,20 @@ mesure('soldes avant enquête', [ca19.solde('J0'), ca19.solde('J1'), ca19.solde(
 const enquete19 = ca19.cmd('J0', 'lancer_enquete', { cible_joueur_id: 'J5' });
 mesure('CA-19 solde de J0 après enquête', ca19.solde('J0'));
 mesure('CA-19 résultat reçu par J0', ca19.pour('J0', 'resultat_enquete')[0]?.charge);
+const chargeCibleCa19 = ca19.pour('J5', 'resultat_enquete')[0]?.charge;
 mesure('CA-19 trames reçues par la cible J5', ca19.pour('J5', 'resultat_enquete').length);
-verdict('CA-19', enquete19.ok && ca19.solde('J0') === 0 && ca19.pour('J5', 'resultat_enquete').length === 0);
+mesure('CA-19 charge reçue par la cible J5 (doit être neutre)', chargeCibleCa19);
+// RUP-02 (RG-80) : la cible reçoit elle aussi la trame (émission uniforme),
+// mais sa charge doit être neutre — voir sonde-fuite-prets-et-erreurs.ts.
+verdict(
+  'CA-19',
+  enquete19.ok &&
+    ca19.solde('J0') === 0 &&
+    ca19.pour('J5', 'resultat_enquete').length === 1 &&
+    chargeCibleCa19 !== undefined &&
+    !('cible_joueur_id' in chargeCibleCa19) &&
+    !('montant_paye' in chargeCibleCa19),
+);
 const enquete20 = ca19.cmd('J1', 'lancer_enquete', { cible_joueur_id: 'J5' });
 mesure('CA-20 inspecteur : résultat', enquete20.ok ? 'ACCEPTEE' : (enquete20.erreur as { code: string }).code);
 mesure('CA-20 solde de l’inspecteur après enquête', ca19.solde('J1'));

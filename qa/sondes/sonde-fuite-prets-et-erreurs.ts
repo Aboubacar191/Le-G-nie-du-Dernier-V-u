@@ -113,10 +113,20 @@ const accuseSoi = banc3.cmd('J2', 'accuser', { accuse_joueur_id: 'J2' });
 mesure('accusation de soi-même', accuseSoi.ok ? 'accepte' : (accuseSoi.erreur as { code: string }).code);
 verdict('enquête répétée refusée (QUOTA_DEPASSE)', !enquete2.ok);
 verdict('enquête et accusation sur soi refusées (CIBLE_INVALIDE)', !soi.ok && !accuseSoi.ok);
+// RUP-02 (RG-80) : depuis cette rupture, TOUT joueur reçoit CHAQUE type de
+// trame (api.json, migration RUP-02) — J1, la cible, reçoit donc bien une
+// trame resultat_enquete, comme J2 l'enquêteur et comme les quatre autres.
+// L'invariant RG-27 ne porte plus sur la PRÉSENCE de la trame mais sur son
+// CONTENU : seul l'enquêteur reçoit la charge complète (cible_joueur_id,
+// montant_paye) ; tout autre destinataire — la cible comprise — reçoit la
+// charge neutre {numero_manche} déclarée par le schéma (charges-neutres.ts).
+const trameResultatJ1 = banc3.pour('J1', 'resultat_enquete')[0];
 verdict(
-  'la cible d’une enquête ne reçoit aucune trame',
-  banc3.pour('J1', 'resultat_enquete').length === 0 &&
-    banc3.pour('J1').filter((t) => t.ordre > (banc3.pour('J2', 'resultat_enquete')[0]?.ordre ?? 0) - 1 && t.type === 'resultat_enquete').length === 0,
+  'la cible d’une enquête reçoit la trame (émission uniforme) mais sa charge est neutre',
+  trameResultatJ1 !== undefined &&
+    !('cible_joueur_id' in trameResultatJ1.charge) &&
+    !('montant_paye' in trameResultatJ1.charge),
+  `charge reçue par la cible J1 : ${JSON.stringify(trameResultatJ1?.charge)}`,
 );
 
 bilan('fuite-prets-et-erreurs');

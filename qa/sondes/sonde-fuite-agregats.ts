@@ -27,7 +27,7 @@ function chargePublique(banc: Banc, pour: string): Readonly<Record<string, unkno
 
 // --- (1) Parité des paiements secrets déduite du total consolé ---------------
 
-titre('(1) CONSOLATION : nb_impairs = total_paye − 2 × total_consolation');
+titre('(1) CONSOLATION : total_consolation est-il même publié ?');
 const echec = table('consolation-parite');
 echec.imposerClause('CONSOLATION');
 echec.allerA('DECLARATION_PAIEMENT');
@@ -43,31 +43,24 @@ echec.declarerPuisPayer([
 echec.allerA('EXECUTION');
 const chargeEchec = chargePublique(echec, 'J2');
 mesure('charge publique reçue par J2', chargeEchec);
-const totalPaye = Number(chargeEchec.total_paye);
-const totalConsolation = Number(chargeEchec.total_consolation);
-const nbImpairsDeduit = totalPaye - 2 * totalConsolation;
 const nbImpairsReel = echec.manche(1).contributions.filter((c) => (c.montant_paye ?? 0) % 2 === 1).length;
-mesure('nb_impairs DÉDUIT du public', nbImpairsDeduit);
 mesure('nb_impairs RÉEL (secret)', nbImpairsReel);
 mesure(
   'déclarations publiques (toutes paires)',
   echec.manche(1).contributions.map((c) => [c.joueur_id, c.montant_declare]),
 );
+// RG-74, tenu PAR CONSTRUCTION (voir étape 16/17) : même le total agrégé de
+// consolation n'est plus publié du tout — il n'y a donc aucun total_paye −
+// 2 × total_consolation à calculer, puisque le second terme n'existe pas.
 verdict(
-  'le total consolé ne permet pas de retrouver la parité des paiements',
-  nbImpairsDeduit !== nbImpairsReel,
-  `déduit ${String(nbImpairsDeduit)} = réel ${String(nbImpairsReel)} : parité reconstituée`,
-);
-verdict(
-  'les 6 joueurs ne sont pas tous désignés menteurs par ce recoupement',
-  !(nbImpairsDeduit === 6 && echec.manche(1).contributions.every((c) => c.montant_declare % 2 === 0)),
-  'déclaration paire + paiement impair ⇒ menteur prouvé, pour les 6 joueurs ; ' +
-    'c’est exactement ce que le gabarit COMPTAGE interdit à k == nb_joueurs',
+  'total_consolation est ABSENT de la charge publique (RG-74 par construction)',
+  !('total_consolation' in chargeEchec),
+  `champ trouvé : ${JSON.stringify(chargeEchec.total_consolation)}`,
 );
 
-// --- (2) LE_PLUS_GENEREUX : l'argmax des paiements secrets devient public ----
+// --- (2) LE_PLUS_GENEREUX : aucune part individuelle n'est publiée ----------
 
-titre('(2) LE_PLUS_GENEREUX : les parts publiées trahissent le plus gros payeur');
+titre('(2) LE_PLUS_GENEREUX : aucune part par joueur n’est publiée (RG-75/81)');
 const genereux = table('plus-genereux');
 genereux.imposerClause('LE_PLUS_GENEREUX');
 genereux.allerA('DECLARATION_PAIEMENT');
@@ -82,40 +75,37 @@ genereux.declarerPuisPayer([
 genereux.allerA('EXECUTION');
 const chargeGenereux = chargePublique(genereux, 'J3');
 mesure('charge publique reçue par J3', chargeGenereux);
-const parts = chargeGenereux.parts as readonly { joueur_id: string; part: number }[];
 const declarations = genereux.manche(1).contributions.map((c) => [c.joueur_id, c.montant_declare]);
 mesure('déclarations publiques', declarations);
-
-// Inférence d'un tiers : poids_i reconstruit depuis part_i, recompense et somme.
-const recompense = Number(chargeGenereux.recompense);
-const partMax = Math.max(...parts.map((part) => part.part));
-const partMin = Math.min(...parts.map((part) => part.part));
-const doubles = parts.filter((part) => part.part === partMax).map((part) => part.joueur_id);
-mesure('recompense publique', recompense);
-mesure('parts publiées', parts.map((part) => [part.joueur_id, part.part]));
-mesure('joueurs à poids doublé déduits (part maximale)', doubles);
 const argmaxReel = (() => {
   const contributions = genereux.manche(1).contributions;
   const maximum = Math.max(...contributions.map((c) => c.montant_paye ?? 0));
   return contributions.filter((c) => (c.montant_paye ?? 0) === maximum).map((c) => c.joueur_id);
 })();
-mesure('argmax RÉEL des paiements (secret)', argmaxReel);
+mesure('argmax RÉEL des paiements (secret, pour mémoire — jamais exposé)', argmaxReel);
+// Si une répartition par joueur (« parts ») apparaissait un jour dans cette
+// charge, elle trahirait l'argmax des paiements secrets sous cette clause
+// (poids doublé du plus généreux lisible malgré des déclarations égales).
+// Le seul garde-fou robuste est l'ABSENCE du champ, pas une propriété sur sa
+// valeur : c'est ce que ce test prouve, par construction.
 verdict(
-  'les parts publiées ne révèlent pas l’argmax des paiements secrets',
-  JSON.stringify(doubles) !== JSON.stringify(argmaxReel) || partMax === partMin,
-  `déduit ${doubles.join('+')} = réel ${argmaxReel.join('+')} (parts ${String(partMax)} contre ${String(partMin)} à déclarations égales)`,
-);
-verdict(
-  'les autres joueurs ne sont pas prouvés menteurs par ce recoupement',
-  doubles.length !== 1 || new Set(declarations.map((ligne) => ligne[1])).size !== 1,
-  'argmax unique + déclarations toutes égales ⇒ payé(i) < payé(argmax) <= déclaré(i) ' +
-    'pour les 5 autres, donc les 5 autres ont menti',
+  'aucun champ de répartition par joueur (parts/parts_individuelles) n’est publié',
+  !('parts' in chargeGenereux) && !('parts_individuelles' in chargeGenereux),
+  `champs trouvés : ${Object.keys(chargeGenereux).join(', ')}`,
 );
 
 // --- (3) Témoin : bonus_epices_verse ----------------------------------------
 
-titre('(3) Témoin bonus_epices_verse (attendu : sans information)');
-mesure('bonus_epices_verse hors marchand', chargeGenereux.bonus_epices_verse);
+titre('(3) Témoin bonus_epices_verse — RETIRÉ par ADR-TL-21, et c’est voulu');
+// api.json (EvtExecutionResultat.x-retraits-1-2-0.bonus_epices_verse) :
+// l'étape 10 verse le bonus pour TOUT joueur de rôle MARCHAND_EPICES, et RG-04
+// garantit les quatre rôles toujours présents — donc ce booléen vaut
+// IDENTIQUEMENT `reussi`, déjà publié juste à côté. Il n'apporte aucune
+// information, et son retrait de la liste fermée de l'étape 16 ne corrige
+// aucune fuite : c'est un cas à part des trois autres retraits de l'ADR
+// (parts, reliquat_non_distribue, total_consolation), qui eux fermaient des
+// ANO mesurées. Le contrat est explicite : une réintégration ne doit jamais
+// se faire PAR DÉFAUT — elle doit venir avec sa propre preuve.
 const avecMarchand = table('bonus-epices');
 avecMarchand.imposerRole('J4', 'MARCHAND_EPICES');
 avecMarchand.imposerClause('CONSOLATION');
@@ -130,14 +120,12 @@ avecMarchand.declarerPuisPayer([
 ]);
 avecMarchand.allerA('EXECUTION');
 const chargeMarchand = chargePublique(avecMarchand, 'J0');
-mesure('bonus_epices_verse avec un marchand', chargeMarchand.bonus_epices_verse);
-mesure(
-  'le champ est-il un booléen (et non un montant) ?',
-  typeof chargeMarchand.bonus_epices_verse,
-);
+mesure('charge publique avec un marchand', chargeMarchand);
+mesure('bonus_epices_verse est-il absent de la charge publique ?', !('bonus_epices_verse' in chargeMarchand));
 verdict(
-  'bonus_epices_verse ne porte aucun montant ni aucun nombre de bénéficiaires',
-  typeof chargeMarchand.bonus_epices_verse === 'boolean',
+  'bonus_epices_verse est ABSENT de la charge publique (ADR-TL-21)',
+  !('bonus_epices_verse' in chargeMarchand),
+  `clés trouvées : ${Object.keys(chargeMarchand).join(', ')}`,
 );
 
 bilan('fuite-agregats');

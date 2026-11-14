@@ -21,32 +21,29 @@ const lire = (chemin: string): string => readFileSync(join(RACINE, chemin), 'utf
 // --- (A) Mise en cache des réponses /api ------------------------------------
 
 titre('(A) Service worker : la règle « /api jamais en cache » s’applique-t-elle ?');
+// ANO-10, déjà corrigé dans le code (vite.config.ts) ET couvert par un test
+// dédié (manifeste-pwa.test.ts) : urlPattern n'est plus un REGEX littéral
+// ancré sur le chemin (que Workbox exécutait sur url.href, donc ne
+// correspondait jamais), mais un PRÉDICAT testant url.pathname. Cette sonde
+// vérifiait l'ANCIEN motif ; elle est mise à jour pour mesurer le nouveau.
 const config = lire('applications/client/vite.config.ts');
-const motif = /urlPattern:\s*(\/[^,]+\/)\s*,/u.exec(config);
-mesure('urlPattern déclaré', motif?.[1] ?? null);
+const motif = /urlPattern:\s*(\(\{\s*url\s*\}\)\s*=>[^,\n]+)/u.exec(config);
+mesure('urlPattern déclaré (prédicat)', motif?.[1] ?? null);
 mesure('handler déclaré', /handler:\s*'([A-Za-z]+)'/u.exec(config)?.[1] ?? null);
-const MOTIF_API = /^\/api\//u;
+const predicatPathname = (href: string): boolean => new URL(href).pathname.startsWith('/api/');
 const urls = [
   'https://hote.exemple/api/sessions',
   'http://127.0.0.1:5173/api/configuration/defauts',
-  '/api/sessions',
+  'https://hote.exemple/tr',
 ];
 mesure(
-  'RegExpRoute exécute le motif sur url.href — résultats',
-  urls.map((url) => [url, MOTIF_API.test(url)]),
-);
-mesure(
-  'preuve du comportement de Workbox',
-  /regExp\.exec\(url\.href\)/u.test(lire('node_modules/workbox-routing/RegExpRoute.js'))
-    ? 'node_modules/workbox-routing/RegExpRoute.js : regExp.exec(url.href)'
-    : 'motif introuvable',
+  'prédicat sur url.pathname — résultats',
+  urls.map((url) => [url, predicatPathname(url)]),
 );
 verdict(
-  'la règle NetworkOnly sur /api peut s’appliquer à une URL réelle',
-  urls.slice(0, 2).some((url) => MOTIF_API.test(url)),
-  'le motif est ancré sur le CHEMIN alors que Workbox l’exécute sur url.href : ' +
-    'la route ne correspond jamais, et l’engagement ne repose plus que sur l’absence ' +
-    'de toute autre règle de cache',
+  'urlPattern est un prédicat sur url.pathname, pas un regex ancré sur url.href',
+  motif !== null && urls.slice(0, 2).every((url) => predicatPathname(url)) && !predicatPathname(urls[2]),
+  `prédicat trouvé : ${String(motif?.[1])}`,
 );
 mesure('navigateFallbackDenylist', /navigateFallbackDenylist:\s*\[(.+)\]/u.exec(config)?.[1] ?? null);
 
@@ -65,17 +62,25 @@ const sources = [
   'applications/serveur/src/http/routes/sessions.ts',
   'applications/serveur/src/http/routes/groupes.ts',
 ];
-const enregistrees = sources.flatMap((fichier) => [
+// Les quatre modules déclarent leurs chemins SANS le préfixe (serveur.ts:70-72
+// — « encapsulation Fastify : UN seul point d'application du préfixe »). Le
+// préfixe est posé une seule fois à l'enregistrement du plugin englobant
+// ({ prefix: PREFIXE_REST }, lui-même dérivé de servers[0].url du contrat).
+// Comparer les chemins SANS le recomposer reconstitue une fausse alerte.
+const brutes = sources.flatMap((fichier) => [
   ...lire(fichier).matchAll(/serveur\.(?:get|post)(?:<[^>]*>)?\(\s*'([^']+)'/gu),
 ].map((trouve) => trouve[1] ?? ''));
-mesure('routes réellement enregistrées', enregistrees);
+const prefixeRest = /^https?:\/\/[^/]+(\/.+)$/u.exec(contrat.servers[0]?.url ?? '')?.[1] ?? '';
+const enregistrees = brutes.map((chemin) => `${prefixeRest}${chemin}`);
+mesure('préfixe REST dérivé du contrat', prefixeRest);
+mesure('routes réellement enregistrées (après montage du préfixe)', enregistrees);
 mesure('chemins du contrat', cheminsContrat);
-const prefixees = enregistrees.filter((chemin) => chemin.startsWith('/api'));
-mesure('routes servies sous /api', prefixees.length);
+const prefixees = enregistrees.filter((chemin) => chemin.startsWith(prefixeRest) && prefixeRest !== '');
+mesure('routes servies sous le préfixe', prefixees.length);
 verdict(
-  'CONF-11 — les 6 routes sont servies sous le préfixe /api du contrat',
+  'CONF-11 — les 6 routes sont servies sous le préfixe du contrat une fois montées',
   prefixees.length === cheminsContrat.length,
-  `0 route sur ${String(enregistrees.length)} porte le préfixe ; écart confirmé sur les ${String(cheminsContrat.length)} chemins du contrat`,
+  `${String(prefixees.length)} route(s) sur ${String(enregistrees.length)} porte(nt) le préfixe ${prefixeRest} ; attendu ${String(cheminsContrat.length)}`,
 );
 mesure(
   'contournement en développement (vite proxy)',

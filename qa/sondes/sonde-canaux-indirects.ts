@@ -123,11 +123,17 @@ verdict(
   receveursClause.length === partie.joueurs.length || receveursClause.length === 0,
   `seuls ${receveursClause.join('+')} reçoivent une trame clause_recue : un observateur du réseau lit la liste porteur ∪ FAISEUR_CONTRATS`,
 );
+// RUP-02 (RG-80) : il n'existe plus d'adressage sélectif — TOUS les joueurs
+// reçoivent CHAQUE type de trame, chacun au même tour de boucle ; le
+// non-destinataire reçoit la charge NEUTRE du schéma (api.json, migration
+// RUP-02, mesure de recette ANO-02). L'invariant correct est donc l'ÉGALITÉ
+// des six, exactement comme pour clause_recue ci-dessus — PAS l'absence : une
+// trame envoyée à zéro destinataire n'existe plus depuis cette rupture.
 const receveursEnquete = partie.joueurs.filter((j) => partie.pour(j, 'resultat_enquete').length > 0);
 verdict(
-  'la présence d’une trame ne désigne pas l’enquêteur',
-  receveursEnquete.length === 0,
-  `${receveursEnquete.join('+')} est identifié comme enquêteur par le seul volume de trafic (RG-27 : l’existence de l’enquête ne doit être connue que de lui)`,
+  'la présence d’une trame ne désigne pas l’enquêteur (émission uniforme, RUP-02)',
+  receveursEnquete.length === partie.joueurs.length || receveursEnquete.length === 0,
+  `${receveursEnquete.join('+')} reçoit resultat_enquete : devrait être TOUS ou AUCUN, jamais un sous-ensemble (RG-27)`,
 );
 
 bilan('canaux-indirects');

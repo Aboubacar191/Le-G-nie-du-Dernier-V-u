@@ -10,13 +10,17 @@ const ca36 = new Banc({ joueurs: 6, graine: 'ca-36' });
 ca36.demarrer();
 ca36.allerA('NEGOCIATION');
 ca36.exiger('J1', 'transferer_pieces', { cible_joueur_id: 'J2', montant: 3 });
+// RUP-02 (RG-80) : J1 reçoit AUSSI le solde_mis_a_jour déclenché par la mise à
+// jour du solde de J2 (émission uniforme), en charge neutre {}. La charge
+// RÉELLE de J1 est celle qui porte du contenu, pas la dernière par ordre.
 const soldes36 = ca36.pour('J1', 'solde_mis_a_jour');
-mesure('dernière charge de solde de J1', soldes36[soldes36.length - 1]?.charge);
-const elements = (soldes36[soldes36.length - 1]?.charge as { derniers_mouvements: { elements: { contrepartie_joueur_id: string | null }[] } }).derniers_mouvements.elements;
-mesure('clés de la charge', Object.keys(soldes36[soldes36.length - 1]?.charge ?? {}));
+const soldeReelJ1 = soldes36.filter((trame) => Object.keys(trame.charge).length > 0).at(-1);
+mesure('dernière charge RÉELLE de solde de J1', soldeReelJ1?.charge);
+const elements = (soldeReelJ1?.charge as { derniers_mouvements: { elements: { contrepartie_joueur_id: string | null }[] } }).derniers_mouvements.elements;
+mesure('clés de la charge', Object.keys(soldeReelJ1?.charge ?? {}));
 verdict(
   'CA-36',
-  Object.keys(soldes36[soldes36.length - 1]?.charge ?? {}).length === 2 &&
+  Object.keys(soldeReelJ1?.charge ?? {}).length === 2 &&
     elements.every((element) => element.contrepartie_joueur_id === null || element.contrepartie_joueur_id === 'J2'),
 );
 
