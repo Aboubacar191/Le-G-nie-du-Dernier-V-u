@@ -31,6 +31,19 @@ interface Props {
   erreur?: boolean;
   /** Lecture seule hors phase : le tri reste, il n'est plus modifiable. */
   desactive?: boolean;
+  /**
+   * Statut « Scellé / Réfléchit… » par ligne, fidélité maquette (« Offrande
+   * scellée »). DÉCOUPLÉ de `desactive` (trouvé par mesure réelle, conseil
+   * LLM 2026-11-14) : les deux concepts n'ont rien à voir — l'un dit si le
+   * TRI reste modifiable, l'autre si le statut de scellement reste
+   * PERTINENT à montrer. Les confondre masquait le statut exactement pendant
+   * la fenêtre où un joueur, après avoir lui-même scellé, veut voir qui
+   * hésite encore (EcranPaiementSecret.vue) — ce que `desactive` masquait
+   * sans rapport avec son propre rôle. Faux par défaut : une révélation déjà
+   * passée (EcranRevelation.vue) n'a plus rien à dire sur « qui hésite »,
+   * la phase de scellement étant close pour tous.
+   */
+  afficherStatutScelle?: boolean;
   actionVideLibelle?: string;
 }
 
@@ -39,6 +52,7 @@ const props = withDefaults(defineProps<Props>(), {
   chargement: false,
   erreur: false,
   desactive: false,
+  afficherStatutScelle: false,
   actionVideLibelle: '',
 });
 
@@ -162,10 +176,10 @@ const aucuneDeclaration = computed(() => Object.keys(props.declarations).length 
                 v-if="ligne.verdict !== null"
                 class="declarations__verdict"
               >{{ texte(`verdict.${ligne.verdict}`) }}</span>
-              <!-- Fidélité maquette (« Offrande scellée ») : statut SANS montant,
-                   seulement pendant la phase en cours (CONF-12 annulée). -->
+              <!-- Fidélité maquette (« Offrande scellée ») : statut SANS montant
+                   (CONF-12 annulée). -->
               <span
-                v-else-if="!props.desactive"
+                v-else-if="props.afficherStatutScelle"
                 class="declarations__statut"
                 :class="{ 'declarations__statut--scelle': ligne.offrandeScellee }"
               >{{ texte(ligne.offrandeScellee ? 'carte_joueur.offrande_scellee' : 'carte_joueur.offrande_reflechit') }}</span>

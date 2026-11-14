@@ -46,6 +46,15 @@ export interface ContexteEcran {
   readonly a_declare: boolean;
   /** Restitution en cours après reconnexion (RG-73). */
   readonly restitution_en_cours: boolean;
+  /**
+   * Attribution reçue EN DIRECT, pas encore confirmée lue (ECR-09). Le
+   * serveur fusionne DISTRIBUTION et l'ouverture de la manche 1 en une seule
+   * transition atomique (definir_ordre_places) : etat_partie vaut déjà
+   * MANCHE_EN_COURS quand ce signal s'allume, et la manche tourne réellement
+   * dessous. ECR-09 s'impose donc PAR-DESSUS la phase en cours, le temps que
+   * chacun lise à son rythme — personne n'attend personne (DESIGN ECR-09).
+   */
+  readonly attribution_en_attente: boolean;
 }
 
 const ECRAN_PAR_INTENTION: Readonly<Record<IntentionLocale, IdEcran>> = Object.freeze({
@@ -87,15 +96,21 @@ function ecranDePhase(contexte: ContexteEcran): IdEcran {
   return ecran;
 }
 
+/** PLACEMENT distingue l'hôte du marchand, et rien d'autre ne le fait. */
+function ecranDePlacement(contexte: ContexteEcran): IdEcran {
+  return contexte.est_hote ? 'ECR-07' : 'ECR-08';
+}
+
 /** Écran de fond, celui qui occupe l'écran et porte le bandeau de phase. */
 export function ecranPrincipal(contexte: ContexteEcran): IdEcran {
   if (contexte.acces_refuse) return 'ECR-32';
   if (!contexte.session_active) return ECRAN_PAR_INTENTION[contexte.intention];
   if (contexte.restitution_en_cours) return 'ECR-30';
+  if (contexte.attribution_en_attente) return 'ECR-09';
 
   const etat = contexte.etat_partie;
   if (etat === null) return 'ECR-06';
-  if (etat === 'PLACEMENT') return contexte.est_hote ? 'ECR-07' : 'ECR-08';
+  if (etat === 'PLACEMENT') return ecranDePlacement(contexte);
   if (etat === 'MANCHE_EN_COURS' || etat === 'DERNIER_VOEU') return ecranDePhase(contexte);
   return ECRAN_PAR_ETAT[etat] ?? 'ECR-06';
 }

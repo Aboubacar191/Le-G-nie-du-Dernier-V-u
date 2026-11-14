@@ -516,7 +516,6 @@
       "pret": "J'ai mémorisé, masquer",
       "pret_desactive": "Tu n'as pas encore reçu ton pli.",
       "avancement": "{k} marchands sur {n} ont lu",
-      "confirme": "Tu es prêt.",
       "avertissement_discretion": "Ne montre pas ton écran. Ce qui suit n'est connu que de toi.",
       "pied_accessible": "Ton rôle et ta mission restent accessibles à tout moment depuis « {pastille} »."
     },

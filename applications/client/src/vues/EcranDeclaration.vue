@@ -82,6 +82,7 @@ function declarer(): void {
       :ordre="[...magasin.etat.ordre_cercle]"
       :declarations="magasin.etat.declarations"
       :desactive="horsPhase"
+      :afficher-statut-scelle="!horsPhase"
       :action-vide-libelle="texte('ecran.declaration.declarer_ma_contribution')"
     />
 

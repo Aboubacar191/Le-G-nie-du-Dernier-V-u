@@ -49,9 +49,11 @@ const FICHIERS: Readonly<Record<IdEcran, string>> = {
   'ECR-07': 'EcranPlacementHote.vue',
   'ECR-08': 'EcranAttentePlacement.vue',
   'ECR-09': 'EcranAttributionPrivee.vue',
+  // ECR-10/ECR-12 partagent le même fichier depuis la fusion vœu+négociation
+  // (conseil LLM 2026-11-14) : voir l'en-tête de EcranAnnonceVoeu.vue.
   'ECR-10': 'EcranAnnonceVoeu.vue',
   'ECR-11': 'EcranPliGenie.vue',
-  'ECR-12': 'EcranNegociation.vue',
+  'ECR-12': 'EcranAnnonceVoeu.vue',
   'ECR-13': 'EcranTransfert.vue',
   'ECR-14': 'EcranPropositionPret.vue',
   'ECR-15': 'EcranReponsePret.vue',
@@ -83,6 +85,7 @@ const base: ContexteEcran = Object.freeze({
   est_hote: false,
   a_declare: false,
   restitution_en_cours: false,
+  attribution_en_attente: false,
 });
 
 test('les 32 écrans du contrat existent, ni plus ni moins', () => {
@@ -214,4 +217,31 @@ test('les surfaces superposées ne remplacent JAMAIS l’écran de phase', () =>
 test('une projection pas encore reçue ne fabrique aucun écran de jeu', () => {
   const ecran = ecranPrincipal({ ...base, etat_partie: null, phase: null });
   assert.equal(ecran, 'ECR-06', 'avant projection, la salle d’attente est le repli sûr');
+});
+
+// definir_ordre_places fusionne DISTRIBUTION et l'ouverture de la manche 1 en
+// une seule transition serveur atomique : etat_partie vaut déjà MANCHE_EN_COURS
+// quand l'attribution arrive. ECR-09 ne peut donc être atteint que par cette
+// voie, jamais par ECRAN_PAR_ETAT.DISTRIBUTION — voir EcranAttributionPrivee.vue.
+test('ECR-09 s’impose PAR-DESSUS la phase déjà en cours tant que l’attribution n’est pas confirmée lue', () => {
+  const enCoursDeManche = { ...base, etat_partie: 'MANCHE_EN_COURS' as EtatPartie, phase: 'VOEU' as Phase };
+  assert.equal(
+    ecranPrincipal({ ...enCoursDeManche, attribution_en_attente: true }),
+    'ECR-09',
+    'reçue en direct, non confirmée : ECR-09 prime sur la manche déjà commencée dessous',
+  );
+  assert.equal(
+    ecranPrincipal({ ...enCoursDeManche, attribution_en_attente: false }),
+    'ECR-10',
+    'confirmée (ou reçue par resynchronisation, jamais en direct) : la phase redevient seule maîtresse',
+  );
+  // Priorité : accès refusé et restitution gardent le dernier mot sur ECR-09.
+  assert.equal(
+    ecranPrincipal({ ...enCoursDeManche, attribution_en_attente: true, acces_refuse: true }),
+    'ECR-32',
+  );
+  assert.equal(
+    ecranPrincipal({ ...enCoursDeManche, attribution_en_attente: true, restitution_en_cours: true }),
+    'ECR-30',
+  );
 });

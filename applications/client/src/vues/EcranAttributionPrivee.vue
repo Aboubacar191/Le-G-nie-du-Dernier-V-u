@@ -12,6 +12,18 @@
 // « k marchands sur n ont lu » ; aucun événement du protocole ne publie cette
 // information, et je n'en invente pas. Écart consigné au rapport.
 //
+// MONTAGE — BOGUE CORRIGÉ : definir_ordre_places fusionne DISTRIBUTION et
+// l'ouverture de la manche 1 (MANCHE_EN_COURS, phase VOEU) en une SEULE
+// transition serveur atomique (RG-07 côté moteur). etat_partie ne vaut donc
+// JAMAIS « DISTRIBUTION » pour un client : cet écran était du code mort,
+// jamais monté, bien que ECR_PAR_ETAT.DISTRIBUTION pointe dessus. Chacun lit
+// pourtant à son rythme (ci-dessus), donc le correctif reste côté CLIENT :
+// resolution-ecran.ts impose ECR-09 PAR-DESSUS la phase déjà en cours tant
+// que etat.attribution_vue est faux (magasin/etat.ts), et le bouton
+// « J'ai mémorisé, masquer » le repasse à vrai — la manche tournait déjà
+// dessous pendant la lecture, exactement comme à une vraie table où le
+// sablier ne s'arrête pas pendant qu'on regarde sa main.
+//
 // ÉTATS (DESIGN ECR-09)
 // chargement   : deux voiles en état chargement, aux dimensions finales.
 // contenu      : deux cartes voilées empilées, zone de maintien en bas de
@@ -22,7 +34,7 @@
 //                confirmation reste désactivé avec sa raison.
 // acces_refuse : jeton invalide, ECR-32. Jamais d'attribution partielle.
 
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import BoutonAction from '../composants/BoutonAction.vue';
 import VoileSecret from '../composants/VoileSecret.vue';
@@ -30,7 +42,6 @@ import { texte } from '../logique/contenu.ts';
 import { utiliserMagasin } from '../magasin/injection.ts';
 
 const magasin = utiliserMagasin();
-const pret = ref(false);
 
 // Solde de DÉPART, identique pour tous : une valeur de configuration PUBLIQUE
 // (pieces_initiales), pas le solde privé — rien à voiler, chacun la connaît
@@ -107,13 +118,13 @@ const attributionRecue = computed(() => role.value !== null);
 
     <footer class="attribution__pied">
       <BoutonAction
-        :libelle="pret ? texte('ecran.attribution.confirme') : texte('ecran.attribution.pret')"
+        :libelle="texte('ecran.attribution.pret')"
         variante="principal"
         taille="lg"
         pleine-largeur
-        :desactive="!attributionRecue || pret"
+        :desactive="!attributionRecue"
         :raison="texte('ecran.attribution.pret_desactive')"
-        @agir="pret = true"
+        @agir="magasin.confirmerAttributionLue()"
       />
     </footer>
   </main>

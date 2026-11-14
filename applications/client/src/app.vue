@@ -54,6 +54,7 @@ const contexte = computed((): ContexteEcran => ({
   est_hote: magasin.etat.moi?.est_hote === true,
   a_declare: magasin.etat.moi?.montant_declare !== null && magasin.etat.moi !== null,
   restitution_en_cours: magasin.etat.restitution_en_cours,
+  attribution_en_attente: magasin.etat.attribution !== null && !magasin.etat.attribution_vue,
 }));
 
 const ecran = computed(() => ECRANS_PAR_ID[ecranPrincipal(contexte.value)]);

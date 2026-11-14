@@ -30,7 +30,6 @@ import EcranExecution from './EcranExecution.vue';
 import EcranInvitation from './EcranInvitation.vue';
 import EcranLiaisonPerdue from './EcranLiaisonPerdue.vue';
 import EcranMonOr from './EcranMonOr.vue';
-import EcranNegociation from './EcranNegociation.vue';
 import EcranPaiementSecret from './EcranPaiementSecret.vue';
 import EcranPartieAbandonnee from './EcranPartieAbandonnee.vue';
 import EcranPlacementHote from './EcranPlacementHote.vue';
@@ -57,9 +56,14 @@ export const ECRANS_PAR_ID: Readonly<Record<IdEcran, Component>> = Object.freeze
   'ECR-07': EcranPlacementHote,
   'ECR-08': EcranAttentePlacement,
   'ECR-09': EcranAttributionPrivee,
+  // ECR-10 et ECR-12 partagent désormais le MÊME composant (fidélité maquette,
+  // conseil LLM 2026-11-14) : l'annonce du vœu et la négociation s'affichent
+  // sur un seul écran continu, sans démontage ni remontage à la transition
+  // de phase. Les deux phases serveur restent distinctes et minutées dessous
+  // — voir l'en-tête de EcranAnnonceVoeu.vue.
   'ECR-10': EcranAnnonceVoeu,
   'ECR-11': EcranPliGenie,
-  'ECR-12': EcranNegociation,
+  'ECR-12': EcranAnnonceVoeu,
   'ECR-13': EcranTransfert,
   'ECR-14': EcranPropositionPret,
   'ECR-15': EcranReponsePret,

@@ -32,6 +32,9 @@ export const APPLICATEURS_PRIVE: Readonly<Record<string, Applicateur>> = Object.
   attribution_privee: (etat, charge) => {
     const attribution = charge as ChargeAttributionPrivee;
     etat.attribution = attribution;
+    // Reçu EN DIRECT : c'est le seul moment où ECR-09 doit s'imposer par-
+    // dessus la manche déjà commencée dessous (voir attribution_vue, etat.ts).
+    etat.attribution_vue = false;
     if (etat.moi !== null) {
       etat.moi = {
         ...etat.moi,

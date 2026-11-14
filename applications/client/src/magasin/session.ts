@@ -48,6 +48,8 @@ export interface Magasin {
   reprendre(): boolean;
   envoyer(type: TypeCommande, charge?: Readonly<Record<string, unknown>>): string | null;
   signaler(alerte: Alerte | null): void;
+  /** ECR-09 confirmé lu : rend la main à l'écran de phase déjà en cours dessous. */
+  confirmerAttributionLue(): void;
   quitter(): void;
   codeAdhesionPrerempli(): string;
   preremplirCode(code: string): void;
@@ -196,6 +198,9 @@ export function creerMagasin(options: OptionsMagasin): Magasin {
     envoyer: (type, charge = {}) => envoyer(ctx, type, charge),
     signaler(alerte): void {
       etat.alerte = alerte;
+    },
+    confirmerAttributionLue(): void {
+      etat.attribution_vue = true;
     },
     quitter(): void {
       ctx.client?.fermer();

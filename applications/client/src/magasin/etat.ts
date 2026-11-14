@@ -94,6 +94,19 @@ export interface EtatLocal {
   // --- mes secrets (privés, en mémoire seulement) ----------------------------
   attribution: ChargeAttributionPrivee | null;
   /**
+   * ECR-09 lu et masqué. Débute à `true` : un joueur qui se CONNECTE avec une
+   * attribution déjà reçue (etat_complet_prive, reconnexion) ne doit JAMAIS
+   * être renvoyé sur l'identité — il a forcément déjà dépassé ce moment,
+   * puisque definir_ordre_places (DISTRIBUTION) et l'ouverture de la manche 1
+   * (MANCHE_EN_COURS) sont une seule transition serveur atomique : aucun
+   * etat_partie distinct n'est jamais observable pour DISTRIBUTION. Le
+   * réducteur attribution_privee (reducteurs-prive.ts) le repasse à `false`
+   * UNIQUEMENT quand l'événement arrive EN DIRECT, c'est-à-dire au moment
+   * réel de la distribution — c'est ce signal-là, et lui seul, qui doit
+   * montrer ECR-09 par-dessus la manche déjà commencée dessous.
+   */
+  attribution_vue: boolean;
+  /**
    * Clause reçue. Null signifie « aucun pli » — l'écran ne doit PAS varier
    * selon cette valeur avant révélation volontaire (RG-77, M7-a).
    */
@@ -145,6 +158,7 @@ export function etatInitial(): EtatLocal {
     accusations: [],
     execution: null,
     attribution: null,
+    attribution_vue: true,
     clause_recue: null,
     resultats_enquete: [],
     mes_mouvements: null,

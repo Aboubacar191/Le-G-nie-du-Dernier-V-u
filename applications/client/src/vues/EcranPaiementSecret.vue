@@ -111,11 +111,16 @@ function sceller(): void {
         {{ texte('ecran.paiement.rappel_declare', { declare }) }}
       </p>
 
+      <!-- Fidélité maquette (« Offrande scellée », conseil LLM 2026-11-14) :
+           affiche qui a scellé pendant que CE joueur attend les autres —
+           trou réel trouvé par mesure (desactive masquait ce statut sans
+           rapport avec son propre rôle de tri). Voir ListeDeclarationsPubliques. -->
       <ListeDeclarationsPubliques
         :joueurs="magasin.etat.joueurs"
         :ordre="[...magasin.etat.ordre_cercle]"
         :declarations="magasin.etat.declarations"
         desactive
+        afficher-statut-scelle
       />
 
       <!-- Tiers inférieur : là où la main qui tient l'appareil fait écran. -->
