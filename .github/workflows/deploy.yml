@@ -39,9 +39,9 @@ jobs:
       - name: Archiver le code source (hors node_modules/dist/données)
         run: |
           tar -czf source.tar.gz \
+            --exclude='node_modules' --exclude='dist' --exclude='*/donnees' --exclude='*/tests' \
             package.json package-lock.json tsconfig.base.json \
-            paquets applications deploiement \
-            --exclude='node_modules' --exclude='dist' --exclude='*/donnees' --exclude='*/tests'
+            paquets applications deploiement
 
       - name: Déployer sur le VPS (build + up docker compose)
         env:
