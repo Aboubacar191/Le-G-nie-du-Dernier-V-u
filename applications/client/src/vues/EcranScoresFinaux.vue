@@ -12,7 +12,8 @@
 // ÉTATS (DESIGN ECR-27)
 // chargement   : squelette de nb_joueurs lignes.
 // contenu      : classement décroissant, ligne du vainqueur distinguée par la
-//                surface, la bordure ET un badge textuel. Sections dévoilables.
+//                surface, la bordure ET un badge textuel. Tout visible d'emblée
+//                (RG-58) : aucune section n'est repliée ni à dévoiler.
 // vide         : partie terminée sans manche jouée.
 // erreur       : scores non reçus. Aucun score partiel : un classement faux est
 //                pire qu'un classement absent.
@@ -66,6 +67,9 @@ function rejouer(): void {
       :genie-libere="scores?.genie_libere ?? false"
       :victoire-par-liberation="scores?.victoire_par_liberation ?? false"
       :mode-avance="modeAvance"
+      :nb-manches-closes="magasin.etat.nb_manches_closes"
+      :nb-voeux-exauces="magasin.etat.nb_voeux_exauces"
+      :nb-mensonges-demasques="magasin.etat.nb_mensonges_demasques"
       :chargement="scores === null"
       @rejouer="rejouer"
     />
@@ -101,7 +105,10 @@ function rejouer(): void {
   display: flex;
   flex-direction: column;
   gap: var(--gdv-espacement-16);
-  min-block-size: 100vh;
+  /* Reçoit le budget réel de coquille__ecran au lieu de le dépasser : voir
+     EcranPaiementSecret.vue pour la justification complète. */
+  flex: 1 1 auto;
+  min-block-size: 0;
   padding: var(--gdv-gouttiere-ecran);
   background: var(--gdv-surface-fond);
   color: var(--gdv-texte-principal);

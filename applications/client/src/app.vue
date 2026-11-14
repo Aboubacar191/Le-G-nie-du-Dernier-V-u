@@ -17,6 +17,7 @@ import { computed, onMounted, ref } from 'vue';
 
 import BandeauPhase from './composants/BandeauPhase.vue';
 import BoutonAction from './composants/BoutonAction.vue';
+import GardeOrientation from './composants/GardeOrientation.vue';
 import { utiliserHorlogeAffichage } from './composables/horloge-affichage.ts';
 import { texte } from './logique/contenu.ts';
 import { ecranPrincipal, type ContexteEcran } from './logique/resolution-ecran.ts';
@@ -76,6 +77,8 @@ const nbManches = computed((): number | null => {
 
 <template>
   <div class="coquille">
+    <GardeOrientation />
+
     <BandeauPhase
       v-if="bandeauVisible"
       :numero-manche="magasin.etat.numero_manche"
@@ -123,7 +126,18 @@ const nbManches = computed((): number | null => {
   display: flex;
   flex-direction: column;
   gap: var(--gdv-espacement-12);
-  min-block-size: 100vh;
+  /* block-size FIXE (pas min-block-size) : conception_initiale exige qu'aucun
+     écran n'ait besoin de défiler pour atteindre son action principale. Un
+     minimum laissait le contenu pousser la page au-delà du viewport dès qu'il
+     ne tenait pas ; la coquille entière ne défile JAMAIS elle-même — c'est à
+     chaque écran, à l'intérieur de son budget réel, de redistribuer l'espace
+     (priorité à la fenêtre de lecture d'un secret, M4) ou, pour le seul
+     contenu à cardinalité variable (liste de 5 à 8 joueurs), de défiler en
+     interne (conseil LLM, 2026-11-14). overflow caché ICI, jamais plus bas :
+     coquille__ecran garde un filet de secours en défilement pour tout écran
+     pas encore audité plutôt que de perdre silencieusement du contenu. */
+  block-size: 100dvh;
+  overflow: hidden;
   background: var(--gdv-surface-fond);
   color: var(--gdv-texte-principal);
   font-family: var(--gdv-famille-interface);
@@ -137,7 +151,20 @@ const nbManches = computed((): number | null => {
 }
 
 .coquille__ecran {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
+  /* min-block-size: 0, pas la valeur initiale "auto" — sinon un enfant flex
+     refuse de rétrécir sous la taille intrinsèque de son contenu, et le
+     budget fixe de la coquille ne sert à rien. overflow-y: auto est le filet
+     de secours : si un écran donné déborde quand même, IL défile seul (pas
+     la coquille), au lieu de perdre du contenu sous overflow: hidden. Pour
+     qu'un écran profite réellement du budget (plutôt que de scroller dans
+     cette boîte), SON propre élément racine doit lui aussi porter
+     `flex: 1 1 auto; min-block-size: 0;` — fait au cas par cas, écran par
+     écran mesuré, pas en bloc sur les 32 (RUP responsive, conseil LLM). */
+  min-block-size: 0;
+  overflow-y: auto;
 }
 
 .coquille__pastille {

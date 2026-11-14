@@ -50,6 +50,15 @@ function appliquerEtatComplet(etat: EtatLocal, charge: unknown): void {
   etat.joueurs = projection.joueurs;
   etat.manche_courante = projection.manche_courante;
   etat.historique_manches = projection.historique_manches;
+  // Recalcul en BLOC (remplace, n'ajoute pas) : couvre d'un coup tout ce qui a
+  // fermé avant cette connexion, y compris pour un joueur qui se reconnecte en
+  // cours de partie et n'a vécu aucun des événements temps réel manqués.
+  etat.nb_manches_closes = projection.historique_manches.length;
+  etat.nb_voeux_exauces = projection.historique_manches.filter((manche) => manche.reussi === true).length;
+  etat.nb_mensonges_demasques = projection.historique_manches.reduce(
+    (total, manche) => total + manche.accusations.filter((accusation) => accusation.verdict === 'MENTEUR').length,
+    0,
+  );
   etat.phase = projection.phase;
   etat.phase_fin_at = projection.phase_fin_at;
   etat.numero_manche = projection.manche_courante?.numero ?? null;

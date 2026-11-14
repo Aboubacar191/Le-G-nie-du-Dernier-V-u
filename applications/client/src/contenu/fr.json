@@ -183,7 +183,9 @@
     "reglages": "Réglages",
     "basculer_theme_clair": "Passer au thème clair",
     "basculer_theme_sombre": "Passer au thème sombre",
-    "avertissement_lecteur_ecran": "Si tu utilises un lecteur d'écran, tes secrets seront lus à voix haute devant la table. Un écouteur est vivement conseillé : aucune interface ne peut résoudre cela."
+    "avertissement_lecteur_ecran": "Si tu utilises un lecteur d'écran, tes secrets seront lus à voix haute devant la table. Un écouteur est vivement conseillé : aucune interface ne peut résoudre cela.",
+    "orientation_tourne_titre": "Tourne ton téléphone",
+    "orientation_tourne_detail": "Ce jeu se joue à la verticale, comme tenir une pièce dans sa main."
   },
 
   "bandeau_phase": {
@@ -332,7 +334,9 @@
     "classement_informatif": "À titre informatif",
     "aucune_trace": "Cette partie n'a laissé aucune trace",
     "erreur": "Les comptes du génie n'ont pas pu être relus",
-    "close": "Cette partie est close"
+    "close": "Cette partie est close",
+    "resume_voeux": "{exauces} vœu(x) exaucé(s) sur {total}",
+    "resume_mensonges": "{nombre} mensonge(s) démasqué(s) cette partie"
   },
 
   "ecran": {

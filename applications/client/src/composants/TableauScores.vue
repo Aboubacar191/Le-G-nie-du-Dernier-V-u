@@ -31,6 +31,10 @@ interface Props {
   genieLibere?: boolean;
   victoireParLiberation?: boolean;
   modeAvance?: boolean;
+  /** Résumé global (RG-58/RG-75 : rien ici qu'un comptage déjà public ailleurs). */
+  nbManchesCloses?: number;
+  nbVoeuxExauces?: number;
+  nbMensongesDemasques?: number;
   chargement?: boolean;
   erreur?: boolean;
 }
@@ -39,6 +43,9 @@ const props = withDefaults(defineProps<Props>(), {
   genieLibere: false,
   victoireParLiberation: false,
   modeAvance: false,
+  nbManchesCloses: 0,
+  nbVoeuxExauces: 0,
+  nbMensongesDemasques: 0,
   chargement: false,
   erreur: false,
 });
@@ -101,6 +108,17 @@ const vainqueurParLiberation = computed((): LigneClassement | null => {
         class="scores__informatif"
       >
         {{ texte('scores.classement_informatif') }}
+      </p>
+
+      <!-- Résumé global (fidélité maquette, écran « Fin de partie ») : deux
+           comptages PUBLICS, jamais un total de mensonges non démasqués
+           (RG-75 — ce total n'existe nulle part, pas même ici). -->
+      <p
+        v-if="props.nbManchesCloses > 0"
+        class="scores__resume"
+      >
+        {{ texte('scores.resume_voeux', { exauces: props.nbVoeuxExauces, total: props.nbManchesCloses }) }}
+        {{ texte('scores.resume_mensonges', { nombre: props.nbMensongesDemasques }) }}
       </p>
 
       <table class="scores__table">
@@ -196,6 +214,12 @@ const vainqueurParLiberation = computed((): LigneClassement | null => {
 }
 
 .scores__informatif {
+  margin: 0;
+  color: var(--gdv-texte-secondaire);
+  font-size: var(--gdv-role-meta);
+}
+
+.scores__resume {
   margin: 0;
   color: var(--gdv-texte-secondaire);
   font-size: var(--gdv-role-meta);

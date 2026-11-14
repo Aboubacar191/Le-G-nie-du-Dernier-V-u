@@ -7,7 +7,7 @@
 //
 // Trois exceptions, et trois seulement, toutes motivées :
 //  1. le ZÉRO sans unité et les pourcentages, qui ne sont pas des dimensions ;
-//  2. les mots-clés de disposition (auto, 100%, 100vh, 1fr, fit-content) ;
+//  2. les mots-clés de disposition (auto, 100%, 100vh/100dvh, 1fr, fit-content) ;
 //  3. les points de rupture dans une règle @media — contrainte TECHNIQUE et non
 //     préférence : une variable CSS ne fonctionne pas dans une @media selon la
 //     spécification. Le test vérifie en plus que la valeur employée DÉRIVE d'un
@@ -97,9 +97,9 @@ test('aucune couleur fonctionnelle ni nommée dans un composant ou un écran', (
 });
 
 /** Valeurs de longueur admises hors jeton : mots-clés de disposition. */
-const DISPOSITION = /^(100vh|100vw|100%)$/u;
+const DISPOSITION = /^(100vh|100dvh|100svh|100lvh|100vw|100%)$/u;
 
-const MOTIF_LONGUEUR = /\b\d+(?:\.\d+)?(?:px|rem|em|pt|vw|vh|ch)\b/gu;
+const MOTIF_LONGUEUR = /\b\d+(?:\.\d+)?(?:px|rem|em|pt|vw|vh|dvh|svh|lvh|ch)\b/gu;
 
 /** Longueurs littérales d'une ligne, exceptions du contrat déjà écartées. */
 function longueursFautives(ligne: string): readonly string[] {

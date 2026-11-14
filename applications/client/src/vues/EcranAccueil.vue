@@ -215,7 +215,10 @@ function reprendre(): void {
   display: flex;
   flex-direction: column;
   gap: var(--gdv-espacement-24);
-  min-block-size: 100vh;
+  /* Reçoit le budget réel de coquille__ecran au lieu de le dépasser : voir
+     EcranPaiementSecret.vue pour la justification complète. */
+  flex: 1 1 auto;
+  min-block-size: 0;
   padding: var(--gdv-gouttiere-ecran);
   background: var(--gdv-surface-fond);
   color: var(--gdv-texte-principal);
@@ -236,7 +239,7 @@ function reprendre(): void {
   justify-content: center;
   gap: var(--gdv-espacement-24);
   inline-size: 100%;
-  min-block-size: 100vh;
+  min-block-size: 100dvh;
   padding: var(--gdv-espacement-48) var(--gdv-espacement-32);
   border: none;
   background: transparent;

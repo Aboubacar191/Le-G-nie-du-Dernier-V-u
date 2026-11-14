@@ -134,6 +134,10 @@ function declarer(): void {
 .declaration {
   display: flex;
   flex-direction: column;
+  /* Reçoit le budget réel de coquille__ecran au lieu de le dépasser : voir
+     EcranPaiementSecret.vue pour la justification complète. */
+  flex: 1 1 auto;
+  min-block-size: 0;
   gap: var(--gdv-espacement-12);
   padding: var(--gdv-gouttiere-ecran);
 }

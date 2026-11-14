@@ -1,9 +1,9 @@
 {
  "id": "DESIGN-GDV-001",
  "cible_spec": "SPEC-GDV-001",
- "version": "1.1.0",
+ "version": "1.2.0",
  "auteur": "ux-ui-designer",
- "portee": "ADR-CP-03 + decision ESC-01 TRANCHEE : parcours, structure d'ecrans, etats de composants, et desormais les VALEURS de theme reelles de l'univers Zafyr, relevees dans le prototype mobile livre par le client. Les 29 noms de token, les 22 composants, les 32 ecrans et les 8 mesures antifuite sont inchanges depuis la v1.0.0 : seules les valeurs de couleur, les familles typographiques et l'iconographie changent, exactement comme tokens._convention l'avait prevu.",
+ "portee": "ADR-CP-03 + decision ESC-01 TRANCHEE : parcours, structure d'ecrans, etats de composants, et desormais les VALEURS de theme reelles de l'univers Zafyr, relevees dans le prototype mobile livre par le client. Les 29 noms de token, les 22 composants, les 32 ecrans et les 8 mesures antifuite sont inchanges depuis la v1.0.0 : seules les valeurs de couleur, les familles typographiques et l'iconographie changent, exactement comme tokens._convention l'avait prevu. v1.2.0 ajoute UN token (composant.hauteur.liste_defilante_visible), trouve necessaire par une mesure reelle (pilote Playwright, conseil LLM 2026-11-14) au lieu d'etre anticipe au design : a l'effectif max, ECR-17 (paiement secret) debordait de 130 a 496px selon la taille de telephone, le contenu a cardinalite variable (la liste publique des declarations) et le plancher absolu de secret.hauteur_fenetre_lecture se disputant le meme espace. Voir sa note pour la decision retenue.",
  "principes_ergonomiques": {
   "contexte": "5 a 8 joueurs assis en cercle dans la meme piece, telephone en main, phases minutees de 10 a 120 s. L'application ne porte pas la conversation : elle porte les actes secrets et l'arbitrage. Deux contraintes dominent toute esthetique : le voisin voit l'ecran, et la fenetre de saisie est courte.",
   "conception_initiale": "360 px de large, 640 px de haut, une seule main, pouce. Extension ensuite vers 768 / 1024 / 1440. Aucun ecran de jeu n'exige de defilement pour atteindre son action principale a 360 px.",
@@ -282,7 +282,9 @@
     "ligne_tableau": "cible.minimale",
     "carte_joueur": "cible.geante",
     "badge_lampe": "composant.largeur.badge_lampe",
-    "avatar_apercu": "composant.largeur.avatar_apercu"
+    "avatar_apercu": "composant.largeur.avatar_apercu",
+    "liste_defilante_visible": "192px",
+    "_note_liste_defilante_visible": "v1.2.0 — 4 x hauteur.ligne_tableau (4 x cible.minimale = 4 x 48px). Mesure reelle (pilote Playwright, conseil LLM 2026-11-14) : a l'effectif max (8 joueurs), ECR-17 deborde de 395 a 496px meme a 375x667, parce que la liste publique des declarations et la fenetre de lecture du secret (secret.hauteur_fenetre_lecture, PLANCHER absolu, jamais compresse) se disputent le meme espace fixe. Decision retenue : la liste a cardinalite VARIABLE (5 a 8 joueurs) est la SEULE exception nommee au principe zero-scroll de conception_initiale, plafonnee a 4 lignes visibles (le defilement interne reste decouvert par l'ombre de fondu du composant, jamais par un libelle) ; tout le reste de l'ecran, y compris le minuteur et les montants, garde une taille fixe et ne retrecit jamais sous le plancher de secret.hauteur_fenetre_lecture."
    },
    "largeur": {
     "pas_incrementeur": "cible.confortable",

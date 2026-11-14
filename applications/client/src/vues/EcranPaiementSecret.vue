@@ -179,6 +179,12 @@ function sceller(): void {
 .paiement {
   display: flex;
   flex-direction: column;
+  /* flex + min-block-size: 0 : reçoit le budget réel de coquille__ecran au
+     lieu de pousser son parent à grandir (conseil LLM, responsive). Sans ça,
+     .paiement__saisie { margin-block-start: auto } ouvrait un grand vide au
+     lieu de compresser quand le contenu dépassait le viewport. */
+  flex: 1 1 auto;
+  min-block-size: 0;
   gap: var(--gdv-espacement-12);
   padding: var(--gdv-gouttiere-ecran);
 }

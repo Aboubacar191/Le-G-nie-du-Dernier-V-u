@@ -40,6 +40,12 @@ function appliquerExecution(etat: EtatLocal, charge: unknown): void {
   // La clause est révélée ici, SANS son porteur : aucune carte n'est marquée,
   // aucun ordre d'affichage ne dépend du porteur (matrice_visibilite —
   // l'identité du porteur ne devient publique JAMAIS en v1).
+
+  // Résumé global de fin de partie (ECR-27) : cette manche vient de se
+  // fermer, en direct — accroît plutôt que de recalculer (le recalcul en
+  // bloc n'a lieu qu'à la resynchronisation complète, voir reducteurs-session.ts).
+  etat.nb_manches_closes += 1;
+  if (resultat.reussi) etat.nb_voeux_exauces += 1;
 }
 
 export const APPLICATEURS_MANCHE: Readonly<Record<string, Applicateur>> = Object.freeze({
@@ -96,6 +102,10 @@ export const APPLICATEURS_MANCHE: Readonly<Record<string, Applicateur>> = Object
         ? { ...accusation, verdict: evenement.verdict }
         : accusation,
     );
+    // Résumé global de fin de partie (ECR-27) : un verdict MENTEUR est un fait
+    // déjà public (la carte l'affiche à l'instant même) — seul le COMPTAGE
+    // cumulé sur toute la partie est nouveau, jamais l'ampleur d'un mensonge.
+    if (evenement.verdict === 'MENTEUR') etat.nb_mensonges_demasques += 1;
   },
 
   execution_resultat: appliquerExecution,

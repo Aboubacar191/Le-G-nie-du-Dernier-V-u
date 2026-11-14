@@ -67,15 +67,68 @@ const places = computed((): readonly PlaceAffichee[] =>
 const joueurDe = (joueurId: string): JoueurPublic | undefined =>
   props.joueurs.find((joueur) => joueur.joueur_id === joueurId);
 
-/** Position en pourcentage : le cercle est inscrit dans un carré fluide. */
-function styleDe(place: PlaceAffichee): Record<string, string> {
-  const centre = 50;
-  const amplitude = 38;
+const CENTRE_POURCENT = 50;
+const AMPLITUDE_POURCENT = 38;
+/** Marge de sécurité sous la corde exacte : les cartes gardent un espace
+ * visible entre elles plutôt que de se toucher bord à bord. */
+const MARGE_SECURITE = 0.72;
+/** Évidement du centre à effectif minimal (5) : au-delà, il se resserre
+ * (voir centreInsetPourcent) pour ne plus mordre sur les cartes voisines. */
+const CENTRE_INSET_MIN_POURCENT = 25;
+
+/**
+ * Largeur maximale d'une carte (en % du conteneur du cercle) qui ne fait
+ * JAMAIS chevaucher deux cartes voisines, quel que soit l'effectif.
+ *
+ * Trouvé par mesure réelle (pilote Playwright, 8 joueurs, pseudos longs) :
+ * carte_joueur n'a qu'un PLANCHER (cible.geante), jamais de plafond, et
+ * positions-cercle.ts ignore totalement la largeur rendue. Avec N cartes
+ * réparties sur un cercle de rayon `amplitude`, la distance entre deux
+ * centres voisins (la corde) est 2 × amplitude × sin(π / N) — c'est la seule
+ * largeur de carte qui garantit l'absence de chevauchement, quel que soit N.
+ */
+function largeurCarteMaxPourcent(nb: number): number {
+  if (nb <= 1) return 100;
+  const corde = 2 * AMPLITUDE_POURCENT * Math.sin(Math.PI / nb);
+  return corde * MARGE_SECURITE;
+}
+
+/**
+ * Position en pourcentage : le cercle est inscrit dans un carré fluide.
+ *
+ * La corde borne la largeur ET la hauteur, pas seulement la largeur : le
+ * carré étant fluide (aspect-ratio: 1), un pourcentage vaut la même chose
+ * dans les deux sens. Trouvé par mesure réelle (pilote Playwright) après une
+ * première correction qui ne bornait QUE la largeur : les cartes rendues
+ * plus hautes que la corde par leur texte (pseudo + statut) chevauchaient
+ * quand même leurs voisines du dessus et du dessous, invisibles à un calcul
+ * qui ne regardait que l'axe horizontal.
+ */
+function styleDe(place: PlaceAffichee, nb: number): Record<string, string> {
+  const taille = `${largeurCarteMaxPourcent(nb)}%`;
   return {
-    left: `${centre + place.x * amplitude}%`,
-    top: `${centre + place.y * amplitude}%`,
+    left: `${CENTRE_POURCENT + place.x * AMPLITUDE_POURCENT}%`,
+    top: `${CENTRE_POURCENT + place.y * AMPLITUDE_POURCENT}%`,
+    maxWidth: taille,
+    maxHeight: taille,
   };
 }
+
+const JOUEURS_MIN_CERCLE = 5;
+
+/**
+ * Évidement central : à 5 joueurs il reste à 25 % (valeur historique), et il
+ * se resserre ensuite d'1,5 point par joueur supplémentaire — les cartes se
+ * rapprochent du centre à mesure que l'effectif grimpe (corde plus courte),
+ * et le centre doit laisser la place plutôt que la mordre.
+ */
+const centreInsetPourcent = computed((): number => {
+  const nb = places.value.length;
+  if (nb <= JOUEURS_MIN_CERCLE) return CENTRE_INSET_MIN_POURCENT;
+  return CENTRE_INSET_MIN_POURCENT + (nb - JOUEURS_MIN_CERCLE) * 1.5;
+});
+
+const styleCentre = computed(() => ({ inset: `${centreInsetPourcent.value}%` }));
 </script>
 
 <template>
@@ -118,7 +171,7 @@ function styleDe(place: PlaceAffichee): Record<string, string> {
         v-for="place in places"
         :key="place.joueur_id"
         class="cercle__place"
-        :style="styleDe(place)"
+        :style="styleDe(place, places.length)"
       >
         <CarteJoueurCercle
           :pseudo="joueurDe(place.joueur_id)?.pseudo ?? place.joueur_id"
@@ -135,7 +188,10 @@ function styleDe(place: PlaceAffichee): Record<string, string> {
           @choisir="emettre('choisir', place.joueur_id)"
         />
       </li>
-      <li class="cercle__centre">
+      <li
+        class="cercle__centre"
+        :style="styleCentre"
+      >
         <slot name="centre" />
       </li>
     </ol>
@@ -161,10 +217,21 @@ function styleDe(place: PlaceAffichee): Record<string, string> {
 .cercle__place {
   position: absolute;
   transform: translate(-50%, -50%);
+  /* Le VRAI verrou anti-chevauchement, trouvé par mesure réelle (pilote
+     Playwright) : max-width/max-height bornent CETTE boîte, mais sans
+     overflow:hidden ICI, la carte enfant — de hauteur naturelle, texte
+     oblige — continue de déborder librement par-dessus les places
+     voisines. overflow:hidden sur .carte elle-même (CarteJoueurCercle.vue)
+     ne suffit pas : c'est son PROPRE débordement qu'elle masquerait, pas
+     celui qu'elle cause chez le parent qui, lui, n'avait rien pour l'arrêter. */
+  overflow: hidden;
 }
 
 .cercle__centre {
   position: absolute;
+  /* inset posé en ligne par styleCentre : il se resserre avec l'effectif
+     (voir centreInsetPourcent), la valeur statique ne sert que de repli si
+     jamais le style n'est pas appliqué (ex. SSR). */
   inset: 25%;
   display: flex;
   align-items: center;

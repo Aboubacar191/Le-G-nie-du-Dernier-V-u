@@ -187,7 +187,14 @@ const nomAccessible = computed((): string => {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--gdv-espacement-4);
-  min-inline-size: var(--gdv-largeur-carte-joueur);
+  /* PAS de min-inline-size ici : la loi de Fitts protège une cible TACTILE,
+     pas une carte de lecture seule. La variante compacte (cercle en lecture,
+     VOEU/NEGOCIATION/REVELATION) n'est jamais tapée — c'est elle que
+     CercleDesPlaces.vue contraint en largeur pour effectif élevé (RUP
+     responsive, conseil LLM), et un plancher ici annulerait cette contrainte
+     dès que l'effectif approche 8. Le plancher tactile reste porté par
+     --selectionnable et --etendue ci-dessous, les deux seules variantes
+     tapées ou pleine-largeur. */
   min-block-size: var(--gdv-hauteur-carte-joueur);
   padding: var(--gdv-espacement-8);
   border: var(--gdv-trait-fin) solid var(--gdv-bordure-structurante);
@@ -196,13 +203,21 @@ const nomAccessible = computed((): string => {
   color: var(--gdv-texte-principal);
   font-family: var(--gdv-famille-interface);
   text-align: start;
+  /* Sans effet tant que rien ne borne la hauteur (etendue, selectionnable).
+     En variante compacte sur le cercle à effectif élevé, CercleDesPlaces.vue
+     pose un max-height : le surplus de texte (statut sur plusieurs lignes)
+     doit être MASQUÉ, jamais déborder visuellement sur la carte voisine —
+     le pseudo, premier enfant, reste toujours lisible en entier. */
+  overflow: hidden;
 }
 
 .carte--etendue {
+  min-inline-size: var(--gdv-largeur-carte-joueur);
   inline-size: 100%;
 }
 
 .carte--selectionnable {
+  min-inline-size: var(--gdv-largeur-carte-joueur);
   min-block-size: var(--gdv-cible-geante);
   border-width: var(--gdv-trait-moyen);
   border-color: var(--gdv-bordure-champ);
@@ -255,6 +270,12 @@ const nomAccessible = computed((): string => {
 
 .carte__pseudo {
   margin: 0;
+  inline-size: 100%;
+  /* Un pseudo long et sans espace (ex. « Guillemette ») ne doit jamais
+     DÉBORDER visuellement d'une carte resserrée par CercleDesPlaces.vue : la
+     carte resterait géométriquement sans chevauchement, mais le texte, lui,
+     chevaucherait quand même la carte voisine. */
+  overflow-wrap: break-word;
   font-size: var(--gdv-role-corps);
   font-weight: var(--gdv-graisse-moyen);
 }

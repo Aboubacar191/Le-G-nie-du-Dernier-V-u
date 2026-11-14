@@ -140,6 +140,7 @@
   --gdv-hauteur-carte-joueur: var(--gdv-cible-geante);
   --gdv-hauteur-badge-lampe: var(--gdv-largeur-badge-lampe);
   --gdv-hauteur-avatar-apercu: var(--gdv-largeur-avatar-apercu);
+  --gdv-hauteur-liste-defilante-visible: 192px;
   --gdv-largeur-pas-incrementeur: var(--gdv-cible-confortable);
   --gdv-largeur-carte-joueur: var(--gdv-cible-geante);
   --gdv-largeur-anneau-minuteur: var(--gdv-cible-minimale);

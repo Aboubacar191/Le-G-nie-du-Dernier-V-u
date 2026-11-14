@@ -69,6 +69,20 @@ export interface EtatLocal {
   // --- manche en cours et historique (public) --------------------------------
   manche_courante: ResumeManchePublique | null;
   historique_manches: readonly ResumeManchePublique[];
+  /**
+   * Résumé global de fin de partie (ECR-27) : trois compteurs PUBLICS,
+   * dérivés sans aucun champ protocole nouveau — historique_manches.reussi et
+   * les verdicts d'accusation sont déjà publics (RG-58, RG-73). Remis à zéro
+   * et recalculés en bloc à chaque etat_complet_prive (reçu au complet), puis
+   * accrus en direct par execution_resultat et accusation_resolue — jamais
+   * les deux à la fois pour la même manche, car le premier remplace plutôt
+   * que d'ajouter. Volontairement SANS compteur de mensonges non démasqués
+   * (RG-75) : ce total n'existe nulle part, pas même ici, le génie ne sachant
+   * que ce qui a été prouvé.
+   */
+  nb_manches_closes: number;
+  nb_voeux_exauces: number;
+  nb_mensonges_demasques: number;
   voeu: ChargeVoeuAnnonce | null;
   declarations: Readonly<Record<string, number>>;
   nb_declarations: number;
@@ -120,6 +134,9 @@ export function etatInitial(): EtatLocal {
     actions_autorisees: [],
     manche_courante: null,
     historique_manches: [],
+    nb_manches_closes: 0,
+    nb_voeux_exauces: 0,
+    nb_mensonges_demasques: 0,
     voeu: null,
     declarations: {},
     nb_declarations: 0,

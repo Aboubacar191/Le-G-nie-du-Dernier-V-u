@@ -206,7 +206,10 @@ async function rejoindre(): Promise<void> {
   /* Écart entre deux champs : espacement.16. Le clavier logiciel couvre au plus
      la moitié basse, les deux champs et le bouton restent visibles à 360×640. */
   gap: var(--gdv-espacement-16);
-  min-block-size: 100vh;
+  /* Reçoit le budget réel de coquille__ecran au lieu de le dépasser : voir
+     EcranPaiementSecret.vue pour la justification complète. */
+  flex: 1 1 auto;
+  min-block-size: 0;
   padding: var(--gdv-gouttiere-ecran);
   background: var(--gdv-surface-fond);
   color: var(--gdv-texte-principal);

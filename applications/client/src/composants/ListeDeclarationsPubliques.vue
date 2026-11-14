@@ -102,9 +102,17 @@ const aucuneDeclaration = computed(() => Object.keys(props.declarations).length 
         @agir="emettre('agirSurVide')"
       />
 
+      <!-- Exception UNIQUE et nommée au principe zéro-scroll (conseil LLM,
+           2026-11-14) : seule cette liste, de cardinalité VARIABLE (5 à 8
+           joueurs), défile en interne (tbody seul, en-tête et total fixes).
+           Le reste de l'écran — minuteur, montants, fenêtre de secret —
+           garde une taille fixe et n'hérite jamais ce défilement
+           (DESIGN-GDV-001 v1.2.0, composant.hauteur.liste_defilante_visible).
+           UNE SEULE table : trois tables séparées désaligneraient les
+           colonnes, chacune calculant ses largeurs indépendamment. -->
       <table
         v-else
-        class="declarations__table"
+        class="declarations__table declarations__table--defilante"
       >
         <caption class="declarations__legende">
           {{ texte('commun.promis') }}
@@ -218,6 +226,43 @@ const aucuneDeclaration = computed(() => Object.keys(props.declarations).length 
   padding: var(--gdv-espacement-8);
   text-align: start;
   font-weight: var(--gdv-graisse-normal);
+}
+
+/* Seul le corps défile : l'en-tête et le total restent toujours visibles.
+   display:table sur chaque groupe (plutôt que sur la table entière) pour que
+   le navigateur recalcule un tableau valide à chacun, et table-layout:fixed
+   + largeurs en pourcentage pour que les deux groupes s'accordent sur les
+   MÊMES colonnes — sans quoi chacun les calculerait indépendamment selon
+   son propre contenu et les chiffres ne s'aligneraient plus sous le titre. */
+.declarations__table--defilante {
+  display: block;
+}
+
+.declarations__table--defilante thead,
+.declarations__table--defilante tfoot {
+  display: table;
+  inline-size: 100%;
+  table-layout: fixed;
+}
+
+.declarations__table--defilante tbody {
+  display: block;
+  max-block-size: var(--gdv-hauteur-liste-defilante-visible);
+  overflow-y: auto;
+}
+
+.declarations__table--defilante tbody tr {
+  display: table;
+  inline-size: 100%;
+  table-layout: fixed;
+}
+
+.declarations__table--defilante :is(thead, tbody) tr > :first-child {
+  inline-size: 65%;
+}
+
+.declarations__table--defilante :is(thead, tbody) tr > :last-child {
+  inline-size: 35%;
 }
 
 /* Regroupement par SURFACE, sans trait de séparation décoratif. */

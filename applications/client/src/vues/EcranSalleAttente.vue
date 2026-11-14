@@ -226,7 +226,10 @@ function abandonner(): void {
   display: flex;
   flex-direction: column;
   gap: var(--gdv-espacement-12);
-  min-block-size: 100vh;
+  /* Reçoit le budget réel de coquille__ecran au lieu de le dépasser : voir
+     EcranPaiementSecret.vue pour la justification complète. */
+  flex: 1 1 auto;
+  min-block-size: 0;
   padding: var(--gdv-gouttiere-ecran);
   background: var(--gdv-surface-fond);
   color: var(--gdv-texte-principal);

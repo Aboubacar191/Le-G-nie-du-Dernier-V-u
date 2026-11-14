@@ -1,10 +1,17 @@
 /*
  * Feuille GLOBALE — déclarations qui ne peuvent vivre dans aucun composant.
  *
- * Trois contenus, et pas un de plus :
+ * Quatre contenus, et pas un de plus :
  *   1. les dix déclarations @font-face des deux familles embarquées ;
  *   2. la remise à zéro des marges du document et la surface de fond ;
- *   3. l'utilitaire de texte réservé aux lecteurs d'écran.
+ *   3. l'utilitaire de texte réservé aux lecteurs d'écran ;
+ *   4. box-sizing: border-box — trouvé manquant par mesure réelle (pilote
+ *      Playwright, conseil LLM, 2026-11-14) : sans lui, le plafond posé sur
+ *      un conteneur (max-inline-size d'une carte sur CercleDesPlaces.vue,
+ *      par exemple) ne borne que la boîte de CONTENU, et padding + bordure
+ *      s'ajoutent par-dessus — le rendu dépasse alors le plafond annoncé
+ *      sans qu'aucune règle de composant ne mente. C'est une remise à zéro
+ *      du modèle de boîte, au même titre que la marge, pas une préférence.
  *
  * Pourquoi ce fichier est écrit à la main et non compilé comme jetons.css :
  * le générateur vit dans outils/, propriété de l'ingénieur DevOps pendant cette
@@ -157,6 +164,12 @@
    défilement iOS affiche le blanc du navigateur sous l'écran de jeu, ce qui
    suffit à trahir un changement d'état au voisin assis à côté.
    =========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
 html {
   block-size: 100%;

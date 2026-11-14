@@ -258,8 +258,21 @@ export class ServeurTempsReel {
 
     // Le reconnecté reçoit etat_complet_prive ; les AUTRES reçoivent
     // joueur_reconnecte (API / reconnexion.visibilite_de_la_deconnexion).
-    this.service.boucle.signalerPresence(partie, resultat.joueur_id, true);
+    //
+    // ORDRE CRITIQUE, trouvé par test réel (pas par lecture) : envoyerA lit la
+    // séquence COURANTE sans l'incrémenter (RUP-01), alors que signalerPresence
+    // en consomme une NOUVELLE via le lot. Appeler signalerPresence d'abord
+    // faisait partir joueur_reconnecte avec la séquence N+1 puis
+    // etat_complet_prive avec la MÊME N+1 — le client, qui attend sequence 1
+    // juste après l'ouverture, voyait un trou dès la première trame et se
+    // reconnectait aussitôt, qui recommençait le même trou : boucle infinie,
+    // reproduite à chaque connexion dès que la session avait déjà émis quoi
+    // que ce soit (donc quasiment toujours, dès le deuxième joueur). Inverser
+    // l'ordre fait lire etat_complet_prive la séquence N (pas encore
+    // incrémentée), puis signalerPresence l'incrémente à N+1 pour
+    // joueur_reconnecte : le client reçoit N puis N+1, sans trou.
     this.service.boucle.envoyerEtatComplet(partie, resultat.joueur_id);
+    this.service.boucle.signalerPresence(partie, resultat.joueur_id, true);
     this.service.ordonnanceur.programmer(resultat.session_id);
   }
 
