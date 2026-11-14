@@ -68,6 +68,17 @@ const props = defineProps<Props>();
 </template>
 
 <style scoped>
+/* Scroll interne SCOPÉ à la liste (conseil LLM, 2026-11-14 — « RUP responsive ») :
+   UNE tentative par chaîne de flex-shrink (.grille en min-block-size: 0,
+   rétréci par le parent .attente) a été essayée et rejetée — vérifié par
+   mesure : un min-block-size: 0 explicite sur un flex ITEM fixe sa taille
+   plancher à 0 pour de bon auprès du PARENT, qui l'y pousse dès qu'il y a la
+   moindre pression, sans jamais consulter les planchers des enfants de cet
+   item. Toute la liste disparaissait plutôt que de défiler. La voie retenue
+   ne participe PAS à ce bras de fer : .grille__liste plafonne SA PROPRE
+   hauteur en valeur absolue (max-block-size), indépendamment du reste de
+   l'écran — moins élégant qu'un calcul dynamique exact, mais robuste : il ne
+   peut pas s'effondrer à zéro quelle que soit la pression des voisins. */
 .grille {
   display: flex;
   flex-direction: column;
@@ -100,9 +111,18 @@ const props = defineProps<Props>();
 .grille__liste {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
   gap: var(--gdv-espacement-8);
   margin: 0;
   padding: 0;
+  /* Plafond relatif au VIEWPORT, pas une part du budget des voisins (qui
+     s'effondre à zéro, voir le commentaire de .grille) ni un nombre de
+     rangées fixe (pénaliserait les téléphones assez hauts pour tout
+     montrer sans défiler). 33dvh ≈ 2 rangées sur un petit écran (iPhone SE,
+     ne défile donc plus que pour 5 marchands et plus), ≈ 4-5 rangées sur un
+     écran haut (iPhone 14 Pro Max) — mesuré pour les deux. */
+  max-block-size: 33dvh;
+  overflow-y: auto;
   list-style: none;
 }
 

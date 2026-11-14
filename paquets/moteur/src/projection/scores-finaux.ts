@@ -61,6 +61,8 @@ function ligneDe(etat: EtatSession, joueurId: string, rang: number): LigneClasse
   };
 }
 
+const MILLISECONDES_PAR_SECONDE = 1000;
+
 export function projeterScoresFinaux(etat: EtatSession): ProjectionBrute | null {
   if (etat.classement === null) return null;
   const lignes: LigneClassement[] = [];
@@ -77,7 +79,7 @@ export function projeterScoresFinaux(etat: EtatSession): ProjectionBrute | null 
   const dureeS =
     etat.scores_calcules_le === null
       ? 0
-      : Math.max(0, Math.round((etat.scores_calcules_le - etat.cree_le) / 1000));
+      : Math.max(0, Math.round((etat.scores_calcules_le - etat.cree_le) / MILLISECONDES_PAR_SECONDE));
 
   return {
     proprietaires: [],
