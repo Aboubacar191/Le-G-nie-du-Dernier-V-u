@@ -115,13 +115,13 @@ const props = defineProps<Props>();
   gap: var(--gdv-espacement-8);
   margin: 0;
   padding: 0;
-  /* Plafond relatif au VIEWPORT, pas une part du budget des voisins (qui
-     s'effondre à zéro, voir le commentaire de .grille) ni un nombre de
-     rangées fixe (pénaliserait les téléphones assez hauts pour tout
-     montrer sans défiler). 33dvh ≈ 2 rangées sur un petit écran (iPhone SE,
-     ne défile donc plus que pour 5 marchands et plus), ≈ 4-5 rangées sur un
-     écran haut (iPhone 14 Pro Max) — mesuré pour les deux. */
-  max-block-size: 33dvh;
+  /* --gdv-hauteur-liste-defilante-visible : LE token déjà nommé par
+     DESIGN-GDV-001.json (v1.2.0, conseil LLM 2026-11-14) pour « la liste à
+     cardinalité variable, SEULE exception nommée au principe zéro-scroll » —
+     créé ce même jour pour ListeDeclarationsPubliques.vue (ECR-17), pour la
+     cause EXACTEMENT symétrique (5 à 8 lignes face à un budget fixe). Même
+     exception, même token, pas une variante par écran. */
+  max-block-size: var(--gdv-hauteur-liste-defilante-visible);
   overflow-y: auto;
   list-style: none;
 }

@@ -361,6 +361,7 @@ export const CHAMPS_NEUTRES = {
   DV_PROPOSITION: 'Clé de phase dans durees_phases_s.',
   DV_DEBAT: 'Clé de phase dans durees_phases_s.',
   DV_SIGNATURE: 'Clé de phase dans durees_phases_s.',
+  duree_s: 'EvtScoresFinaux : durée totale de la partie (scores_calcules_le − cree_le), fidélité maquette « Fin de partie ». Collective — vécue en entier par toute la table — jamais individuelle : aucune fuite possible.',
 
   // Horodatages non secrets
   cree_at: 'Horodatage de création d’un élément déjà visible de son destinataire.',
