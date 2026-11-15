@@ -5,6 +5,19 @@
 //   Égalité : départage par pieces_restantes, puis ex aequo déclaré.
 //   Si genie_libere, le MARCHAND_DEJA_LIE est vainqueur UNIQUE, le classement
 //   par points restant affiché à titre informatif.
+//
+// CORRIGÉ (conseil LLM, 2026-11-15) : la victoire par libération exige en plus
+// que le MARCHAND_DEJA_LIE soit LUI-MÊME le signataire unique. AVANT ce
+// correctif, genie_libere seul suffisait : le porteur du rôle gagnait dès
+// qu'un AUTRE joueur signait seul, sans jamais avoir à prendre le risque
+// personnel de signer — une stratégie dominante à risque nul (manœuvrer
+// oralement pour qu'un tiers signe). RG-56 dit « indépendamment du classement
+// par points », pas « indépendamment de qui a signé » ; la prémisse du jeu
+// est qu'un gain exceptionnel suppose un risque personnellement assumé.
+// Si le MARCHAND_DEJA_LIE n'a pas signé lui-même, genie_libere reste vrai
+// (fait narratif : le génie EST libre) mais la victoire retombe sur le
+// classement par points ordinaire — le signataire réel garde sa récompense
+// de 15 pièces (scores/dernier-voeu.ts), comptée normalement dans son score.
 
 import { missionReussie } from './missions.ts';
 import type { EtatSession, LigneClassementInterne } from '../etat/types.ts';
@@ -62,7 +75,13 @@ export function calculerClassement(etat: EtatSession): Classement {
   const marchandDejaLie = etat.joueurs.find(
     (joueur) => joueur.role_secret === 'MARCHAND_DEJA_LIE',
   );
-  const parLiberation = etat.genie_libere === true && marchandDejaLie !== undefined;
+  // genie_libere n'est vrai que sur la branche « signataire unique » de
+  // resoudreDernierVoeu : il y a donc AU PLUS un signataire à chercher ici.
+  const signataireUnique = etat.signatures.find((signature) => signature.a_signe === true)?.joueur_id;
+  const parLiberation =
+    etat.genie_libere === true &&
+    marchandDejaLie !== undefined &&
+    marchandDejaLie.id === signataireUnique;
   const vainqueurs = parLiberation
     ? [marchandDejaLie.id]
     : lignes.filter((ligne) => ligne.rang === 1).map((ligne) => ligne.joueur_id);

@@ -32,25 +32,45 @@ function partieAvancee(graine: string): Banc {
 }
 
 titre('CA-37 — mode avancé, 1 signataire');
+// CORRIGÉ (conseil LLM, 2026-11-15, scores/classement.ts) : le Marchand déjà
+// lié ne gagne par libération QUE s'il est lui-même le signataire unique —
+// pas « quiconque signe seul ». Cette sonde signait 'J0' en dur, qui n'est
+// pas forcément le porteur du rôle : elle mesurait donc l'ANCIEN bogue
+// (gagner sans jamais avoir signé) comme s'il était la règle. Signer avec le
+// porteur du rôle lui-même mesure la règle corrigée.
 const ca37 = partieAvancee('ca-37');
 const marchandLie = ca37.etat.joueurs.find((joueur) => joueur.role_secret === 'MARCHAND_DEJA_LIE');
 const gardien = ca37.etat.joueurs.find((joueur) => joueur.mission_secrete === 'GARDIEN_DE_LA_LAMPE');
 mesure('phase atteinte', ca37.etat.phase);
 mesure('MARCHAND_DEJA_LIE / GARDIEN_DE_LA_LAMPE', [marchandLie?.id, gardien?.id]);
-const soldeSignataire = ca37.solde('J0');
-ca37.exiger('J0', 'signer_dernier_voeu', { a_signe: true });
+const signataireCa37 = marchandLie?.id as string;
+const soldeSignataire = ca37.solde(signataireCa37);
+ca37.exiger(signataireCa37, 'signer_dernier_voeu', { a_signe: true });
 ca37.expirer();
-mesure('delta du signataire', ca37.solde('J0') - soldeSignataire);
+mesure('delta du signataire', ca37.solde(signataireCa37) - soldeSignataire);
 mesure('genie_libere / vainqueurs', [ca37.etat.genie_libere, ca37.etat.vainqueurs]);
 mesure('mission du gardien réussie ?', ca37.etat.joueurs.find((j) => j.id === gardien?.id)?.mission_reussie);
 const resolu37 = ca37.trames.filter((trame) => trame.type === 'dernier_voeu_resolu');
 mesure('charge publique de résolution', resolu37[0]?.charge);
 verdict(
   'CA-37',
-  ca37.solde('J0') - soldeSignataire === CONFIG_DEFAUT.recompense_signature_dernier_voeu &&
+  ca37.solde(signataireCa37) - soldeSignataire === CONFIG_DEFAUT.recompense_signature_dernier_voeu &&
     ca37.etat.genie_libere === true &&
     JSON.stringify(ca37.etat.vainqueurs) === JSON.stringify([marchandLie?.id]) &&
     ca37.etat.joueurs.find((j) => j.id === gardien?.id)?.mission_reussie === false,
+);
+
+titre('CA-37 bis — un AUTRE joueur signe seul : le Marchand déjà lié ne gagne PAS');
+const ca37bis = partieAvancee('ca-37-bis');
+const marchandLieBis = ca37bis.etat.joueurs.find((joueur) => joueur.role_secret === 'MARCHAND_DEJA_LIE');
+const autreSignataire = ca37bis.joueurs.find((id) => id !== marchandLieBis?.id) as string;
+ca37bis.exiger(autreSignataire, 'signer_dernier_voeu', { a_signe: true });
+ca37bis.expirer();
+mesure('genie_libere / vainqueurs (autre signataire)', [ca37bis.etat.genie_libere, ca37bis.etat.vainqueurs]);
+verdict(
+  'CA-37 bis — pas de victoire gratuite sans avoir soi-même signé',
+  ca37bis.etat.genie_libere === true &&
+    JSON.stringify(ca37bis.etat.vainqueurs) !== JSON.stringify([marchandLieBis?.id]),
 );
 
 titre('CA-38 — mode avancé, 3 signataires');

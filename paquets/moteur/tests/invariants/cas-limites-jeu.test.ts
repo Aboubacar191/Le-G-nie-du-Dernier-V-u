@@ -211,6 +211,11 @@ test('cas limite 21 — cercle de 5 (voisinage minimal) et de 8', () => {
   }
 });
 
+// CORRIGÉ (conseil LLM, 2026-11-15, scores/classement.ts) : ce cas limite
+// affirmait que le Marchand déjà lié gagnait même déconnecté — tant qu'UN
+// AUTRE joueur signait seul à sa place. C'était le bogue lui-même, encodé ici
+// comme comportement voulu : un rôle qui gagne sans jamais pouvoir agir n'a
+// pris aucun risque. Désormais, ne signant pas lui-même, il ne gagne pas.
 test('cas limite 22 — mode avancé activé alors que le MARCHAND_DEJA_LIE se déconnecte', () => {
   const { table, marchandDejaLie } = allerAuDernierVoeu();
   table.etat = { ...table.etat, joueurs: table.etat.joueurs.map((joueur) =>
@@ -220,11 +225,11 @@ test('cas limite 22 — mode avancé activé alors que le MARCHAND_DEJA_LIE se d
   table.exiger('J1', 'signer_dernier_voeu', { a_signe: true });
   table.expirer();
 
-  assert.equal(table.etat.genie_libere, true);
-  assert.deepEqual(
+  assert.equal(table.etat.genie_libere, true, 'fait narratif : le génie EST libre');
+  assert.notDeepEqual(
     table.etat.vainqueurs,
     [marchandDejaLie],
-    'déconnecté ou non, il gagne seul (RG-56)',
+    'déconnecté, il n’a pas pu signer lui-même : il ne gagne pas automatiquement (RG-56)',
   );
 });
 

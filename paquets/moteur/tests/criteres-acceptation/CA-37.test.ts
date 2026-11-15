@@ -1,8 +1,16 @@
 // CA-37 — US-14. Étant donné une partie en mode avancé après l'exécution de la
 // manche 5, où EXACTEMENT 1 joueur signe, quand la résolution s'applique, alors
-// le signataire reçoit 15 pièces, le génie est LIBÉRÉ, le Marchand déjà lié est
-// déclaré vainqueur UNIQUE, et le Gardien de la lampe ÉCHOUE sa mission.
-// (RG-51 à RG-56)
+// le signataire reçoit 15 pièces, le génie est LIBÉRÉ, et le Gardien de la
+// lampe ÉCHOUE sa mission. (RG-51 à RG-56)
+//
+// CORRIGÉ (conseil LLM, 2026-11-15, scores/classement.ts) : le Marchand déjà
+// lié n'est vainqueur UNIQUE que s'IL est lui-même ce signataire — pas
+// « quiconque signe seul ». AVANT ce correctif, ce fichier posait un
+// signataire DIFFÉRENT du Marchand déjà lié et affirmait pourtant que ce
+// dernier gagnait : c'était le bogue lui-même, encodé comme comportement
+// voulu. Deux scénarios distincts, désormais : le Marchand déjà lié signe
+// lui-même (il gagne), un autre joueur signe seul (il ne gagne PAS
+// automatiquement — RG-56 ne dispense personne du risque personnel).
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -34,26 +42,52 @@ test('CA-37 : la proposition est PRIVÉE et porte le montant lu dans la configur
   }
 });
 
-test('CA-37 : un signataire unique encaisse 15, le génie est libéré', () => {
+test('CA-37 : le Marchand déjà lié signe lui-même, il encaisse 15 et gagne seul', () => {
   const { table, marchandDejaLie, gardienDeLaLampe } = allerAuDernierVoeu();
   table.allerA('DV_SIGNATURE');
 
-  const signataire = table.joueurs.find((joueur) => joueur !== marchandDejaLie) as string;
-  const soldeAvant = table.solde(signataire);
-  table.exiger(signataire, 'signer_dernier_voeu', { a_signe: true });
+  const soldeAvant = table.solde(marchandDejaLie);
+  table.exiger(marchandDejaLie, 'signer_dernier_voeu', { a_signe: true });
   for (const joueur of table.joueurs) {
-    if (joueur === signataire) continue;
+    if (joueur === marchandDejaLie) continue;
     table.exiger(joueur, 'signer_dernier_voeu', { a_signe: false });
   }
 
   table.expirer(); // expiration de DV_SIGNATURE : résolution puis scores
 
   assert.equal(table.etat.genie_libere, true);
-  assert.equal(table.solde(signataire), soldeAvant + 15);
+  assert.equal(table.solde(marchandDejaLie), soldeAvant + 15);
   assert.deepEqual(table.etat.vainqueurs, [marchandDejaLie], 'vainqueur UNIQUE (RG-56)');
 
   const gardien = table.etat.joueurs.find((joueur) => joueur.id === gardienDeLaLampe);
   assert.equal(gardien?.mission_reussie, false, 'le Gardien échoue si le génie est libéré');
+  assert.ok(verifierInvariants(table.etat).ok);
+});
+
+test('CA-37 : un AUTRE joueur signe seul — le Marchand déjà lié ne gagne PAS automatiquement', () => {
+  // Correctif du conseil LLM (2026-11-15) : avant, genie_libere seul
+  // suffisait à faire gagner le Marchand déjà lié, quel que soit le
+  // signataire réel — une stratégie à risque nul (ne jamais signer soi-même,
+  // manœuvrer pour qu'un tiers le fasse). RG-56 dit « indépendamment du
+  // classement par points », pas « indépendamment de qui a signé ».
+  const { table, marchandDejaLie } = allerAuDernierVoeu();
+  table.allerA('DV_SIGNATURE');
+
+  const signataire = table.joueurs.find((joueur) => joueur !== marchandDejaLie) as string;
+  table.exiger(signataire, 'signer_dernier_voeu', { a_signe: true });
+  for (const joueur of table.joueurs) {
+    if (joueur === signataire) continue;
+    table.exiger(joueur, 'signer_dernier_voeu', { a_signe: false });
+  }
+
+  table.expirer();
+
+  assert.equal(table.etat.genie_libere, true, 'fait narratif : le génie EST libre');
+  assert.notDeepEqual(
+    table.etat.vainqueurs,
+    [marchandDejaLie],
+    'le Marchand déjà lié ne gagne pas sans avoir lui-même pris le risque de signer',
+  );
   assert.ok(verifierInvariants(table.etat).ok);
 });
 
